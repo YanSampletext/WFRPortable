@@ -1,0 +1,7 @@
+# Android/TWA build output — contains the signing key, never commit
+twa-project/
+
+# Bubblewrap build logs
+bw-*.log
+bubblewrap-*.log
+bw-answers.txt
