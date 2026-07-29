@@ -1,0 +1,61 @@
+name: Build Android APK
+
+on:
+  workflow_run:
+    workflows: ["Deploy to GitHub Pages"]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    env:
+      BUBBLEWRAP_KEYSTORE_PASSWORD: wfrp4-keystore-pass
+      BUBBLEWRAP_KEY_PASSWORD: wfrp4-key-pass
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Bubblewrap CLI
+        run: npm install -g @bubblewrap/cli
+
+      - name: Prepare TWA project directory
+        run: |
+          mkdir -p twa-project
+          cp twa-manifest.json twa-project/twa-manifest.json
+          keytool -genkeypair -v \
+            -keystore twa-project/android.keystore \
+            -alias android \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass "$BUBBLEWRAP_KEYSTORE_PASSWORD" \
+            -keypass "$BUBBLEWRAP_KEY_PASSWORD" \
+            -dname "CN=WFRP4, OU=Dev, O=YanSampletext, L=Unknown, ST=Unknown, C=US"
+
+      - name: Generate Android project from twa-manifest.json
+        working-directory: twa-project
+        run: yes | bubblewrap update
+
+      - name: Build signed APK
+        working-directory: twa-project
+        run: yes | bubblewrap build --skipPwaValidation
+
+      - name: Upload APK / AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wfrp4-android
+          path: |
+            twa-project/app-release-signed.apk
+            twa-project/app-release-bundle.aab
+          if-no-files-found: warn
