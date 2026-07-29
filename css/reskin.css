@@ -1,0 +1,771 @@
+/* ══════════════════════════════════════════════════════════════════
+   WFRP 4 · РЕ-СКИН «ИМПЕРСКОЕ ДОСЬЕ»  (синтез А + Б)
+   А — строгий каркас официального дела: гравированные углы, латунь,
+       печати-грифы, витальная полоса, сетка характеристик.
+   Б — готическая душа: блэклеттер при свечах, буквицы, арочный
+       портрет, позолота, восковые печати.
+   Только визуальный слой. Вся механика/разметка/JS не изменены.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ─── 1. ПАЛИТРА ─────────────────────────────────────────────────── */
+:root{
+  --gold:#c2a14c; --gold2:#e0c373; --gold3:#a07c30; --gold-dim:#7a5e24; --gold-dk:#5e4720;
+  --brass:#b09a5a; --brass-dim:#6a5630;
+  --border:#473720; --border2:#5e4a2c;
+  --blood:#8c2118; --blood2:#bf4231; --blood-d:#4e0f08; --blood-dim:rgba(140,33,24,.5);
+  --bloodwood:#3a1410; --bloodwood2:#220b08; --bloodwood-lit:#5a2218;
+  --bg:#0a0705; --bg2:#080604; --panel:#16100a; --panel2:#120c07; --panel3:#1e150c;
+  --text:#e6d9b8; --text2:#bfb088; --text3:#8a7c58;
+  --parch:#cabf9c; --parch2:#b8ac88; --parch3:#8e7e5a; --bone:#e8dab0; --ink:#0a0705;
+  --data-cyan:#e0c373; --data-cyan2:#e8dab0;
+  --plague:#5a7a2e; --plague2:#84b03e; --green:#3a5a24; --green2:#7aa83e;
+  --glow:rgba(226,164,66,.07); --glow2:rgba(226,164,66,.03); --shadow:rgba(0,0,0,.9);
+
+  /* Гравированные углы-флёроны (А) — один рисунок, 4 поворота */
+  --corner-tl:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 46 46'%3E%3Cg fill='none' stroke='%23c2a14c'%3E%3Cpath d='M5 41 V16 Q5 5 16 5 H41' stroke-width='1.25'/%3E%3Cpath d='M11 41 V19 Q11 11 19 11 H41' stroke-width='.6' opacity='.55'/%3E%3C/g%3E%3Cpath d='M17 17 q5 0 5 5 q0-5 5-5 q-5 0-5-5 q0 5-5 5Z' fill='%23c2a14c' opacity='.85'/%3E%3Ccircle cx='9' cy='9' r='1.9' fill='%23c2a14c'/%3E%3C/svg%3E");
+  --corner-tr:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 46 46'%3E%3Cg transform='rotate(90 23 23)'%3E%3Cg fill='none' stroke='%23c2a14c'%3E%3Cpath d='M5 41 V16 Q5 5 16 5 H41' stroke-width='1.25'/%3E%3Cpath d='M11 41 V19 Q11 11 19 11 H41' stroke-width='.6' opacity='.55'/%3E%3C/g%3E%3Cpath d='M17 17 q5 0 5 5 q0-5 5-5 q-5 0-5-5 q0 5-5 5Z' fill='%23c2a14c' opacity='.85'/%3E%3Ccircle cx='9' cy='9' r='1.9' fill='%23c2a14c'/%3E%3C/g%3E%3C/svg%3E");
+  --corner-br:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 46 46'%3E%3Cg transform='rotate(180 23 23)'%3E%3Cg fill='none' stroke='%23c2a14c'%3E%3Cpath d='M5 41 V16 Q5 5 16 5 H41' stroke-width='1.25'/%3E%3Cpath d='M11 41 V19 Q11 11 19 11 H41' stroke-width='.6' opacity='.55'/%3E%3C/g%3E%3Cpath d='M17 17 q5 0 5 5 q0-5 5-5 q-5 0-5-5 q0 5-5 5Z' fill='%23c2a14c' opacity='.85'/%3E%3Ccircle cx='9' cy='9' r='1.9' fill='%23c2a14c'/%3E%3C/g%3E%3C/svg%3E");
+  --corner-bl:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 46 46'%3E%3Cg transform='rotate(270 23 23)'%3E%3Cg fill='none' stroke='%23c2a14c'%3E%3Cpath d='M5 41 V16 Q5 5 16 5 H41' stroke-width='1.25'/%3E%3Cpath d='M11 41 V19 Q11 11 19 11 H41' stroke-width='.6' opacity='.55'/%3E%3C/g%3E%3Cpath d='M17 17 q5 0 5 5 q0-5 5-5 q-5 0-5-5 q0 5-5 5Z' fill='%23c2a14c' opacity='.85'/%3E%3Ccircle cx='9' cy='9' r='1.9' fill='%23c2a14c'/%3E%3C/g%3E%3C/svg%3E");
+
+  /* Восковая печать (Б) */
+  --waxseal:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='42' fill='%237c1d12'/%3E%3Ccircle cx='50' cy='50' r='42' fill='none' stroke='%234e0f08' stroke-width='4'/%3E%3Ccircle cx='50' cy='50' r='33' fill='none' stroke='%239a3527' stroke-width='1.3' opacity='.7'/%3E%3Cpath d='M50 27 l5 14 15 0 -12 9 5 15 -13 -9 -13 9 5 -15 -12 -9 15 0z' fill='%23e8c9bd' opacity='.85'/%3E%3C/svg%3E");
+
+  /* Маска «истёртой» краски для штампов-грифов (А) */
+  --inkmask:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='70'><filter id='r'><feTurbulence type='fractalNoise' baseFrequency='0.035 0.06' numOctaves='3' seed='7'/><feColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1.4 1.25'/></filter><rect width='100%25' height='100%25' filter='url(%23r)'/></svg>");
+}
+
+/* ─── 2. СВЕТЛАЯ ТЕМА (тёплый пергамент) ─────────────────────────── */
+body.theme-light{
+  --gold:#7a5a1e; --gold2:#5e4410; --gold3:#8a6a2e; --gold-dim:#a8854a; --gold-dk:#9a7c46;
+  --brass:#7a5e2e; --brass-dim:#a8854a; --border:#b08a4a; --border2:#946e34;
+  --blood:#7c1d12; --blood2:#962e1e; --blood-d:#5a140c; --blood-dim:rgba(124,29,18,.35);
+  --bloodwood:#5a2a16; --bloodwood2:#3e1c0e; --bloodwood-lit:#6a3a20;
+  --bg:#d6c79a; --bg2:#cbbb86; --panel:#e2d4ac; --panel2:#d8c79a; --panel3:#cab87e;
+  --text:#2a1c06; --text2:#42300e; --text3:#6a5424; --parch:#2a1c06; --parch2:#42300e; --parch3:#5e4818; --bone:#2e2008; --ink:#d6c79a;
+  --data-cyan:#5e4410; --data-cyan2:#7a5a1e; --green:#3a5a1c; --green2:#2e4a14;
+  --glow:rgba(122,90,30,.1); --glow2:rgba(122,90,30,.05); --shadow:rgba(60,40,16,.3);
+}
+
+/* ─── 3. ФОН (свечной, лёгкий — без fixed/noise/blend, не лагает) ─── */
+html,body{ background-color:var(--bg); }
+body{
+  font-family:'EB Garamond', Georgia, serif !important;
+  color:var(--text);
+  background-color:var(--bg) !important;
+  background-image:
+    radial-gradient(78% 48% at 50% 2%, rgba(226,164,66,.13), transparent 60%),
+    radial-gradient(120% 100% at 50% 48%, #15100b 0%, #0a0705 68%, #060403 100%) !important;
+  background-attachment:scroll !important; background-repeat:no-repeat !important;
+  letter-spacing:.01em;
+}
+body.theme-light{ background-image:
+    radial-gradient(78% 48% at 50% 2%, rgba(122,90,30,.14), transparent 60%),
+    radial-gradient(120% 100% at 50% 48%, #e2d4ac 0%, #cbbb86 70%, #bda773 100%) !important; }
+body::before{ background:
+  radial-gradient(ellipse 80% 52% at 50% 38%, transparent 0%, rgba(8,6,4,.5) 100%),
+  radial-gradient(ellipse 120% 92% at 50% 50%, transparent 56%, rgba(0,0,0,.46) 100%); }
+body.theme-light::before{ opacity:.22 !important; }
+
+/* ─── 4. ТИПОГРАФИКА: канцелярия (Special Elite) + готика (UnifrakturCook)
+        + лапидарь (Cinzel) + буквицы (Cinzel Decorative) ──────────── */
+.title-eyebrow, .arch-serial, .sv4-tier-l, .sv4-c-l, .sv4-v-l, .sv4-stat-l, .sv4-i-l,
+.sv4-az-l, .sv4-m-l, .sv4-xp-l, .sv4-hp-l, .stat-full, .xp-label, .money-label, .money-cell-label,
+.card-sub, .hero-card-stat-l, .sv4-topbar-sub, .sv4-nav-item small, .sv4-tal-src,
+.classif-stamp, .masthead-classif, .caption-mono, th, .sv4-tbl th, .step,
+.dossier-caseline{
+  font-family:'Special Elite', 'Courier New', monospace !important;
+  letter-spacing:.08em;
+}
+h1, h2, h3, .title-main, .title-version, .sec-title, .panel-title, .sv4-section-title,
+.sv4-block-title, .sv4-tier-name, .sv4-c-v, .sv4-v-v, .sv4-stat-v, .sv4-i-v, .sv4-az b,
+.sv4-tal-name, .quick-gen-title, .vital-title, .num-gold, .sv4-tbl td.num-gold,
+.app-header h1, .btn, .btn-sm, .btn-gold, .btn-red, .btn-home, .step .num, .sv4-back,
+.sv4-tier-badge .sv4-tier-name, .sv4-xp-v, .sv4-roll-skill, .sv4-roll-outcome{
+  font-family:'Cinzel', serif !important;
+}
+/* Готический блэклеттер — крупные имена и гербовые надписи */
+.sv4-hero-name, .hero-card-name, .char-name, .masthead-goth, .sv4-hp-input{
+  font-family:'UnifrakturCook', 'Cinzel', serif !important;
+}
+body:not(.theme-light) .sv4-hero-name,
+body:not(.theme-light) .hero-card-name,
+body:not(.theme-light) .char-name,
+body:not(.theme-light) .masthead-goth{
+  text-shadow:0 0 14px rgba(226,164,66,.32), 0 0 2px rgba(226,164,66,.5);
+}
+.muted{ color:var(--text3); font-style:italic; }
+p, li{ color:var(--text); }
+
+/* Буквица (Б) — на повествовательных абзацах листа */
+.sv4-lore::first-letter, .sv4-tal-body p:first-child::first-letter{
+  font-family:'Cinzel Decorative', serif; font-weight:900;
+  font-size:3em; float:left; line-height:.72; padding:.06em .14em 0 0;
+  color:var(--blood2);
+}
+
+/* ─── 5. ЛЕНДИНГ ─────────────────────────────────────────────────── */
+.header{ margin-bottom:46px; }
+.hammer-seal{ opacity:.9; filter:drop-shadow(0 0 12px rgba(226,164,66,.25)); }
+.title-eyebrow{ color:var(--gold-dim); letter-spacing:.34em; font-size:10px; }
+.title-main{
+  color:var(--gold2); letter-spacing:.14em;
+  text-shadow:0 0 48px rgba(226,164,66,.42), 0 0 110px rgba(226,164,66,.16), 0 2px 2px #000;
+}
+.title-version{ color:var(--gold3); letter-spacing:.34em; }
+/* Готическая девизная строка под титулом */
+.masthead-goth{
+  font-size:clamp(26px,5vw,42px); color:var(--gold2); line-height:1;
+  margin:6px 0 2px; letter-spacing:.02em;
+}
+.masthead-classif{ margin-top:14px; }
+.classif-stamp{
+  display:inline-block; color:var(--blood2);
+  border:1.5px solid var(--blood); border-radius:2px; padding:3px 12px;
+  font-size:9px; letter-spacing:.22em; text-transform:uppercase;
+  transform:rotate(-1.5deg); opacity:.82;
+  -webkit-mask-image:var(--inkmask); mask-image:var(--inkmask);
+  -webkit-mask-size:cover; mask-size:cover;
+}
+.subtitle{ color:var(--text3); }
+.header-divider::before, .header-divider::after{ background:linear-gradient(90deg,transparent,var(--gold-dk),transparent); }
+.divider-ornament{ color:var(--gold); opacity:.85; }
+.landing-epigraph{ color:var(--blood2); opacity:.6; }
+
+/* Создать персонажа — латунная гравированная плита */
+.create-card{
+  border:1px solid var(--gold-dk);
+  background:
+    var(--corner-tl) top 8px left 8px / 28px 28px no-repeat,
+    var(--corner-tr) top 8px right 8px / 28px 28px no-repeat,
+    var(--corner-bl) bottom 8px left 8px / 28px 28px no-repeat,
+    var(--corner-br) bottom 8px right 8px / 28px 28px no-repeat,
+    radial-gradient(120% 80% at 50% 0%, rgba(226,164,66,.08), transparent 58%),
+    linear-gradient(178deg,#1c1510,#15100b 60%,#0e0a07 100%);
+  box-shadow:0 0 0 1px var(--gold-dk), 0 0 0 4px #0c0807, 0 0 0 5px rgba(94,71,32,.55),
+    inset 0 0 0 1px rgba(194,161,76,.14), inset 0 0 50px rgba(0,0,0,.45), 0 22px 50px -14px #000;
+}
+.create-card:hover{ border-color:var(--gold3); box-shadow:0 0 0 1px var(--gold3), 0 0 0 4px #0c0807, 0 0 0 5px rgba(122,94,36,.7), inset 0 0 0 1px rgba(194,161,76,.22), inset 0 0 50px rgba(0,0,0,.4), 0 0 44px rgba(226,164,66,.12), 0 22px 50px -14px #000; }
+.create-card .card-corner{ display:none; } /* углы рисует фон плиты */
+.card-icon-wrap{ border-color:var(--gold-dk); background:radial-gradient(circle, rgba(226,164,66,.08) 0%, transparent 70%); box-shadow:inset 0 0 14px rgba(0,0,0,.6); }
+.create-card:hover .card-icon-wrap{ border-color:var(--gold2); box-shadow:0 0 18px rgba(226,164,66,.22), inset 0 0 14px rgba(0,0,0,.5); }
+.create-label{ color:var(--gold2); letter-spacing:.16em; }
+.btn-create{ border-color:var(--gold-dk); color:var(--gold); }
+.btn-create:hover{ border-color:var(--gold2); color:var(--gold2); background:rgba(226,164,66,.08); box-shadow:0 0 18px rgba(226,164,66,.16); }
+
+/* Продолжить приключение */
+.continue-card{
+  border:1px solid var(--gold-dk);
+  background:
+    var(--corner-tl) top 7px left 7px / 24px 24px no-repeat,
+    var(--corner-tr) top 7px right 7px / 24px 24px no-repeat,
+    linear-gradient(160deg,#16100a,#0e0a06);
+  box-shadow:0 0 0 1px var(--gold-dk), inset 0 0 0 1px rgba(194,161,76,.1), 0 18px 40px -14px #000;
+}
+.section-label{ font-family:'Special Elite',monospace !important; color:var(--gold-dim); letter-spacing:.2em; border-bottom-color:var(--gold-dk); }
+
+/* Строка персонажа — арочный портрет + восковая печать + блэклеттер */
+.char-row{ border-color:var(--gold-dk); background:linear-gradient(180deg, rgba(226,164,66,.03), transparent), linear-gradient(180deg,var(--panel2),var(--panel)); }
+.char-row:hover{ border-color:var(--gold-dim); box-shadow:0 4px 14px rgba(0,0,0,.6); }
+.char-row::before{ background:linear-gradient(180deg,transparent,var(--gold),transparent); }
+.char-portrait-placeholder{
+  position:relative;
+  border-radius:50% 50% 5px 5px; border:2px solid var(--gold-dk);
+  background:radial-gradient(circle at 32% 28%, rgba(226,164,66,.18), transparent 70%), linear-gradient(180deg,#1c1408,#0b0906) !important;
+  box-shadow:inset 0 0 14px rgba(0,0,0,.7), 0 0 0 4px #0c0807, 0 0 16px rgba(226,164,66,.1);
+}
+.char-portrait-placeholder::after{
+  content:''; position:absolute; right:-9px; bottom:-9px; width:26px; height:26px;
+  background:var(--waxseal) center/contain no-repeat; filter:drop-shadow(0 1px 2px #000);
+  pointer-events:none;
+}
+.char-portrait-placeholder .ic svg, .char-portrait-placeholder svg{ color:var(--gold); opacity:.6; }
+.char-name{ color:var(--gold2); font-size:19px; }
+.char-meta{ color:var(--text3); }
+.xp-value{ color:var(--gold2); font-family:'Cinzel',serif !important; }
+.dot{ background:var(--border); border-color:var(--gold-dk); }
+.dot.filled{ background:var(--gold); border-color:var(--gold2); box-shadow:0 0 5px rgba(226,164,66,.5); }
+.char-del-btn{ color:var(--blood2); border-color:var(--gold-dk); }
+.empty-icon{ color:var(--gold-dim); }
+.footer-quote{ color:var(--text3); }
+
+/* ─── 6. КАРКАС ПРИЛОЖЕНИЯ ───────────────────────────────────────── */
+.app-header{
+  background:linear-gradient(180deg,#180f06 0%, transparent 100%), radial-gradient(ellipse at center top, rgba(226,164,66,.1), transparent 60%);
+  border-bottom:1px solid var(--gold-dk);
+}
+.app-header::before, .app-header::after{ background:linear-gradient(90deg,transparent,var(--gold),transparent); }
+.app-header h1{ color:var(--gold2); letter-spacing:.18em; text-shadow:0 0 18px rgba(226,164,66,.22), 0 2px 1px #000; }
+.app-header .sub{ color:var(--text3); font-style:italic; }
+.btn-home{ border-color:var(--gold-dk); color:var(--text3); background:linear-gradient(180deg, rgba(226,164,66,.06), transparent); }
+.btn-home:hover{ border-color:var(--gold); color:var(--gold2); background:rgba(226,164,66,.08); }
+
+/* Лента шагов — как корешок дела */
+.steps{ background:linear-gradient(180deg,var(--panel2),var(--panel)); border-bottom:1px solid var(--gold-dk); }
+.step{ color:var(--text3); letter-spacing:.1em; }
+.step:hover{ color:var(--gold2); }
+.step.active{ color:var(--gold2); border-bottom-color:var(--blood2); }
+.step .num{ background:linear-gradient(180deg,var(--panel3),var(--panel)); border-color:var(--gold-dk); color:var(--text2); }
+.step.active .num{ background:radial-gradient(circle at 38% 32%, var(--gold2), var(--gold-dim) 70%); color:#1a0e00; border-color:var(--gold2); box-shadow:0 0 8px rgba(226,164,66,.4); }
+.step.done .num{ background:linear-gradient(180deg,var(--green2),var(--green)); color:#0c0805; border-color:var(--green2); }
+.step.done::after{ color:var(--green2); }
+.step.locked{ opacity:.4; }
+
+/* ─── 7. ОБЩИЕ КОМПОНЕНТЫ ────────────────────────────────────────── */
+/* Кнопки — гилт-латунь */
+.btn{ border-color:var(--gold-dk); background:linear-gradient(180deg,var(--panel3),var(--panel)); color:var(--text2); letter-spacing:.1em; box-shadow:inset 0 1px 0 rgba(226,164,66,.06); }
+.btn:hover{ color:var(--gold2); border-color:var(--gold); box-shadow:0 0 10px rgba(226,164,66,.12), inset 0 1px 0 rgba(226,164,66,.1); }
+.btn-gold{
+  background:linear-gradient(180deg,#e6c266 0%, #c2a14c 45%, #8a6c2c 100%);
+  color:#1a0e00; border-color:var(--gold2);
+  box-shadow:0 1px 0 rgba(255,228,150,.4) inset, 0 2px 6px rgba(0,0,0,.5);
+  text-shadow:0 1px 0 rgba(255,228,150,.35);
+}
+.btn-gold:hover{ background:linear-gradient(180deg,#f3d588 0%, #e0c373 45%, #a07c30 100%); box-shadow:0 1px 0 rgba(255,228,150,.5) inset, 0 0 16px rgba(226,164,66,.3); }
+.btn-red{ background:linear-gradient(180deg,#8c2118,#4e0f08); color:var(--bone); border-color:var(--blood); }
+.btn-red:hover{ background:linear-gradient(180deg,#bf4231,#8c2118); box-shadow:0 0 14px rgba(191,66,49,.4); }
+.icon-btn{ border-color:var(--gold-dk); color:var(--text2); }
+.icon-btn:hover{ border-color:var(--gold); color:var(--gold2); }
+.icon-btn.danger{ color:var(--blood2); }
+
+/* Панель — гравированная плашка дела (с углами) */
+.panel{
+  border:1px solid var(--gold-dk);
+  background:
+    var(--corner-tl) top 6px left 6px / 22px 22px no-repeat,
+    var(--corner-tr) top 6px right 6px / 22px 22px no-repeat,
+    var(--corner-bl) bottom 6px left 6px / 22px 22px no-repeat,
+    var(--corner-br) bottom 6px right 6px / 22px 22px no-repeat,
+    linear-gradient(180deg, rgba(226,164,66,.03), transparent 28%),
+    linear-gradient(180deg,var(--panel3),var(--panel2));
+  box-shadow:inset 0 0 0 1px rgba(194,161,76,.1), 0 3px 10px rgba(0,0,0,.4);
+}
+.panel-title{ color:var(--gold2); letter-spacing:.2em; border-bottom-color:var(--gold-dk); }
+.panel-title::before{ content:'❧'; color:var(--gold); font-size:13px; margin-right:2px; opacity:.85; }
+.panel-title::after{ background:linear-gradient(90deg,var(--gold-dk),transparent); }
+.sec-title{ color:var(--gold); letter-spacing:.2em; border-bottom-color:var(--gold-dk); position:relative; }
+.sec-title::before{ content:'✠ '; color:var(--gold-dim); }
+.quick-gen-box{
+  border:1px solid var(--gold-dk);
+  background:
+    var(--corner-tl) top 6px left 6px / 22px 22px no-repeat,
+    var(--corner-tr) top 6px right 6px / 22px 22px no-repeat,
+    linear-gradient(160deg,#241608 0%, #19100a 70%);
+  box-shadow:inset 0 0 26px rgba(226,164,66,.06), inset 0 0 0 1px rgba(194,161,76,.1);
+}
+.quick-gen-title{ color:var(--gold2); }
+.quick-gen-or{ color:var(--text3); }
+
+/* Карты выбора (народ/класс/карьера) */
+.cards .card{
+  border:1px solid var(--gold-dk);
+  background:radial-gradient(ellipse at top, rgba(226,164,66,.07), transparent 60%), linear-gradient(180deg,var(--panel2),var(--panel));
+  box-shadow:0 0 0 1px rgba(0,0,0,.5), 0 3px 8px rgba(0,0,0,.4);
+}
+.cards .card::before{ border-color:rgba(194,161,76,.16); }
+.cards .card:hover{ border-color:var(--gold-dim); box-shadow:0 0 0 1px rgba(0,0,0,.5), 0 6px 18px rgba(0,0,0,.5); }
+.cards .card.selected{ border-color:var(--gold); background:radial-gradient(ellipse at top, rgba(226,164,66,.2), transparent 60%), linear-gradient(180deg,#2a1c0a,var(--panel2)); box-shadow:0 0 0 1px var(--gold-dk), 0 0 20px rgba(226,164,66,.12); }
+.cards .card.selected::before{ border-color:rgba(226,164,66,.45); }
+.card-corner{ color:var(--gold-dim); }
+.card:hover .card-corner{ color:var(--gold); }
+.card.selected .card-corner{ color:var(--gold2); }
+.card-emblem{ color:var(--gold-dim); }
+.card:hover .card-emblem, .card.selected .card-emblem{ color:var(--gold2); }
+.card-name{ color:var(--text); letter-spacing:.1em; }
+.card.selected .card-name{ color:var(--gold2); }
+.card-sub, .card-desc{ color:var(--text2); }
+.tag{ background:var(--panel2); border-color:var(--gold-dk); color:var(--text2); }
+
+/* Таблицы */
+.tbl th{ background:var(--panel); color:var(--gold); letter-spacing:.08em; }
+.tbl tr.hi td{ background:#2a1c08; color:var(--gold2); }
+.tier{ border-color:var(--gold-dk); border-left-color:var(--gold); background:var(--panel); }
+.tier-name{ color:var(--gold2); }
+.tier-label{ color:var(--gold); }
+
+/* Поля ввода */
+input[type="text"], input[type="number"], input[type="search"], textarea, select{
+  background:rgba(0,0,0,.32); border-color:var(--gold-dk); color:var(--text);
+}
+input:focus, textarea:focus, select:focus{ border-color:var(--blood2); box-shadow:0 0 8px var(--blood-dim); }
+label{ color:var(--text3); font-family:'Special Elite',monospace !important; letter-spacing:.08em; }
+
+/* ─── 8. ГАЛЕРЕЯ ПЕРСОНАЖЕЙ — карточки-дела ──────────────────────── */
+.hero-card{
+  border:1px solid var(--gold-dk);
+  background:
+    var(--corner-tl) top 7px left 7px / 24px 24px no-repeat,
+    var(--corner-tr) top 7px right 7px / 24px 24px no-repeat,
+    var(--corner-bl) bottom 7px left 7px / 24px 24px no-repeat,
+    var(--corner-br) bottom 7px right 7px / 24px 24px no-repeat,
+    linear-gradient(160deg,var(--panel3),var(--panel) 72%);
+  box-shadow:0 0 0 1px var(--gold-dk), inset 0 0 0 1px rgba(194,161,76,.1), 0 4px 12px rgba(0,0,0,.5);
+}
+.hero-card:hover{ border-color:var(--gold); box-shadow:0 0 0 1px var(--gold-dk), 0 0 22px rgba(226,164,66,.12), 0 4px 12px rgba(0,0,0,.5); }
+.hero-card-bg{ opacity:.06; }
+.hero-card-name{ color:var(--gold2); font-size:21px; }
+.hero-card-race{ color:var(--text2); }
+.hero-card-stats{ background:rgba(0,0,0,.3); border-color:var(--gold-dk); }
+.hero-card-stat-l{ color:var(--text3); }
+.hero-card-stat-v{ color:var(--text); }
+.hero-card-stat-v.gold{ color:var(--gold2); }
+
+/* ─── 9. БЛАНК ПЕРСОНАЖА (V4) — главное досье ─────────────────────── */
+.sheet-v4{ background:
+  radial-gradient(ellipse 120% 78% at 50% 0%, rgba(226,164,66,.05), transparent 55%),
+  radial-gradient(ellipse 140% 100% at 50% 100%, rgba(0,0,0,.5), transparent 50%),
+  var(--bg); }
+
+/* Верхняя шапка / бургер / XP */
+.sv4-topbar{ background:linear-gradient(180deg,#0c0805 92%, transparent); border-bottom:1px solid var(--gold-dk); }
+.sv4-burger{ background:linear-gradient(180deg,var(--panel3),var(--panel)); border-color:var(--gold); color:var(--gold2); }
+.sv4-topbar-name{ color:var(--gold2); font-family:'Cinzel',serif !important; letter-spacing:.03em; }
+.sv4-topbar-sub{ color:var(--text3); letter-spacing:.16em; }
+.sv4-xp{ background:linear-gradient(180deg, rgba(226,164,66,.14), rgba(226,164,66,.04)); border-color:var(--gold-dim); }
+.sv4-xp-v{ color:var(--gold2); }
+.sv4-xp-ico svg{ stroke:var(--gold2); }
+.sv4-back{ border-color:var(--gold-dk); color:var(--gold2); }
+.sv4-back:hover{ border-color:var(--gold); background:rgba(226,164,66,.06); }
+
+/* Боковое меню — корешок архива */
+.sv4-nav{ background:linear-gradient(180deg,#1a130a,#080503); border-right:1px solid var(--gold); }
+.sv4-nav-header{ border-bottom-color:var(--gold-dk); }
+.sv4-nav-name{ color:var(--gold2); font-family:'Cinzel',serif !important; }
+.sv4-nav-sub{ color:var(--text3); }
+.sv4-nav-item{ color:var(--text); }
+.sv4-nav-item:hover{ background:rgba(226,164,66,.06); border-left-color:var(--gold-dim); }
+.sv4-nav-item.active{ background:linear-gradient(90deg, rgba(226,164,66,.18), rgba(226,164,66,.04)); border-color:rgba(226,164,66,.32); border-left-color:var(--gold2); color:var(--gold2); }
+.sv4-nav-item.danger{ color:var(--blood2); }
+.sv4-nav-divider{ background:var(--gold-dk); }
+
+/* HERO — плита кровавого дерева в латуни, с грифом «СЕКРЕТНО» */
+.sv4-hero{
+  border:1px solid var(--gold-dk);
+  background:
+    var(--corner-tl) top 7px left 7px / 26px 26px no-repeat,
+    var(--corner-tr) top 7px right 7px / 26px 26px no-repeat,
+    var(--corner-bl) bottom 7px left 7px / 26px 26px no-repeat,
+    var(--corner-br) bottom 7px right 7px / 26px 26px no-repeat,
+    linear-gradient(160deg,var(--bloodwood) 0%, var(--bloodwood2) 100%);
+  box-shadow:0 0 0 1px var(--gold-dk), 0 0 0 4px #0c0807, 0 0 0 5px rgba(94,71,32,.55),
+    inset 0 0 0 1px rgba(194,161,76,.16), inset 0 0 44px rgba(0,0,0,.5), 0 16px 40px -14px #000;
+}
+.sv4-hero::after{ inset:6px; border:1px solid rgba(194,161,76,.2); border-radius:2px; }
+.sv4-hero::before{
+  content:'СЕКРЕТНО'; position:absolute; z-index:3; top:9px; right:14px;
+  color:var(--blood2); border:2.5px solid var(--blood2); border-radius:2px;
+  padding:3px 9px; font-family:'Special Elite',monospace; font-size:11px; letter-spacing:.18em;
+  transform:rotate(7deg); opacity:.5; mix-blend-mode:screen; pointer-events:none;
+  -webkit-mask-image:var(--inkmask); mask-image:var(--inkmask); -webkit-mask-size:cover; mask-size:cover;
+}
+body.theme-light .sv4-hero::before{ mix-blend-mode:multiply; opacity:.4; }
+/* Портрет — арка, позолота, свечение, восковая печать (Б) */
+.sv4-portrait{
+  border-radius:50% 50% 5px 5px; border:2px solid var(--gold-dk);
+  background:radial-gradient(circle at 50% 30%, rgba(226,164,66,.1), transparent 60%), linear-gradient(180deg,#1c140a,#0c0906) !important;
+  box-shadow:0 0 0 4px #0c0807, inset 0 0 18px rgba(0,0,0,.7), 0 0 20px rgba(226,164,66,.1);
+  color:var(--gold-dim);
+}
+.sv4-portrait::after{ inset:4px; border:1px solid rgba(194,161,76,.28); border-radius:50% 50% 3px 3px; }
+.sv4-portrait::before{
+  content:''; position:absolute; right:-10px; bottom:-10px; width:30px; height:30px; z-index:4;
+  background:var(--waxseal) center/contain no-repeat; filter:drop-shadow(0 1px 2px #000); pointer-events:none;
+}
+.sv4-portrait svg{ opacity:.55; }
+.sv4-hero-name{ color:var(--gold2); font-size:24px; border-bottom-color:var(--gold-dk); }
+.sv4-hero-name:focus{ border-bottom-color:var(--gold); }
+.sv4-hero-sub{ color:var(--text2); }
+.sv4-hf label{ color:var(--text3); }
+.sv4-hf input{ color:var(--text); border-bottom-color:var(--gold-dk); }
+.sv4-hero-emblem{ color:var(--gold-dim); opacity:.09; }
+.arch-serial{ color:var(--text3); opacity:.6; letter-spacing:.12em; }
+.arch-note{ color:var(--text3); }
+.arch-divider{ background:linear-gradient(90deg,transparent,var(--gold-dk) 20%, var(--gold-dk) 80%,transparent); }
+.arch-stamp{
+  color:var(--blood2); border:2px solid var(--blood2); transform:rotate(-6deg); opacity:.6;
+  -webkit-mask-image:var(--inkmask); mask-image:var(--inkmask); -webkit-mask-size:cover; mask-size:cover;
+}
+
+/* Ступень */
+.sv4-tier-badge{
+  border:1px solid var(--gold-dk);
+  background:
+    var(--corner-tl) top 5px left 5px / 20px 20px no-repeat,
+    var(--corner-tr) top 5px right 5px / 20px 20px no-repeat,
+    linear-gradient(180deg, rgba(226,164,66,.1), rgba(226,164,66,.02));
+  box-shadow:inset 0 0 0 1px rgba(194,161,76,.1);
+}
+.sv4-tier-ico{ color:var(--gold-dim); }
+.sv4-tier-l{ color:var(--text3); letter-spacing:.14em; }
+.sv4-tier-name{ color:var(--gold2); }
+
+/* Заголовки секций — канцелярский гриф */
+.sv4-section-title{ color:var(--gold2); letter-spacing:.16em; border-bottom-color:var(--gold-dk); }
+.sv4-section-title::after{ background:linear-gradient(90deg,var(--gold-dk),transparent); }
+.sv4-section-title small{ color:var(--text3); }
+
+/* Боевые карты / витальная полоса / характеристики — гравированные регистры */
+.sv4-combat-card, .sv4-vit, .sv4-stat, .sv4-info, .sv4-az, .stat-box{
+  border-color:var(--gold-dk);
+  background:linear-gradient(180deg,var(--panel2),var(--panel));
+  box-shadow:inset 0 1px 0 rgba(226,164,66,.07), inset 0 0 0 1px rgba(0,0,0,.3), 0 2px 5px rgba(0,0,0,.3);
+}
+.sv4-combat-card:hover, .sv4-vit:hover, .sv4-stat:hover{ border-color:var(--gold); transform:translateY(-1px); }
+.sv4-combat-card.hp{ border-color:rgba(140,33,24,.45); }
+.sv4-combat-card.hp:hover{ border-color:var(--blood2); }
+.sv4-c-l, .sv4-v-l, .sv4-stat-l, .sv4-i-l, .sv4-az div{ color:var(--text3); letter-spacing:.1em; }
+.sv4-c-v, .sv4-v-v, .sv4-stat-v, .sv4-i-v, .sv4-az b, .sv4-inline{ color:var(--gold2); }
+.sv4-c-v .max, .sv4-v-v .max{ color:var(--text3); }
+.sv4-c-icon, .sv4-v-ico, .sv4-tier-ico{ color:var(--gold-dim); }
+.sv4-combat-card.hp .sv4-c-icon{ color:var(--blood2); }
+.sv4-c-bar, .sv4-hp-bar{ background:rgba(0,0,0,.45); border-color:var(--gold-dk); }
+.sv4-c-bar-fill, .sv4-hp-bar-fill{ background:linear-gradient(90deg,var(--blood) 0%, var(--gold2) 52%, var(--green2) 100%); }
+.sv4-c-sub, .sv4-v-sub, .sv4-stat-b{ color:var(--text3); }
+.sv4-vit.danger{ border-color:var(--blood2); box-shadow:inset 0 0 12px rgba(140,33,24,.22); }
+.sv4-az-l{ color:var(--text3); letter-spacing:.12em; }
+.sv4-az-hit{ color:var(--text3); }
+
+/* Оружие / снаряжение / таланты — досье-карты с грифом */
+.sv4-weapon, .sv4-tal-full{ border-color:var(--gold-dk); border-left:3px solid var(--gold); background:linear-gradient(160deg,var(--panel3),var(--panel) 70%); box-shadow:inset 0 1px 0 rgba(226,164,66,.06); }
+.sv4-w-name, .sv4-tal-name{ color:var(--gold2); }
+.sv4-w-stats{ color:var(--text2); }
+.sv4-w-stats b{ color:var(--gold-dim); }
+.sv4-w-stats .gold, .sv4-w-stats .gold-big{ color:var(--gold2); }
+.sv4-tal-badge{ background:rgba(226,164,66,.18); border-color:var(--gold); color:var(--gold2); }
+.sv4-tal-lvl{ color:var(--gold-dim); }
+.sv4-tal-src{ color:var(--text3); }
+.sv4-tal-body{ color:var(--text2); }
+.sv4-tal-body b{ color:var(--gold2); }
+
+/* Блоки / инфо / чипы / таблицы листа */
+.sv4-block{ border-color:var(--gold-dk); background:linear-gradient(160deg,var(--panel3),var(--panel) 70%); box-shadow:inset 0 0 0 1px rgba(0,0,0,.25); }
+.sv4-block.gold-bordered{
+  border-color:var(--gold-dk);
+  background:
+    var(--corner-tl) top 6px left 6px / 22px 22px no-repeat,
+    var(--corner-tr) top 6px right 6px / 22px 22px no-repeat,
+    var(--corner-bl) bottom 6px left 6px / 22px 22px no-repeat,
+    var(--corner-br) bottom 6px right 6px / 22px 22px no-repeat,
+    linear-gradient(160deg,var(--panel3),var(--panel) 70%);
+  box-shadow:0 0 0 1px var(--gold-dk), inset 0 0 0 1px rgba(194,161,76,.1);
+}
+.sv4-block-title{ color:var(--gold2); letter-spacing:.16em; }
+.sv4-info{ background:rgba(0,0,0,.3); border-color:var(--gold-dk); }
+.sv4-lore{ color:var(--text2); }
+.sv4-chip{ background:rgba(226,164,66,.08); border-color:var(--gold-dim); color:var(--text); }
+.sv4-chip.gold{ background:rgba(226,164,66,.18); border-color:var(--gold); color:var(--gold2); }
+.sv4-chip.dim{ border-color:var(--gold-dk); color:var(--text3); }
+.sv4-tbl th{ color:var(--text3); border-bottom-color:var(--gold-dk); }
+.sv4-tbl td{ color:var(--text); }
+.sv4-tbl td.num-gold{ color:var(--gold2); }
+.sv4-tbl tr:hover td{ background:rgba(226,164,66,.05); }
+.sv4-tier.active{ border-color:var(--gold); }
+.sv4-tier-name{ color:var(--gold2); }
+.sv4-tier-row b{ color:var(--gold2); }
+
+/* Навыки на бланке */
+.sv4-skill{ border-bottom-color:rgba(94,71,32,.4); }
+.sv4-skill:hover{ background:rgba(226,164,66,.05); }
+.sv4-sk-stat, .sv4-sk-adv{ color:var(--text3); }
+.sv4-sk-total{ color:var(--gold2); }
+.sv4-btn-wide, .sv4-btn-link{ border-color:var(--gold-dk); color:var(--gold2); }
+.sv4-btn-wide:hover, .sv4-btn-link:hover{ background:rgba(226,164,66,.08); border-color:var(--gold); }
+
+/* Быстрые таланты */
+.sv4-quick-talents{ border-color:var(--gold-dk); border-top:1px solid var(--gold); background:linear-gradient(160deg,var(--panel3),var(--panel) 70%); }
+.sv4-qt-title{ color:var(--gold2); letter-spacing:.14em; }
+.sv4-qt-chip{ background:rgba(0,0,0,.3); border-color:var(--gold-dk); }
+.sv4-qt-name{ color:var(--text); }
+.sv4-qt-badge{ background:rgba(226,164,66,.18); border-color:var(--gold-dim); color:var(--gold2); }
+.sv4-qt-lvl{ color:var(--gold-dim); }
+
+/* Здоровье — крупный блок */
+.sv4-hp-card, .sv4-block.gold-bordered + .sv4-block{ }
+.sv4-hp-l{ color:var(--text3); letter-spacing:.14em; }
+.sv4-hp-input{ color:var(--blood2); text-shadow:0 0 16px rgba(191,66,49,.3); }
+.sv4-hp-max{ color:var(--text3); font-family:'Cinzel',serif !important; }
+.sv4-btn-dmg{ background:rgba(140,33,24,.16); color:var(--blood2); border-color:var(--blood); }
+.sv4-btn-dmg:hover{ background:rgba(140,33,24,.3); }
+.sv4-btn-heal{ background:rgba(58,90,36,.16); color:var(--green2); border-color:var(--green); }
+.sv4-btn-heal:hover{ background:rgba(58,90,36,.3); }
+
+/* Состояния / болезни */
+.sv4-cond{ background:rgba(0,0,0,.3); border-color:var(--gold-dk); }
+.sv4-cond.active{ border-color:var(--blood2); background:rgba(140,33,24,.16); }
+.sv4-cond.active .sv4-cond-name{ color:var(--blood2); }
+.sv4-cond-val{ color:var(--gold2); }
+.sv4-cond-help{ border-color:var(--gold); color:var(--gold2); }
+.sv4-cond-help:hover, .sv4-cond-help:active{ background:var(--gold); color:#1a130a; }
+
+/* Деньги — гилт-монеты */
+.sv4-money-cell, .money-cell{ border-color:var(--gold-dk); background:linear-gradient(180deg,var(--panel3),var(--panel2)); }
+.sv4-money-cell.gold, .money-cell.gold{ border-color:var(--gold); }
+.sv4-m-l, .money-cell-label{ color:var(--gold); letter-spacing:.08em; }
+.sv4-money-cell.gold .sv4-m-l, .money-cell.gold .money-cell-label{ color:var(--gold2); }
+.sv4-m-input, .money-cell input{ color:var(--gold2); font-family:'Cinzel',serif !important; }
+
+/* Броня / снаряжение зоны */
+.sv4-armor-item, .sv4-trap-item{ background:rgba(0,0,0,.26); border-color:var(--gold-dk); }
+.sv4-zone-chk{ background:rgba(0,0,0,.3); border-color:var(--gold-dk); color:var(--text2); }
+.sv4-zone-chk.on{ border-color:var(--gold); color:var(--gold2); background:rgba(226,164,66,.1); }
+
+/* Поля ввода листа */
+.sv4-mini, .sv4-text, .sv4-select, .sv4-search input{ background:rgba(0,0,0,.32); border-color:var(--gold-dk); color:var(--text); }
+.sv4-mini.gold{ color:var(--gold2); }
+.sv4-mini.danger{ color:var(--blood2); border-color:var(--blood2); }
+.sv4-mini:focus, .sv4-text:focus, .sv4-select:focus{ border-color:var(--gold); }
+
+/* Нижняя навигация / FAB HP */
+.sv4-bottom-nav{ background:linear-gradient(180deg,#14100a,#080503); border-top:1px solid var(--gold-dim); }
+.sv4-bottom-item{ color:var(--text3); }
+.sv4-bottom-item:hover, .sv4-bottom-item.active{ color:var(--gold2); }
+.sv4-bottom-item.active::before{ background:var(--gold2); box-shadow:0 0 6px var(--gold2); }
+.sv4-fab-hp{ background:linear-gradient(180deg,#1c1408,#100b05); border-color:var(--blood); }
+.sv4-fab-val{ color:var(--gold2); }
+
+/* Модалка броска — гилт-картуш */
+.sv4-roll-modal{ background:rgba(0,0,0,.8); }
+.sv4-roll-card{
+  border:1px solid var(--gold-dk);
+  background:
+    var(--corner-tl) top 8px left 8px / 26px 26px no-repeat,
+    var(--corner-tr) top 8px right 8px / 26px 26px no-repeat,
+    var(--corner-bl) bottom 8px left 8px / 26px 26px no-repeat,
+    var(--corner-br) bottom 8px right 8px / 26px 26px no-repeat,
+    linear-gradient(180deg,#1c1408,#0c0906);
+  box-shadow:0 0 0 1px var(--gold-dk), 0 0 0 4px #0c0807, 0 0 0 5px rgba(94,71,32,.6), 0 12px 50px rgba(0,0,0,.8);
+}
+.sv4-roll-skill{ color:var(--gold2); }
+.sv4-roll-target{ color:var(--text3); }
+.sv4-roll-card.success .sv4-roll-die, .sv4-roll-card.crit-success .sv4-roll-die,
+.sv4-roll-card.success .sv4-roll-outcome{ color:var(--green2); }
+.sv4-roll-card.fail .sv4-roll-die, .sv4-roll-card.crit-fail .sv4-roll-die,
+.sv4-roll-card.fail .sv4-roll-outcome{ color:var(--blood2); }
+.sv4-roll-sl{ color:var(--text2); }
+.sv4-roll-close, .sv4-roll-again{ border-color:var(--gold-dk); color:var(--text); background:rgba(0,0,0,.3); }
+.sv4-roll-again{ border-color:var(--gold); color:var(--gold2); }
+
+/* Карточка XP на бланке */
+.sv4-xp-card{ border-color:var(--gold-dim); background:linear-gradient(160deg, rgba(226,164,66,.1), var(--panel) 70%); box-shadow:inset 0 0 0 1px rgba(194,161,76,.08); }
+.sv4-xp-big{ color:var(--gold2); }
+.sv4-xp-cap, .sv4-xp-meta{ color:var(--text3); }
+.sv4-xp-meta b{ color:var(--gold2); }
+
+/* Карточка состояния листа: панель печатей дела (gm-*) — тёплый кант */
+.gm-wrap{ border-color:var(--gold-dk); background:linear-gradient(180deg,#16100a,#0e0a06); box-shadow:inset 0 0 0 1px rgba(194,161,76,.08), 0 3px 10px rgba(0,0,0,.4); }
+.gm-h{ color:var(--gold2); letter-spacing:.14em; }
+
+/* Полоса прокрутки */
+::-webkit-scrollbar-thumb{ background:var(--gold-dk); }
+::-webkit-scrollbar-thumb:hover{ background:var(--gold); }
+
+/* ─── 10. ТОЧЕЧНЫЕ ПРАВКИ СВЕТЛОЙ ТЕМЫ ───────────────────────────── */
+body.theme-light .sv4-hp-input{ text-shadow:none; }
+body.theme-light .title-main{ text-shadow:0 1px 0 rgba(255,240,200,.5); }
+body.theme-light .arch-stamp, body.theme-light .classif-stamp, body.theme-light .sv4-hero::before{ opacity:.7; }
+
+/* ─── 11. ДОВОДКА: запас прочности типографики на узких экранах ──── */
+@media (max-width:560px){
+  .sv4-hero::before{ font-size:9px; padding:2px 6px; top:7px; right:10px; }
+  .sv4-hero-name{ font-size:21px; }
+  .masthead-goth{ letter-spacing:0; }
+}
+@media (max-width:380px){
+  .sv4-hero::before{ display:none; } /* не наезжаем на поля на самых узких */
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   v2 · ПРАВКИ ПО ОБРАТНОЙ СВЯЗИ
+   • характеристики — 2 ряда по 5 (как на эскизе), без кубика в ячейке
+   • витальные — 4 в ряд, плотнее
+   • меньше пустот: единый ритм досье, hero как «шапка дела», корешок-спайн
+   • печати дела — штампами на самом досье (оверлей на hero) + панель вверх
+   ══════════════════════════════════════════════════════════════════ */
+
+/* — Характеристики: РОВНО 5 колонок (2 ряда), чисто как на эскизе — */
+.sv4-stats{ grid-template-columns:repeat(5,1fr) !important; gap:6px !important; margin-bottom:6px; }
+.sv4-stat{ padding:8px 3px 6px; border-radius:3px; }
+.sv4-stat .sv4-roll-hint{ display:none; }          /* убираем кубик-клаттер из ячейки */
+.sv4-stat-l{ font-size:11px; }
+.sv4-stat-v{ font-size:22px; margin:2px 0 1px; }
+.sv4-stat-b{ font-size:10px; color:var(--text3); }
+.sv4-roll-tip{ margin:3px 0 7px; }
+@media (max-width:430px){
+  .sv4-stat-v{ font-size:18px; }
+  .sv4-stat{ padding:6px 1px 5px; }
+  .sv4-stat-l{ font-size:10px; }
+}
+
+/* — Витальные: 4 в ряд, плотнее — */
+.sv4-vitals{ grid-template-columns:repeat(4,1fr) !important; gap:6px !important; margin-bottom:8px; }
+.sv4-vit{ padding:8px 4px; }
+.sv4-v-l{ font-size:9px; }
+.sv4-v-ico{ margin:3px 0; }
+.sv4-v-ico svg{ width:20px; height:20px; }
+.sv4-v-v{ font-size:17px; }
+@media (max-width:359px){
+  .sv4-vitals{ grid-template-columns:repeat(2,1fr) !important; }
+  .sv4-stats{ gap:4px !important; }
+}
+
+/* — ЕДИНОЕ ДОСЬЕ: уплотняем ритм; hero = «шапка дела», не парящая плита — */
+.sv4-page{ position:relative; padding-top:8px; }
+.sv4-page::before{  /* корешок-биндинг: связывает все секции в одно дело */
+  content:''; position:absolute; top:4px; bottom:96px; left:2px; width:2px;
+  background:linear-gradient(180deg, transparent, var(--gold-dk) 8%, var(--gold-dk) 92%, transparent);
+  opacity:.45; pointer-events:none;
+}
+.sv4-hero{
+  margin-bottom:6px;
+  box-shadow: inset 0 0 0 1px rgba(194,161,76,.18), inset 0 0 44px rgba(0,0,0,.5), 0 10px 26px -14px #000;
+}
+.sv4-tier-badge{ margin-bottom:8px; padding:8px 12px; }
+.sv4-section-title{ margin:11px 0 6px; padding-bottom:5px; }
+.sv4-combat-row{ gap:6px; margin-bottom:6px; }
+.sv4-combat-card{ padding:8px; }
+.sv4-xp-card{ margin-bottom:8px; padding:12px; }
+.sv4-skills{ margin-bottom:6px; }
+.sv4-block{ margin-bottom:6px; }
+.sv4-quick-talents{ margin-top:8px; }
+
+/* — Печати дела: единый вид секции вынесен ниже, в раздел v3 — */
+/* ══════════════════════════════════════════════════════════════════
+   v3 · ЕДИНОЕ · КОМПАКТНОЕ · РОВНОЕ ДОСЬЕ
+   • вся главная страница — ОДИН стиль (не только портрет)
+   • печати дела — нормальной секцией НА странице (не «отдельным окном»)
+   • меньше отступов, ровные ячейки одной высоты, без «корешка»
+   ══════════════════════════════════════════════════════════════════ */
+
+/* убираем корешок-спайн — давал ощущение неровности */
+.sv4-page::before{ display:none !important; }
+.sv4-page{ padding:8px 10px 94px !important; }
+
+/* ── ЕДИНАЯ ячейка/секция досье: одинаковые рамка · фон · радиус · тень ── */
+.sv4-stat, .sv4-vit, .sv4-combat-card, .sv4-info, .sv4-az,
+.sv4-block, .sv4-block.gold-bordered, .sv4-xp-card, .sv4-skills, .sv4-tier-badge,
+.sv4-quick-talents, .sv4-weapon, .sv4-tal-full, .sv4-armor-item, .sv4-trap-item,
+.sv4-cond, .sv4-money-cell, .gm-wrap{
+  border:1px solid var(--gold-dk) !important;
+  border-radius:2px !important;
+  background:
+    linear-gradient(180deg, rgba(226,164,66,.045), transparent 32%),
+    linear-gradient(180deg, var(--panel2), var(--panel)) !important;
+  box-shadow:inset 0 0 0 1px rgba(194,161,76,.06), 0 1px 3px rgba(0,0,0,.3) !important;
+}
+/* единая золотая полоса-акцент слева */
+.sv4-weapon, .sv4-tal-full{ border-left:2px solid var(--gold) !important; }
+/* состояния поверх единой базы */
+.sv4-combat-card.hp{ border-color:var(--blood) !important; }
+.sv4-vit.danger, .sv4-cond.active{ border-color:var(--blood2) !important; }
+.sv4-money-cell.gold{ border-color:var(--gold) !important; }
+
+/* ── HERO — «шапка дела» в общем ключе (рамка/радиус как у всех), но кровавая ── */
+.sv4-hero{
+  border:1px solid var(--gold-dk) !important; border-radius:2px !important;
+  background:
+    var(--corner-tl) top 7px left 7px / 22px 22px no-repeat,
+    var(--corner-tr) top 7px right 7px / 22px 22px no-repeat,
+    var(--corner-bl) bottom 7px left 7px / 22px 22px no-repeat,
+    var(--corner-br) bottom 7px right 7px / 22px 22px no-repeat,
+    linear-gradient(160deg, var(--bloodwood) 0%, var(--bloodwood2) 100%) !important;
+  box-shadow:inset 0 0 0 1px rgba(194,161,76,.16), inset 0 0 30px rgba(0,0,0,.45), 0 2px 6px rgba(0,0,0,.4) !important;
+  margin-bottom:8px !important;
+}
+.sv4-hero::after{ inset:5px !important; border-radius:2px !important; }
+
+/* ── РОВНЫЕ паддинги ячеек → одинаковая высота ── */
+.sv4-stat{ padding:8px 4px !important; }
+.sv4-vit{ padding:8px 4px !important; }
+.sv4-combat-card{ padding:9px 8px !important; }
+.sv4-info{ padding:9px 10px !important; }
+
+/* ── ЕДИНЫЙ компактный ритм отступов ── */
+.sv4-section-title{ margin:10px 0 6px !important; padding-bottom:5px !important; }
+.sv4-combat-row{ gap:6px !important; margin-bottom:6px !important; }
+.sv4-stats{ gap:6px !important; margin-bottom:6px !important; }
+.sv4-vitals{ gap:6px !important; margin-bottom:6px !important; }
+.sv4-tier-badge{ margin-bottom:8px !important; padding:9px 12px !important; }
+.sv4-xp-card{ margin-bottom:8px !important; padding:12px !important; }
+.sv4-skills, .sv4-block{ margin-bottom:8px !important; }
+.sv4-quick-talents{ margin-top:8px !important; margin-bottom:0 !important; }
+
+/* ── ПЕЧАТИ ДЕЛА: единая секция как все, штампы видно НА странице ── */
+.gm-wrap{ display:flex !important; flex-direction:column; gap:10px; padding:11px 12px !important; }
+.gm-wrap .gm-h{
+  order:0; margin:0 !important;
+  font-family:'Cinzel',serif !important; color:var(--gold2) !important;
+  font-size:12px !important; letter-spacing:.16em !important; text-transform:uppercase !important;
+  border-bottom:1px solid var(--gold-dk); padding-bottom:8px;
+}
+.gm-wrap .gm-seals{ order:1; margin:0 !important; display:flex !important; flex-wrap:wrap; gap:9px; }
+.gm-wrap .gm-seals:empty{ display:none !important; }
+.gm-empty{ display:none !important; }                  /* «отметок нет» не показываем */
+.gm-wrap .gm-ctrls{ order:2; margin:0 !important; padding-top:9px; border-top:1px dashed var(--gold-dk); gap:9px 14px !important; }
+.gm-stamp{ transform:rotate(-3deg); }
+.gm-stamp b{ font-size:13px; }
+/* ══════════════════════════════════════════════════════════════════
+   v4 · ЕДИНОЕ ПОЛОТНО ДОСЬЕ + ОТМЕТКИ-ЗАПИСКИ
+   • вся страница — ОДНА гравированная рамка (как в скетче)
+   • hero — «шапка» внутри листа, без отдельной плиты
+   • управление печатями — в модалке (вход в боковом меню)
+   • отметки раскиданы по бланку записками сумасшедшего
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── ОДНА рамка вокруг всего листа ── */
+.sv4-page{ position:relative; }
+.sv4-page > *{ position:relative; z-index:1; }
+.sv4-page::after{
+  content:''; position:absolute; z-index:0; top:4px; left:3px; right:3px; bottom:96px;
+  border:1px solid var(--gold-dk); border-radius:3px; pointer-events:none;
+  background:
+    var(--corner-tl) top 6px left 6px / 26px 26px no-repeat,
+    var(--corner-tr) top 6px right 6px / 26px 26px no-repeat,
+    var(--corner-bl) bottom 6px left 6px / 26px 26px no-repeat,
+    var(--corner-br) bottom 6px right 6px / 26px 26px no-repeat;
+  box-shadow:inset 0 0 0 1px rgba(194,161,76,.12), inset 0 0 0 4px rgba(12,8,7,.55), inset 0 0 0 5px rgba(94,71,32,.32);
+}
+/* контент с небольшим отступом от рамки */
+.sv4-page{ padding:14px 14px 100px !important; }
+
+/* ── HERO — «шапка» единого листа (без отдельной плиты) ── */
+.sv4-hero{
+  background:transparent !important; border:0 !important; border-radius:0 !important;
+  border-bottom:1px solid var(--gold-dk) !important; box-shadow:none !important;
+  padding:4px 4px 14px !important; margin:0 0 10px !important; overflow:visible !important;
+}
+.sv4-hero::after{ display:none !important; }
+
+/* ── ОТМЕТКИ-ЗАПИСКИ: раскиданы по бланку как заметки сумасшедшего ── */
+.gm-scatter{ position:absolute; inset:0; z-index:7; pointer-events:none; }
+.gm-pin{ position:absolute; pointer-events:none; opacity:.92; filter:drop-shadow(0 1px 2px rgba(0,0,0,.55)); }
+.gm-pin .gm-seal{ transform:none; }            /* наклон задаёт сам .gm-pin */
+.gm-pin.big .gm-stamp{ transform:scale(1.22); }
+.gm-pin.scrawl .gm-scrawl{
+  font-family:'Caveat', cursive !important; font-size:25px !important; font-style:normal !important;
+  font-weight:700; color:#c4392b !important; text-decoration:none !important; white-space:nowrap;
+  text-shadow:0 1px 0 rgba(0,0,0,.45);
+}
+body.theme-light .gm-pin.scrawl .gm-scrawl{ color:#8c1a10 !important; text-shadow:none; }
+.gm-nav-item .sv4-nav-emoji{ color:var(--gold2); font-size:16px; }
+
+/* ── МОДАЛКА отметок («отдельное меню») ── */
+.gm-modal-back{ position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,.78);
+  display:flex; align-items:center; justify-content:center; padding:18px;
+  opacity:0; pointer-events:none; transition:opacity .18s ease; }
+.gm-modal-back.open{ opacity:1; pointer-events:auto; }
+.gm-modal{ width:100%; max-width:430px; border:1px solid var(--gold-dk); border-radius:3px;
+  background:linear-gradient(180deg,#1c1408,#0c0906);
+  box-shadow:0 0 0 1px var(--gold-dk), 0 0 0 4px #0c0807, 0 0 0 5px rgba(94,71,32,.6), 0 18px 54px rgba(0,0,0,.85);
+  padding:18px 18px 14px; }
+.gm-modal-h{ font-family:'Cinzel',serif; color:var(--gold2); font-size:14px; letter-spacing:.14em;
+  text-transform:uppercase; border-bottom:1px solid var(--gold-dk); padding-bottom:10px; margin:0 0 6px; }
+.gm-modal-note{ font-family:'EB Garamond',serif; font-style:italic; font-size:12px; color:var(--text3); margin-bottom:14px; }
+.gm-modal-body{ display:flex; flex-direction:column; gap:14px; }
+.gm-modal-body .gm-tog{ font-size:15px; }
+.gm-modal-body .gm-sel{ flex-direction:column; align-items:stretch; gap:5px; font-size:12px; color:var(--text3); letter-spacing:.08em; text-transform:uppercase; }
+.gm-modal-body .gm-sel select{ width:100%; font-size:14px; padding:7px 8px; }
+.gm-modal-foot{ margin-top:18px; text-align:right; }
+.gm-modal-close{ font-family:'Cinzel',serif; background:linear-gradient(180deg,#e6c266,#c2a14c 45%,#8a6c2c);
+  color:#1a0e00; border:1px solid var(--gold2); border-radius:2px; padding:8px 20px; cursor:pointer;
+  letter-spacing:.08em; box-shadow:0 1px 0 rgba(255,228,150,.4) inset; }
+.gm-modal-close:hover{ background:linear-gradient(180deg,#f3d588,#e0c373 45%,#a07c30); }
+body.theme-light .gm-modal{ background:linear-gradient(180deg,#e2d4ac,#cab87e); }

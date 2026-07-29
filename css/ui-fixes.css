@@ -1,0 +1,306 @@
+/* ════════ UI FIXES v13 ════════ */
+.sv4-disease { border:1px solid var(--border); border-radius:4px; padding:8px 10px; margin-top:8px; background:rgba(0,0,0,.18); }
+.sv4-disease.cured { opacity:.55; }
+.sv4-disease-head { display:flex; align-items:center; gap:8px; font-size:13px; }
+.sv4-disease-phase { font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--gold2);
+  border:1px solid var(--gold-dk); border-radius:3px; padding:1px 6px; margin-left:auto; }
+tr.offcareer td { opacity:.62; }
+tr.offcareer td b { color: var(--text2) !important; }
+.cstat-adv-card { border:1px solid var(--border); border-radius:4px; padding:9px 12px; text-align:center; background:rgba(0,0,0,.2); min-width:96px; }
+.cstat-adv-card.has { border-color:var(--gold-dk); background:rgba(212,175,55,.07); }
+.cstat-adv-name { font-family:Cinzel,serif; font-size:13px; font-weight:600; color:var(--gold2); }
+.cstat-adv-row { display:flex; align-items:center; justify-content:center; gap:8px; margin:6px 0 4px; }
+.cstat-adv-val { font-family:Cinzel,serif; font-size:19px; min-width:22px; }
+.cstat-adv-sub { font-size:11px; }
+#career-stat-sum.ok { color: var(--green2, #7fbf7f); }
+.sv4-cart-badge { position:fixed; left:50%; bottom:16px; transform:translateX(-50%); z-index:50;
+  display:flex; gap:0; border:1px solid var(--gold); border-radius:24px; overflow:hidden;
+  box-shadow:0 4px 16px rgba(0,0,0,.5), 0 0 0 1px rgba(218,165,32,.2);
+  background:linear-gradient(180deg, #2a1c08, #160f06); animation:cartPop .25s ease; }
+@keyframes cartPop { from{transform:translateX(-50%) translateY(20px);opacity:0;} to{transform:translateX(-50%) translateY(0);opacity:1;} }
+.sv4-cart-badge-main { background:none; border:none; color:var(--gold2); font-family:Cinzel,serif;
+  font-size:14px; padding:10px 16px; cursor:pointer; white-space:nowrap; }
+.sv4-cart-badge-main b { color:var(--gold); font-size:16px; }
+.sv4-cart-badge-apply { background:var(--gold); border:none; color:#1a1206; font-weight:700;
+  font-size:16px; padding:10px 16px; cursor:pointer; border-left:1px solid rgba(0,0,0,.3); }
+.sv4-cart-badge-apply:active { background:var(--gold2); }
+.sv4-crit-entry { border:1px solid var(--border); border-radius:4px; padding:9px 10px; margin-bottom:8px; background:rgba(0,0,0,.2); }
+.sv4-crit-entry.lethal { border-color:var(--blood2); background:rgba(139,26,26,.12); }
+.sv4-crit-head { font-size:13px; margin-bottom:4px; }
+.sv4-crit-eff { font-size:12px; color:var(--text2); line-height:1.4; margin-bottom:5px; }
+.sv4-crit-cond { font-size:11px; color:var(--gold2); margin-bottom:6px; }
+@media (max-width:560px){
+  .sv4-section-title { cursor:pointer; position:relative; user-select:none; -webkit-tap-highlight-color:rgba(212,175,55,.15); }
+  .sv4-section-title::after { content:'▾'; position:absolute; right:4px; top:50%; transform:translateY(-50%);
+    font-size:11px; color:var(--gold-dk); transition:transform .15s; }
+  .sv4-section-title.sv4-collapsed::after { transform:translateY(-50%) rotate(-90deg); }
+}
+.sv4-rolllog-row { display:grid; grid-template-columns: 1fr auto 1.3fr auto; gap:8px; align-items:center;
+  padding:7px 8px; border-bottom:1px solid var(--border); font-size:12px; }
+.sv4-rolllog-die { font-family:Cinzel,serif; font-size:18px; font-weight:700; min-width:34px; text-align:center; }
+.sv4-rolllog-out { font-size:11px; }
+.sv4-rolllog-tm { font-size:10px; }
+@media (max-width:560px){
+  .sv4-rolllog-row { grid-template-columns: 1fr auto; row-gap:2px; }
+  .sv4-rolllog-out { grid-column:1 / -1; }
+  .sv4-rolllog-tm { display:none; }
+}
+/* Печать смерти: крупный штамп поверх досье */
+.gm-pin.dead { z-index: 8; pointer-events: none; max-width: 96vw; }
+.gm-pin.dead .gm-stamp {
+  font-size: clamp(30px, 9vw, 54px); line-height: 1.05;
+  padding: .22em .55em;
+  border-width: 4px; border-style: double;
+  box-shadow: 0 0 0 3px rgba(139,26,26,.28), 0 6px 22px rgba(0,0,0,.6);
+  background: rgba(20,6,4,.42);
+  letter-spacing: .04em;
+}
+.gm-pin.dead .gm-stamp b { display:block; font-size: .30em; letter-spacing: .3em; opacity:.85; }
+.gm-pin.dead .gm-stamp i { display:block; font-size: 1em; }
+.gm-pin.dead-scrawl, .gm-pin.scrawl.dead-scrawl { z-index: 7; max-width: 88vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gm-tog-dead { color: #c75b4a; }
+body.theme-light .gm-pin.dead .gm-stamp { background: rgba(139,26,26,.07); }
+.sv4-cell-lbl { font-size: 11px; color: var(--text3); display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+
+/* 1. Эмблема-череп (right:-40px) больше не создаёт горизонтальный скролл */
+html, body { overflow-x: clip; }
+
+/* 2. Светлая тема: контраст */
+body.theme-light .tbl tr:nth-child(even) td { background: rgba(140,108,52,0.12); }
+body.theme-light .app-header h1 {
+  background: linear-gradient(180deg, #6b4d14, #3a2a08);
+  -webkit-background-clip: text; background-clip: text;
+}
+body.theme-light .panel-title { color: #5d4310; }
+
+/* 3. ───────── МОБИЛЬНАЯ ВЁРСТКА ───────── */
+@media (max-width: 560px){
+
+  /* Компактная шапка: заголовок в одну-две строки вместо трёх */
+  .app-header { padding: 7px 10px !important; gap: 8px !important; align-items: center !important; }
+  .app-header h1 { font-size: 14px !important; letter-spacing: .05em !important; line-height: 1.2 !important; }
+  .app-header .sub { font-size: 9px !important; margin-top: 1px !important; }
+  .app-header button { padding: 6px 8px !important; font-size: 9px !important; }
+
+  /* Красное дерево, как у досье-шапки: крупные карточки бланка и вкладок (тёмная тема) */
+  body:not(.theme-light) .sv4-block, body:not(.theme-light) .sv4-armor-zones,
+  body:not(.theme-light) .sv4-xp-card, body:not(.theme-light) .sv4-skills,
+  body:not(.theme-light) .sv4-quick-talents, body:not(.theme-light) .sv4-hp-card {
+    border: 1px solid var(--gold-dk) !important;
+    border-radius: 2px !important;
+    background:
+      var(--corner-tl) top 5px left 5px / 18px 18px no-repeat,
+      var(--corner-tr) top 5px right 5px / 18px 18px no-repeat,
+      var(--corner-bl) bottom 5px left 5px / 18px 18px no-repeat,
+      var(--corner-br) bottom 5px right 5px / 18px 18px no-repeat,
+      linear-gradient(160deg, var(--bloodwood) 0%, var(--bloodwood2) 100%) !important;
+    box-shadow: inset 0 0 0 1px rgba(194,161,76,.10), 0 2px 7px rgba(0,0,0,.45) !important;
+  }
+  /* Мелкие ячейки — то же дерево, без угловых орнаментов (тёмная тема) */
+  body:not(.theme-light) .sv4-stat, body:not(.theme-light) .sv4-vit,
+  body:not(.theme-light) .sv4-combat-card, body:not(.theme-light) .sv4-tier-badge,
+  body:not(.theme-light) .sv4-money-cell {
+    border-color: var(--gold-dk) !important;
+    background: linear-gradient(160deg, var(--bloodwood) 0%, var(--bloodwood2) 100%) !important;
+    box-shadow: inset 0 0 0 1px rgba(194,161,76,.08) !important;
+  }
+  body:not(.theme-light) .sv4-combat-card.hp { border-color: var(--blood-dim) !important; }
+
+  /* Плотнее: меньше «воздуха» между блоками */
+  .sv4-page { row-gap: 0 !important; }
+  .sv4-section-title { margin: 8px 0 5px !important; padding-bottom: 4px !important; }
+  .sv4-block { margin-bottom: 6px !important; padding: 9px 10px !important; }
+  .sv4-hero, .sv4-tier-badge, .sv4-armor-zones, .sv4-xp-card,
+  .sv4-skills, .sv4-combat-row, .sv4-stats, .sv4-vitals { margin-bottom: 6px !important; }
+  .sv4-roll-tip { margin: 2px 0 5px !important; }
+
+  /* Состояния (бой): имя сверху без разрыва слов, кнопки снизу */
+  .sv4-cond { flex-direction: column !important; align-items: stretch !important; gap: 6px !important; padding: 7px 8px !important; }
+  .sv4-cond-name { overflow-wrap: normal !important; word-break: keep-all !important;
+    display: flex !important; align-items: center !important; justify-content: space-between !important; }
+  .sv4-cond-c { display: flex !important; justify-content: center !important; gap: 10px !important; }
+
+  /* Кошелёк: одна строка «метка — поле — кнопки», без гигантских карточек */
+  .sv4-money-row { grid-template-columns: minmax(0,1fr) !important; }
+  .sv4-money-cell { display: flex !important; flex-wrap: nowrap !important; align-items: center !important;
+    gap: 6px !important; padding: 6px 8px !important; min-width: 0 !important; max-width: 100% !important; }
+  .sv4-money-cell .sv4-m-l { flex: 0 0 auto !important; min-width: 60px !important; text-align: left !important; }
+  .sv4-m-input { flex: 1 1 0 !important; width: 0 !important; min-width: 0 !important; font-size: 18px !important; text-align: right !important; }
+  .sv4-m-actions { flex: 0 0 auto !important; flex-wrap: nowrap !important; margin-top: 0 !important; gap: 4px !important; }
+
+  /* Таблицы навыков: компактное поле «Шаги», колонка «Навык» остаётся на экране */
+  .sv4-tbl .sv4-mini { width: 54px !important; min-width: 54px !important; flex: none !important; }
+  .sv4-tbl th, .sv4-tbl td { padding: 7px 4px !important; }
+  .sv4-tbl td:first-child { max-width: 130px; overflow-wrap: break-word; }
+
+  /* Магия/Вера: таблицы заклинаний и молитв превращаются в карточки */
+  .sv4-table { display: block !important; width: 100% !important; }
+  .sv4-table tr:first-child { display: none !important; }   /* шапка таблицы */
+  .sv4-table tr { display: flex !important; flex-wrap: wrap !important; gap: 6px !important;
+    align-items: center !important; border: 1px solid var(--gold-dk) !important; border-radius: 3px !important;
+    padding: 8px !important; margin-bottom: 8px !important; background: rgba(0,0,0,0.22) !important; }
+  .sv4-table td { display: block !important; border: none !important; padding: 0 !important; }
+  .sv4-table td:first-child { flex: 1 1 100% !important; }
+  .sv4-table td:first-child .sv4-text { width: 100% !important; min-width: 0 !important; }
+  .sv4-table .sv4-text { width: 86px !important; min-width: 0 !important; }
+  .sv4-table td:last-child { margin-left: auto !important; }
+
+  /* Плавающий регулятор здоровья: меньше перекрывает контент */
+  .sv4-fab-hp { opacity: .92; right: 8px !important; }
+}
+
+/* ═══════════ НАВИГАЦИЯ «ДЕЛО ОРДО» ═══════════ */
+/* Шапка-корешок: печать · имя дела · XP-лавка */
+.ordo-bar{
+  position:sticky; top:0; z-index:60;
+  display:flex; align-items:center; gap:10px;
+  padding:8px 12px;
+  background:linear-gradient(180deg, #160d05 0%, #120a04 82%, rgba(18,10,4,.0) 100%);
+  border-bottom:1px solid rgba(201,162,39,.18);
+}
+body.theme-light .ordo-bar{ background:linear-gradient(180deg,#efe6d2 0%,#e7dcc4 85%,transparent); border-bottom-color:rgba(125,95,36,.3); }
+.ordo-seal{
+  flex:0 0 auto; width:40px; height:40px; border-radius:50%;
+  border:1.5px solid var(--gold-dk, #7d5f24);
+  background:radial-gradient(circle at 35% 30%, #2e1c0c, #120a05);
+  color:var(--gold, #c9a227); font-size:17px; line-height:1;
+  display:grid; place-items:center; cursor:pointer;
+}
+body.theme-light .ordo-seal{ background:radial-gradient(circle at 35% 30%, #f4ead2, #ddcba0); }
+.ordo-seal:active{ transform:scale(.94); }
+.ordo-meta{ flex:1; min-width:0; cursor:pointer; }
+.ordo-no{
+  font-family:Cinzel, serif; font-size:8.5px; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--gold-dk, #7d5f24);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.ordo-name{
+  font-family:Cinzel, serif; font-weight:600; font-size:16px; line-height:1.15;
+  color:var(--text, #e8dcc0);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+body.theme-light .ordo-name{ color:#2a1c0c; }
+.ordo-xp{
+  flex:0 0 auto; text-align:center; cursor:pointer;
+  padding:5px 12px; border:1px solid var(--gold-dk, #7d5f24); border-radius:4px;
+  background:rgba(201,162,39,.07);
+}
+.ordo-xp b{ font-family:Cinzel, serif; color:var(--gold2, #e0c14e); font-size:16px; display:block; line-height:1; }
+.ordo-xp span{ font-family:Cinzel, serif; font-size:7.5px; letter-spacing:.14em; color:var(--gold-dk, #7d5f24); text-transform:uppercase; }
+.ordo-xp:active{ transform:scale(.96); }
+
+/* Сетка «Ещё»: крупные плитки-зоны нажатия */
+.ordo-grid{
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(104px, 1fr));
+  gap:10px; margin-top:10px;
+}
+.ordo-tile{
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+  padding:14px 6px 12px; min-height:84px;
+  border:1px solid var(--border, rgba(201,162,39,.22)); border-radius:6px;
+  background:rgba(0,0,0,.18); cursor:pointer; text-align:center;
+  transition:background .12s, border-color .12s;
+}
+body.theme-light .ordo-tile{ background:rgba(125,95,36,.06); }
+.ordo-tile:active{ background:rgba(201,162,39,.12); border-color:var(--gold-dk,#7d5f24); }
+.ordo-tile-ic{ font-size:22px; line-height:1; color:var(--gold, #c9a227); }
+.ordo-tile-l{ font-family:Cinzel, serif; font-size:11.5px; font-weight:600; letter-spacing:.03em; color:var(--text, #e8dcc0); }
+body.theme-light .ordo-tile-l{ color:#2a1c0c; }
+.ordo-tile-s{ font-size:9.5px; line-height:1.25; color:var(--text3, #8a7a5c); }
+.ordo-grid.sys .ordo-tile{ min-height:72px; opacity:.88; }
+
+
+
+
+
+
+
+/* ═══ Один экран — одна шапка: на бланке прячем глобальную шапку и степпер ═══ */
+body.sheet-mode .app-header{ display:none !important; }
+body.sheet-mode .steps{ display:none !important; }
+body.sheet-mode .app{ padding-top:0 !important; margin-top:0 !important; }
+
+/* ═══ Светлая тема: правильный класс theme-light ═══ */
+body.theme-light .ordo-bar{ background:linear-gradient(180deg,#efe6d2 0%,#e7dcc4 85%,transparent); border-bottom-color:rgba(125,95,36,.35); }
+body.theme-light .ordo-seal{ background:radial-gradient(circle at 35% 30%, #f7eeda, #dfcfa6); color:#7d5f24; }
+body.theme-light .ordo-name{ color:#2a1c0c; }
+body.theme-light .ordo-no{ color:#7d5f24; }
+body.theme-light .ordo-xp{ background:rgba(125,95,36,.08); }
+body.theme-light .ordo-xp b{ color:#7d5f24; }
+body.theme-light .ordo-tile{ background:rgba(125,95,36,.06); }
+body.theme-light .ordo-tile-l{ color:#2a1c0c; }
+body.theme-light .ordo-tile-ic{ color:#8c6c2e; }
+body.theme-light .ordo-tile-s{ color:#6d5c40; }
+body.theme-light .sv4-bottom-nav{ background:linear-gradient(180deg,#efe6d2,#e2d5ba); border-top-color:rgba(125,95,36,.35); }
+body.theme-light .sv4-bottom-item{ color:#6d5735; }
+body.theme-light .sv4-bottom-item.active{ color:#7d5f24; background:rgba(125,95,36,.1); }
+/* шапка магазина */
+.ordo-bar.shop{ margin:-4px -4px 10px; }
+.ordo-bar.shop .ordo-seal{ font-size:19px; }
+.ordo-xp.static{ cursor:default; }
+
+/* ═══ Магазин XP: карточки вместо таблиц (Mobile Usability: no wide tables) ═══ */
+.shop-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin-top:8px; }
+.shop-card{
+  border:1px solid var(--border); border-radius:8px; padding:10px 10px 10px;
+  background:rgba(0,0,0,.16); display:flex; flex-direction:column; gap:3px; text-align:center;
+}
+.shop-card.incart{ border-color:var(--gold-dk,#7d5f24); background:rgba(218,165,32,.07); }
+.shop-card.off{ opacity:.68; }
+.sc-head{ display:flex; align-items:baseline; justify-content:center; gap:6px; min-height:16px; }
+.sc-head b{ font-family:Cinzel,serif; font-size:14px; color:var(--gold2,#e0c14e); }
+.sc-head span{ font-size:9.5px; color:var(--text3,#8a7a5c); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sc-val{ font-family:Cinzel,serif; font-size:26px; line-height:1; color:var(--text,#e8dcc0); }
+.sc-sub{ font-size:10px; color:var(--text3,#8a7a5c); }
+.sc-sub i{ color:var(--gold2,#e0c14e); font-style:normal; }
+.sc-tag{ font-size:9px; letter-spacing:.06em; text-transform:uppercase; color:var(--gold-dk,#7d5f24); }
+.sc-buy{ margin-top:5px; width:100%; min-height:38px; }
+body.theme-light .shop-card{ background:rgba(125,95,36,.05); }
+body.theme-light .sc-val{ color:#2a1c0c; }
+
+/* ═══ Степперы −/+ у шагов навыков ═══ */
+.sv4-stepper{ display:inline-flex; align-items:center; gap:2px; }
+.sv4-stepper .stp{
+  width:34px; height:34px; border-radius:6px; border:1px solid var(--border);
+  background:rgba(0,0,0,.22); color:var(--text2,#c9bda0); font-size:17px; line-height:1;
+  cursor:pointer; flex:0 0 auto;
+}
+.sv4-stepper .stp.gold{ border-color:var(--gold-dk,#7d5f24); color:var(--gold2,#e0c14e); }
+.sv4-stepper .stp:active{ transform:scale(.92); }
+.sv4-stepper input.sv4-mini{ width:40px; text-align:center; }
+body.theme-light .sv4-stepper .stp{ background:rgba(125,95,36,.07); color:#4a3a1e; }
+
+/* ═══ Складные блоки Здоровья (progressive disclosure) ═══ */
+details.sv4-fold > summary{ cursor:pointer; list-style:none; display:flex; align-items:center; gap:8px; }
+details.sv4-fold > summary::-webkit-details-marker{ display:none; }
+details.sv4-fold > summary::after{ content:'▾'; margin-left:auto; color:var(--text3,#8a7a5c); transition:transform .15s; font-size:13px; }
+details.sv4-fold[open] > summary::after{ transform:rotate(180deg); }
+/* крестики/минусы состояний — зоны нажатия */
+[data-cond] button{ min-width:34px; min-height:34px; }
+/* тост сохранения */
+#saved-tick{
+  position:fixed; right:12px; bottom:64px; z-index:80;
+  font-size:11px; letter-spacing:.04em; color:var(--gold2,#e0c14e);
+  background:rgba(20,12,5,.88); border:1px solid var(--gold-dk,#7d5f24);
+  border-radius:20px; padding:4px 12px; opacity:0; transform:translateY(6px);
+  transition:opacity .25s, transform .25s; pointer-events:none;
+}
+#saved-tick.show{ opacity:1; transform:translateY(0); }
+body.theme-light #saved-tick{ background:rgba(245,238,220,.95); color:#7d5f24; }
+
+/* ═══ Библиотека заклинаний ═══ */
+.spell-pick-card{
+  background:var(--panel,#1a1208); border:1px solid var(--gold-dk,#7d5f24); border-radius:10px;
+  padding:14px; width:min(94vw,460px); max-height:82vh; display:flex; flex-direction:column;
+}
+.spick-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.spick-head b{ font-family:Cinzel,serif; color:var(--gold2,#e0c14e); font-size:15px; }
+.spick-list{ overflow-y:auto; -webkit-overflow-scrolling:touch; }
+.spick-row{ border-bottom:1px solid var(--border); padding:9px 2px 10px; }
+.spick-main{ display:flex; align-items:baseline; gap:8px; }
+.spick-main b{ font-size:13.5px; }
+.spick-cn{ font-family:Cinzel,serif; font-size:11px; color:var(--gold2,#e0c14e); margin-left:auto; white-space:nowrap; }
+.spick-sub{ font-size:11px; color:var(--text3,#8a7a5c); margin-top:2px; }
+.spick-b{ font-size:11px; color:var(--gold-dk,#7d5f24); margin-top:2px; }
+.spick-row .btn{ margin-top:6px; min-height:34px; }
+body.theme-light .spell-pick-card{ background:#f2e9d4; }

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>WFRP 4 — Создание персонажа</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=UnifrakturMaguntia&family=UnifrakturCook:wght@700&family=Cinzel+Decorative:wght@700;900&family=Special+Elite&family=Caveat:wght@500;700&family=Grenze+Gotisch:wght@400;500;600;700;800&family=Pirata+One&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/reskin.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#160d05">
+<script>
+// PWA: service worker только по http/https (file:// его не поддерживает)
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+</script>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="paperGrain"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/><feComponentTransfer><feFuncA type="linear" slope="0.5"/></feComponentTransfer></filter>
+  <filter id="inkRough"><feTurbulence type="fractalNoise" baseFrequency="0.05 0.07" numOctaves="3" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="6"/></filter>
+</svg>
+
+
+<!-- ╔══ ЛЕНДИНГ (step = -1) ══╗ -->
+<div id="view-landing">
+  <div id="landing-wrap">
+    <header class="header">
+      <div class="hammer-seal">
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="50" cy="50" r="47" stroke="#d4a54a" stroke-width="1.5" opacity="0.5"/>
+          <circle cx="50" cy="50" r="40" stroke="#d4a54a" stroke-width="0.75" opacity="0.3"/>
+          <rect x="43" y="22" width="14" height="9" rx="1" fill="#d4a54a" opacity="0.85"/>
+          <rect x="47.5" y="31" width="5" height="34" rx="1" fill="#d4a54a" opacity="0.85"/>
+          <circle cx="50" cy="70" r="3.5" fill="#d4a54a" opacity="0.5"/>
+          <line x1="50" y1="63" x2="50" y2="57" stroke="#d4a54a" stroke-width="1" opacity="0.35"/>
+          <line x1="43" y1="67" x2="38" y2="64" stroke="#d4a54a" stroke-width="1" opacity="0.35"/>
+          <line x1="57" y1="67" x2="62" y2="64" stroke="#d4a54a" stroke-width="1" opacity="0.35"/>
+          <text x="50" y="14" text-anchor="middle" font-size="5" fill="#d4a54a" opacity="0.4" font-family="serif" letter-spacing="8">✦ ✦ ✦</text>
+        </svg>
+      </div>
+      <div class="title-eyebrow">Имперский архив · Ordo Reikland</div>
+      <div class="title-main">WFRP&thinsp;4</div>
+      <div class="masthead-goth">Imperivm</div>
+      <div class="title-version">Fourth Edition · Warhammer Fantasy Roleplay</div>
+      <div class="masthead-classif"><span class="classif-stamp">Допуск III · дело открыто</span></div>
+      <div class="header-divider"><span class="divider-ornament">⚜</span></div>
+      <div class="subtitle">Создание персонажа — по Книге игрока</div>
+      <div class="landing-epigraph" id="landing-epigraph"></div>
+    </header>
+
+    <div class="actions-grid">
+      <!-- Создать нового -->
+      <div class="create-card" onclick="handleCreate()">
+        <div class="card-corner tl"></div><div class="card-corner tr"></div>
+        <div class="card-corner bl"></div><div class="card-corner br"></div>
+        <div class="card-icon-wrap">
+          <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="6" y="10" width="18" height="22" rx="1.5" stroke="#d4a54a" stroke-width="1.3" fill="none"/>
+            <rect x="10" y="6" width="18" height="22" rx="1.5" stroke="#d4a54a" stroke-width="1.3" fill="#151008"/>
+            <line x1="13.5" y1="13" x2="24.5" y2="13" stroke="#d4a54a" stroke-width="1" opacity="0.5"/>
+            <line x1="13.5" y1="17" x2="24.5" y2="17" stroke="#d4a54a" stroke-width="1" opacity="0.5"/>
+            <line x1="13.5" y1="21" x2="20" y2="21" stroke="#d4a54a" stroke-width="1" opacity="0.5"/>
+            <path d="M22 25 C26 18, 30 14, 31 10 C28 12, 24 16, 20 24 Z" fill="#d4a54a" opacity="0.7"/>
+            <line x1="21" y1="24" x2="18" y2="28" stroke="#d4a54a" stroke-width="0.8" opacity="0.6"/>
+          </svg>
+        </div>
+        <div class="create-label">Создать досье</div>
+        <div class="create-desc">Заведи новое дело: народ и карьера, характеристики, судьба и имя.</div>
+        <button class="btn-create">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+            <line x1="6.5" y1="1" x2="6.5" y2="12" stroke="currentColor" stroke-width="1.5"/>
+            <line x1="1" y1="6.5" x2="12" y2="6.5" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+          Завести досье
+        </button>
+      </div>
+
+      <!-- Продолжить -->
+      <div class="continue-card">
+        <div class="section-label">Архив досье</div>
+        <div class="char-list" id="landing-char-list"><!-- populated by JS --></div>
+      </div>
+    </div>
+
+    <footer class="landing-footer">
+      <div class="footer-quote">«Истории Старого Света пишутся кровью и золотом.»</div>
+      <div class="footer-ornament">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="9" cy="8" rx="6" ry="6.5" stroke="#4e3312" stroke-width="1"/>
+          <ellipse cx="7" cy="7.5" rx="1.5" ry="1.5" fill="#4e3312" opacity="0.7"/>
+          <ellipse cx="11" cy="7.5" rx="1.5" ry="1.5" fill="#4e3312" opacity="0.7"/>
+          <path d="M6.5 13 L6.5 15" stroke="#4e3312" stroke-width="1.2"/>
+          <path d="M9 13.5 L9 15.5" stroke="#4e3312" stroke-width="1.2"/>
+          <path d="M11.5 13 L11.5 15" stroke="#4e3312" stroke-width="1.2"/>
+          <path d="M6 13 L12 13" stroke="#4e3312" stroke-width="1" fill="none"/>
+        </svg>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<!-- ╔══ APP (шаги 0–9) ══╗ -->
+<div id="view-app">
+  <header class="app-header">
+    <div>
+      <h1>WARHAMMER FANTASY ROLEPLAY 4</h1>
+      <div class="sub" id="app-sub">Создание досье</div>
+    </div>
+    <button class="btn-home" onclick="toggleTheme()" id="theme-btn" title="Сменить тему" style="margin-right:6px;">🕯️ Тема</button>
+    <button class="btn-home" onclick="goHome()">⚜ На главную</button>
+  </header>
+
+  <nav class="steps" id="steps"></nav>
+
+  <main class="app" id="app">
+
+    <!-- Шаг 0: Галерея персонажей -->
+    <section class="page" data-step="0">
+      <h2>Архив досье</h2>
+      <p class="muted">Сохранённые персонажи. Открой, перейди в Магазин XP или удали.</p>
+      <div style="margin:10px 0;display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn btn-gold" onclick="startNewCharacter()">+ Создать досье</button>
+        <button class="btn btn-sm" onclick="document.getElementById('import-roster').click()">⬆ Импорт JSON</button>
+        <input type="file" id="import-roster" accept=".json" style="display:none" onchange="importToRoster(this)" />
+      </div>
+      <div id="roster-area"></div>
+    </section>
+
+    <!-- Шаг 1: Народ -->
+    <section class="page" data-step="1">
+      <h2>1 · Народ</h2>
+      <div class="quick-gen-box">
+        <div class="quick-gen-title">🎲 Быстрый персонаж</div>
+        <p class="muted" style="margin:4px 0 10px;">Не хочешь проходить все шаги? Сгенерируй всё сразу — народ, карьеру, характеристики, возраст, рост и внешность. Останется только вписать имя.</p>
+        <button class="btn btn-gold" onclick="rollFullRandomCharacter()">🎲 Сгенерировать персонажа целиком</button>
+      </div>
+      <div class="quick-gen-or">— или собери вручную —</div>
+      <p class="muted">Выбери народ персонажа. Можно бросить 1d100 (+20 XP за согласие).</p>
+      <div style="margin:10px 0;">
+        <button class="btn btn-gold" onclick="rollRandomRace()" id="btn-roll-race">🎲 Бросить 1d100 (+20 XP за согласие)</button>
+        <span id="race-roll-result" class="muted" style="margin-left:10px;"></span>
+      </div>
+      <div class="cards" id="race-cards"></div>
+      <div id="race-detail"></div>
+      <div class="nav-bottom">
+        <span></span>
+        <button class="btn btn-gold" onclick="goStep(2)" id="btn-next-1">К классу и карьере →</button>
+      </div>
+    </section>
+
+    <!-- Шаг 2: Класс и карьера -->
+    <section class="page" data-step="2">
+      <h2>2 · Класс и карьера</h2>
+      <p class="muted">Класс — общественное положение. Карьера — род занятий. Можно бросить 1d100.</p>
+      <div style="margin:10px 0;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+        <button class="btn" onclick="rollRandomCareer()" id="btn-roll-career-1">🎲 Бросить 1d100 (+50 XP)</button>
+        <button class="btn" onclick="rollRandomCareer3()" id="btn-roll-career-3">🎲 Бросить 3 раза (+25 XP)</button>
+        <span id="career-roll-result" class="muted" style="margin-left:6px;"></span>
+      </div>
+      <div style="margin:10px 0;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+        <input type="search" id="career-search" class="sv4-text" style="max-width:260px;" placeholder="🔎 поиск карьеры (среди 64)..." oninput="careerSearch()" />
+        <label class="muted" style="font-size:13px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+          <input type="checkbox" id="career-search-myrace" onchange="careerSearch()" /> только для моего народа
+        </label>
+      </div>
+      <div id="career-search-results"></div>
+      <div class="sec-title">Классы</div>
+      <div class="cards" id="class-cards"></div>
+      <div id="class-detail"></div>
+      <div class="nav-bottom">
+        <button class="btn" onclick="goStep(1)">← Народ</button>
+        <button class="btn btn-gold" onclick="goStep(3)" id="btn-next-2">К характеристикам →</button>
+      </div>
+    </section>
+
+    <!-- Шаг 3: Характеристики -->
+    <section class="page" data-step="3">
+      <h2>3 · Характеристики</h2>
+      <p class="muted">Брось 2d10 за каждую характеристику и прибавь расовый модификатор.</p>
+      <div id="stats-controls" style="margin:10px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-gold" onclick="rollAllStats()" id="btn-roll-all-stats">🎲 Бросить все характеристики</button>
+        <button class="btn" onclick="resetStats()" title="Очистить значения и перейти к ручному вводу (0 XP). Повторный бросок недоступен.">Сбросить → ручной ввод</button>
+        <span id="stats-summary" class="muted"></span>
+      </div>
+      <div id="stats-area"></div>
+      <div class="panel" style="margin-top:14px;">
+        <div class="panel-title">Характеристики карьеры</div>
+        <div id="career-stat-advances"></div>
+      </div>
+      <div class="nav-bottom">
+        <button class="btn" onclick="goStep(2)">← Карьера</button>
+        <button class="btn btn-gold" onclick="goStep(4)" id="btn-next-3">К судьбе и упорству →</button>
+      </div>
+    </section>
+
+    <!-- Шаг 4: Судьба и упорство -->
+    <section class="page" data-step="4">
+      <h2>4 · Здоровье · Судьба · Упорство</h2>
+      <p class="muted">Базовые судьба и упорство зависят от народа; дополнительные пункты распредели между ними.</p>
+      <div id="fate-area"></div>
+      <div class="nav-bottom">
+        <button class="btn" onclick="goStep(3)">← Характеристики</button>
+        <button class="btn btn-gold" onclick="goStep(5)" id="btn-next-4">К навыкам и талантам →</button>
+      </div>
+    </section>
+
+    <!-- Шаг 5: Навыки и таланты -->
+    <section class="page" data-step="5">
+      <h2>5 · Навыки и таланты</h2>
+      <p class="muted">Народные навыки (3×5 шагов + 3×3 шага) и карьерные навыки первой ступени (40 шагов).</p>
+      <div class="panel">
+        <div class="panel-title">Народные навыки и таланты</div>
+        <div id="race-skills-area"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Карьерные навыки и таланты (1-я ступень)</div>
+        <div id="career-skills-area"></div>
+      </div>
+      <div class="nav-bottom">
+        <button class="btn" onclick="goStep(4)">← Судьба</button>
+        <button class="btn btn-gold" onclick="goStep(6)" id="btn-next-5">К имуществу →</button>
+      </div>
+    </section>
+
+    <!-- Шаг 6: Имущество -->
+    <section class="page" data-step="6">
+      <h2>6 · Имущество</h2>
+      <p class="muted">Получи имущество за класс и за 1-ю ступень карьеры.</p>
+      <div id="trappings-area"></div>
+      <div class="nav-bottom">
+        <button class="btn" onclick="goStep(5)">← Навыки</button>
+        <button class="btn btn-gold" onclick="goStep(7)" id="btn-next-6">К последним штрихам →</button>
+      </div>
+    </section>
+
+    <!-- Шаг 7: Последние штрихи -->
+    <section class="page" data-step="7">
+      <h2>7 · Последние штрихи</h2>
+      <p class="muted">Имя, возраст, внешность, мотивация, амбиции.</p>
+      <div id="finishing-area"></div>
+      <div class="nav-bottom">
+        <button class="btn" onclick="goStep(6)">← Имущество</button>
+        <button class="btn btn-gold" onclick="finishAndSaveCharacter()">💾 Сохранить персонажа →</button>
+      </div>
+    </section>
+
+    <!-- Шаг 8: Бланк персонажа (готовый персонаж, отдельный режим) -->
+    <section class="page" data-step="8">
+      <div id="sheet-area"></div>
+    </section>
+
+    <!-- Шаг 9: Магазин XP (только для существующих персонажей) -->
+    <section class="page" data-step="9">
+      <h2>9 · Магазин обучения (трата опыта)</h2>
+      <p class="muted">Трать накопленные XP на развитие характеристик, навыков, талантов и карьеры.</p>
+      <div id="shop-area"></div>
+      <div class="nav-bottom">
+        <button class="btn" onclick="goStep(8)">← Бланк</button>
+        <button class="btn btn-gold" onclick="window.print()">🖨 Печать</button>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="js/app.js"></script>
+<link rel="stylesheet" href="css/marks.css">
+<script src="js/marks.js"></script>
+<link rel="stylesheet" href="css/gate-fix.css">
+
+
+<script src="js/health.js"></script>
+
+<script src="js/collapse.js"></script>
+
+<script src="js/crit.js"></script>
+
+<script src="js/schemes.js"></script>
+
+<script src="js/diseases.js"></script>
+
+<script src="js/psych.js"></script>
+<script src="js/spells.js"></script>
+<link rel="stylesheet" href="css/ui-fixes.css">
+</body>
+</html>
