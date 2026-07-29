@@ -40,10 +40,12 @@ function psyCoolTarget(){
 }
 function psyState(){ state.sheet.psych = state.sheet.psych || {fearRank:0, fearSL:0, fearActive:false, frenzy:false}; return state.sheet.psych; }
 function psyFearStart(){
-  const r = parseInt(prompt('Ранг страха существа (например, 1–3):','1'))||0;
-  if(r<=0) return;
-  const p = psyState(); p.fearRank=r; p.fearSL=0; p.fearActive=true;
-  autosave(); renderTabHealth();
+  ordoNumber({
+    title: 'Страх — ранг существа',
+    text: 'Копи уровни успеха хладнокровием, пока не достигнешь ранга.',
+    min: 1, max: 5,
+    onPick: (r) => { const p = psyState(); p.fearRank=r; p.fearSL=0; p.fearActive=true; autosave(); renderTabHealth(); }
+  });
 }
 function psyFearRoll(){
   const p = psyState(); if(!p.fearActive) return;
@@ -58,7 +60,14 @@ function psyFearRoll(){
   autosave(); renderTabHealth();
 }
 function psyTerror(){
-  const r = parseInt(prompt('Ранг ужаса существа:','2'))||0;
+  ordoNumber({
+    title: 'Ужас — ранг существа',
+    text: 'Провал: [ранг + провальные SL] состояний «Сломленный», затем страх того же ранга.',
+    min: 1, max: 5,
+    onPick: _psyTerrorRoll
+  });
+}
+function _psyTerrorRoll(r){
   if(r<=0) return;
   const target = psyCoolTarget();
   const d = Math.floor(Math.random()*100)+1;

@@ -94,7 +94,12 @@ function critApplyConds(logIdx){
   if(typeof autosave==='function') autosave();
   notify('Состояния наложены, раны вычтены');
   // по книге: после боя с критом — очень лёгкая (+60) проверка В на малую инфекцию
-  setTimeout(()=>{ try{ if(confirm('Крит получен. Бросить проверку малой инфекции (+60) по правилам?')) sv2InfectionCheck(); }catch(e){} }, 400);
+  setTimeout(()=>{ try{ ordoConfirm({
+    title: 'Крит получен',
+    text: 'По правилам после боя с критической раной — очень лёгкая (+60) проверка выносливости на малую инфекцию.',
+    yes: 'Бросить проверку', no: 'Позже',
+    onYes: sv2InfectionCheck
+  }); }catch(e){} }, 400);
   if(_sheetTab==='crit'||_sheetTab==='health') renderSheet();
 }
 function critClearLog(){ state.sheet.critLog=[]; if(typeof autosave==='function') autosave(); renderSheet(); }

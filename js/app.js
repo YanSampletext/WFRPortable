@@ -1016,7 +1016,14 @@ function chgCareerStatAdv(st, d){
 }
 function editScheme(){
   const sc = careerScheme();
-  const ans = prompt('Три характеристики «+» карьеры через запятую (ББ, ДБ, С, В, И, Пр, Л, Инт, СВ, Х):', sc.plus.join(', '));
+  ordoInput({
+    title: 'Схема карьеры',
+    text: 'Три характеристики «+» через запятую:\nББ, ДБ, С, В, И, Пр, Л, Инт, СВ, Х',
+    value: sc.plus.join(', '),
+    onOk: _editSchemeApply
+  });
+}
+function _editSchemeApply(ans){
   if(!ans) return;
   const valid = ['ББ','ДБ','С','В','И','Пр','Л','Инт','СВ','Х'];
   const arr = ans.split(',').map(x=>x.trim()).filter(x=>valid.includes(x));
@@ -1518,7 +1525,14 @@ function rollAllAppearance(){
 // → возраст/рост/внешность. Начисляет XP как при согласии со всеми бросками
 // (народ +20, карьера +50, характеристики +50 = 120). Затем ведёт на «Штрихи».
 function rollFullRandomCharacter(){
-  if(!confirm('Создать полностью случайного персонажа? Текущий несохранённый прогресс создания будет заменён.')) return;
+  ordoConfirm({
+    title: 'Завести дело наугад?',
+    text: 'Народ, карьера, характеристики и внешность будут брошены случайно.\nТекущий незавершённый черновик будет заменён.',
+    yes: 'Бросить кости', no: 'Отмена',
+    onYes: _rollFullRandomCharacterDo
+  });
+}
+function _rollFullRandomCharacterDo(){
   // 1) чистый лист
   Object.assign(state, freshState());
   migrateState();
@@ -2589,8 +2603,13 @@ function sv4DoAction(action){
       break;
     case 'gallery': goStep(0); break;
     case 'delete':
-      if(state.id && confirm('Удалить персонажа?')){
-        deleteCharacter(state.id, { stopPropagation: ()=>{} });
+      if(state.id){
+        ordoConfirm({
+          title: 'Изъять дело из архива?',
+          text: 'Персонаж будет удалён безвозвратно.',
+          yes: 'Удалить', no: 'Оставить', danger: true,
+          onYes: () => deleteCharacter(state.id, { stopPropagation: ()=>{} }, true)
+        });
       }
       break;
   }
@@ -3813,20 +3832,27 @@ function trySetTierFromSheet(newTier, oldTier){
   const ot = parseInt(oldTier) || 1;
   if(nt === ot) return;
   // Спросим пользователя: использовать магазин XP (правильно по книге) или просто сменить (читерски).
-  const ok = confirm(
-    `Сменить ступень на ${nt}?\n\n`+
-    `По правилам книги переход между ступенями стоит XP (100 или 200) и должен идти через «Магазин XP».\n\n`+
-    `OK — открыть Магазин XP (правильный путь).\n`+
-    `Отмена — просто переключить ступень без списания XP (для просмотра).`
-  );
-  if(ok){
-    // Откатим выбор и переведём в магазин
-    renderSheet();
-    goStep(9);
-  } else {
-    state.sheet.tier = nt;
-    renderSheet();
-  }
+  ordoChoice({
+    title: `Сменить ступень на ${nt}?`,
+    text: 'По правилам книги переход между ступенями стоит XP (100 или 200) и оформляется через Магазин обучения.',
+    options: [
+      { label: '◈ Через магазин XP (по правилам)', cb: () => _tierGoShop(nt, ot) },
+      { label: 'Просто переключить (без XP)', cb: () => _tierJustSwitch(nt, ot) }
+    ],
+    cancel: 'Отмена'
+  });
+  return;
+}
+function _tierGoShop(nt, ot){
+  // Правильный путь: откатываем выбор и уводим в магазин обучения
+  renderSheet();
+  goStep(9);
+}
+function _tierJustSwitch(nt, ot){
+  // Просмотровый режим: меняем ступень без списания XP
+  state.sheet.tier = nt;
+  if(typeof autosave === 'function') autosave();
+  renderSheet();
 }
 
 function escAttr(s){ return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
@@ -5099,12 +5125,20 @@ function startNewCharacter(){
 }
 
 // deleteCharacter: после удаления возвращаемся на шаг 0
-function deleteCharacter(id, ev){
+function deleteCharacter(id, ev, skipConfirm){
   if(ev && ev.stopPropagation) ev.stopPropagation();
   const roster = loadRoster();
   const p = roster.find(x => x.id === id);
   if(!p){ notify('Персонаж не найден.'); return; }
-  if(!confirm(`Удалить «${p.name || 'персонажа'}»? Это нельзя отменить.`)) return;
+  if(!skipConfirm){
+    ordoConfirm({
+      title: 'Изъять дело из архива?',
+      text: `«${escHtml(p.name || 'Безымянный')}» будет удалён безвозвратно.`,
+      yes: 'Удалить', no: 'Оставить', danger: true,
+      onYes: () => deleteCharacter(id, null, true)
+    });
+    return;
+  }
   const newRoster = roster.filter(x => x.id !== id);
   saveRoster(newRoster);
   if(state.id === id) Object.assign(state, freshState());
