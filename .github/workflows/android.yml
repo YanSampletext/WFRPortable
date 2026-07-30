@@ -20,6 +20,11 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Тег существующего релиза, к которому приложить APK (пусто — только артефакт запуска)"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -37,7 +42,8 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Capacitor CLI 8 требует Node >= 22
+          node-version: 22
           cache: npm
 
       - name: Setup JDK
@@ -90,13 +96,16 @@ jobs:
           name: apk
           path: ${{ steps.apk.outputs.path }}
 
+      # Неподписанный APK Android установить не даст вообще, поэтому в релиз
+      # он не попадает — только в артефакты запуска, для проверки сборки
       - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: env.HAS_SIGNING_KEY == 'true' && (startsWith(github.ref, 'refs/tags/') || inputs.tag != '')
         env:
           GH_TOKEN: ${{ github.token }}
           APK: ${{ steps.apk.outputs.path }}
+          TAG: ${{ inputs.tag != '' && inputs.tag || github.ref_name }}
         run: |
-          gh release create "$GITHUB_REF_NAME" "$APK" \
-            --title "WFRP 4 — Досье Ордо $GITHUB_REF_NAME" \
+          gh release create "$TAG" "$APK" \
+            --title "WFRP 4 — Досье Ордо $TAG" \
             --notes "Самодостаточное приложение: весь сайт внутри APK, без адресной строки и без интернета. Android 11 и новее." \
-          || gh release upload "$GITHUB_REF_NAME" "$APK" --clobber
+          || gh release upload "$TAG" "$APK" --clobber
