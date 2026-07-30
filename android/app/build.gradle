@@ -29,7 +29,9 @@ android {
     signingConfigs {
         release {
             if (keystorePropsFile.exists()) {
-                storeFile file(keystoreProps['storeFile'])
+                // rootProject.file, а не file: внутри модуля app относительный путь
+                // отсчитывался бы от android/app/, а keystore.properties лежит в android/
+                storeFile rootProject.file(keystoreProps['storeFile'])
                 storePassword keystoreProps['storePassword']
                 keyAlias keystoreProps['keyAlias']
                 keyPassword keystoreProps['keyPassword']
