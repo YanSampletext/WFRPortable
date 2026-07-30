@@ -53,6 +53,32 @@ npm run apk          # www/ → android → gradle assembleRelease
 | `npm run sync` | то же + копирует `www/` в Android-проект |
 | `npx cap open android` | открывает проект в Android Studio |
 
+## Сборка на GitHub Actions
+
+`.github/workflows/android.yml` собирает APK и прикладывает его к релизу
+при пуше тега `v*`. Один раз нужно завести секреты репозитория
+(Settings → Secrets and variables → Actions):
+
+| Секрет | Значение |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | `twa-project/android.keystore` в base64 |
+| `ANDROID_KEYSTORE_PASSWORD` | пароль хранилища |
+| `ANDROID_KEY_ALIAS` | `android` |
+| `ANDROID_KEY_PASSWORD` | пароль ключа |
+
+base64 из PowerShell:
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("twa-project\android.keystore")) | Set-Clipboard
+```
+
+Дальше `git push origin v1.1.0` — и APK появится в релизе. Проверить
+сборку до тега можно вручную: вкладка Actions → Android APK → Run
+workflow (тогда APK останется артефактом запуска, релиз не создаётся).
+
+Без секретов workflow тоже отработает, но APK будет неподписанным —
+такой не поставить поверх установленного приложения.
+
 ## Как это устроено
 
 - `scripts/build-www.mjs` копирует в `www/` то, из чего состоит
