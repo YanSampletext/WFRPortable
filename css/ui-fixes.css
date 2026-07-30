@@ -363,3 +363,83 @@ body.theme-light .ordo-dlg-text{ color:#4a3a1e; }
 body.theme-light .ordo-dlg-btn{ background:rgba(125,95,36,.08); color:#3d2f18; }
 body.theme-light .ordo-dlg-num{ background:rgba(125,95,36,.08); color:#7d5f24; }
 body.theme-light .ordo-dlg-input{ background:rgba(255,255,255,.6); color:#2a1c0c; }
+
+/* ═══════════ v14 · ПОСТОЯННАЯ НИЖНЯЯ ПАНЕЛЬ И ВЫРАВНИВАНИЕ БЛАНКА ═══════════ */
+:root{
+  /* высота панели вместе с системной безопасной зоной; уточняется из JS по факту */
+  --ordo-navh: calc(58px + env(safe-area-inset-bottom, 0px));
+  --ordo-barh: 60px;
+}
+
+/* Панель «Дело · Навыки · Здоровье · Бой · Ещё» — всегда на экране.
+   base.css переводил её в поток (.sheet-v4 > .sv4-bottom-nav{position:relative}),
+   из-за чего «фиксированная» панель уезжала в самый конец страницы. */
+.sheet-v4 > .sv4-bottom-nav,
+.sv4-bottom-nav{
+  position:fixed; left:0; right:0; bottom:0;
+  z-index:90;                      /* выше контента, ниже диалогов (120) и меню (199) */
+  padding-bottom:calc(4px + env(safe-area-inset-bottom, 0px));
+  box-shadow:0 -6px 18px rgba(0,0,0,.55);
+}
+body.theme-light .sv4-bottom-nav{ box-shadow:0 -6px 18px rgba(60,45,20,.18); }
+
+/* Контент заканчивается над панелью — под неё ничего не заползает */
+.sv4-page{ padding-bottom:calc(var(--ordo-navh) + 18px) !important; }
+
+/* Бланк во всю ширину: убираем боковые отступы .app и компенсирующие
+   отрицательные поля .sheet-v4 (они не совпадали и давали перекос на 2px) */
+body.sheet-full .app{ padding:0 !important; }
+body.sheet-full .sheet-v4{ margin:0 !important; min-height:100dvh; }
+
+/* Плавающие элементы держатся над панелью, а не поверх неё */
+.sv4-fab-hp{ bottom:calc(var(--ordo-navh) + 12px) !important; z-index:85; }
+#saved-tick{ bottom:calc(var(--ordo-navh) + 12px); }
+body.sheet-full .sv4-cart-badge{ bottom:calc(var(--ordo-navh) + 12px); }
+
+/* Уведомления: столбиком под шапкой, а не друг поверх друга поверх имени дела */
+#toast-stack{
+  position:fixed; z-index:1000; pointer-events:none;
+  left:50%; transform:translateX(-50%);
+  top:calc(env(safe-area-inset-top, 0px) + 12px);
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  width:max-content; max-width:min(92vw, 420px);
+}
+body.sheet-mode #toast-stack{ top:calc(env(safe-area-inset-top, 0px) + var(--ordo-barh) + 8px); }
+#toast-stack .toast{ position:static; max-width:100%; text-align:center; }
+
+/* Нативное ощущение: без «оттягивания» страницы и перезагрузки свайпом вниз */
+html, body{ overscroll-behavior-y:none; }
+
+/* Шапка дела при прокрутке была полупрозрачной снизу — контент просвечивал
+   сквозь неё. Делаем плотной, как нативная панель приложения. */
+.ordo-bar{
+  background:linear-gradient(180deg,#160d05 0%,#120a04 100%);
+  box-shadow:0 2px 10px rgba(0,0,0,.45);
+}
+body.theme-light .ordo-bar{
+  background:linear-gradient(180deg,#efe6d2 0%,#e7dcc4 100%);
+  box-shadow:0 2px 10px rgba(90,70,30,.14);
+}
+
+/* Светлая тема: регулятор здоровья был тёмным пятном с нечитаемыми «＋/－» */
+body.theme-light .sv4-fab-hp{
+  background:linear-gradient(180deg,#f6edd7,#e5d6b2);
+  border-color:#b1874a; box-shadow:0 4px 14px rgba(90,70,30,.22);
+}
+body.theme-light .sv4-fab-val{ color:#7d5f24; }
+body.theme-light .sv4-fab-btn.heal{ background:rgba(58,90,36,.16); color:#3d6b22; }
+body.theme-light .sv4-fab-btn.dmg{ background:rgba(139,26,26,.14); color:#8f2620; }
+
+/* «✓ сохранено» стояло ровно под регулятором здоровья — уводим в левый угол */
+#saved-tick{ left:12px; right:auto; }
+
+/* Магазин XP: на экране уже есть свой корешок «Магазин обучения»,
+   старый заголовок страницы дублировал его и лез под шапку */
+body.sheet-mode .page[data-step="9"] > h2,
+body.sheet-mode .page[data-step="9"] > p.muted{ display:none !important; }
+/* Нижние кнопки шага не липнут к системной панели жестов */
+.nav-bottom{ padding-bottom:calc(8px + env(safe-area-inset-bottom, 0px)); }
+
+/* Уведомления выезжают сверху вниз, а не сбоку (стек стоит по центру) */
+@keyframes ordoToastIn{ from{ opacity:0; transform:translateY(-8px); } to{ opacity:1; transform:none; } }
+#toast-stack .toast{ animation:ordoToastIn .18s ease-out; }

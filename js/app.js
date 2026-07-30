@@ -211,12 +211,33 @@ let state = {
   },
 };
 
+// Уведомления копятся в общем столбике под шапкой, а не наслаиваются друг на друга
 function notify(msg){
+  let stack = document.getElementById('toast-stack');
+  if(!stack){
+    stack = document.createElement('div');
+    stack.id = 'toast-stack';
+    document.body.appendChild(stack);
+  }
   const t = document.createElement('div');
   t.className = 'toast'; t.textContent = msg;
-  document.body.appendChild(t);
+  stack.appendChild(t);
+  while(stack.children.length > 3) stack.firstElementChild.remove();
   setTimeout(()=>t.remove(), 2200);
 }
+
+// Реальные высоты шапки и нижней панели → в CSS-переменные,
+// чтобы контент и плавающие кнопки точно не заезжали под них
+function syncOrdoBars(){
+  const root = document.documentElement;
+  const bar = document.querySelector('.ordo-bar');
+  const nav = document.querySelector('.sv4-bottom-nav');
+  if(bar) root.style.setProperty('--ordo-barh', Math.round(bar.getBoundingClientRect().height) + 'px');
+  if(nav) root.style.setProperty('--ordo-navh', Math.round(nav.getBoundingClientRect().height) + 'px');
+  else root.style.removeProperty('--ordo-navh');
+}
+window.addEventListener('resize', syncOrdoBars);
+window.addEventListener('orientationchange', () => setTimeout(syncOrdoBars, 150));
 
 function roll(n, sides){
   let s = 0; for(let i=0;i<n;i++) s += Math.floor(Math.random()*sides)+1; return s;
@@ -2499,6 +2520,7 @@ function renderSheet(){
 
   html += '</div>'; // .sheet-v4
   el.innerHTML = html;
+  syncOrdoBars();
   updateBloodVignette(maxHP);
   autosave();
 }
@@ -4973,7 +4995,11 @@ function goStep(n){
   state.step = n;
   if(n !== 9){ const cb=document.getElementById('cart-badge'); if(cb) cb.remove(); }
   // На бланке своя шапка — глобальную и степпер прячем, чтобы не было трёх шапок
-  try{ document.body.classList.toggle('sheet-mode', (n === 8 || n === 9) && appMode === 'character'); }catch(e){}
+  try{
+    document.body.classList.toggle('sheet-mode', (n === 8 || n === 9) && appMode === 'character');
+    // sheet-full — только сам бланк: он идёт во всю ширину, без отступов .app
+    document.body.classList.toggle('sheet-full', n === 8 && appMode === 'character');
+  }catch(e){}
   // Автовыдача стартового имущества по классу и карьере (шаг 5 книги) — один раз, на 1-й ступени
   if(n === 8 && appMode === 'character' && state.career && (state.sheet.tier||1) === 1){
     try{
