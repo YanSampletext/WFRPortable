@@ -1,8 +1,0 @@
-[{
-      "relation": ["delegate_permission/common.handle_all_urls"],
-      "target": {
-        "namespace": "android_app",
-        "package_name": "com.yansampletext.wfrp4",
-        "sha256_cert_fingerprints": ["29:43:30:B7:CA:A0:25:96:EC:1D:C4:43:4B:56:84:B4:76:E2:BB:62:12:CD:C8:03:7F:22:99:68:3A:08:B7:39"]
-      }
-    }]

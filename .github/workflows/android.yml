@@ -81,11 +81,14 @@ jobs:
 
       - name: Name the artifact
         id: apk
+        env:
+          # при ручном запуске GITHUB_REF_NAME — это «main», а не версия
+          VERSION: ${{ inputs.tag != '' && inputs.tag || github.ref_name }}
         run: |
           SRC=$(find android/app/build/outputs/apk/release -name '*.apk' | head -1)
           SUFFIX=""
           if [ "$HAS_SIGNING_KEY" != "true" ]; then SUFFIX="-unsigned"; fi
-          DEST="wfrp4-dossier-${GITHUB_REF_NAME}${SUFFIX}.apk"
+          DEST="wfrp4-dossier-${VERSION}${SUFFIX}.apk"
           cp "$SRC" "$DEST"
           echo "path=$DEST" >> "$GITHUB_OUTPUT"
           echo "Собрано: $DEST ($(du -h "$DEST" | cut -f1))"

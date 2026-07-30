@@ -1,21 +1,19 @@
-# Android/TWA build output — contains the signing key, never commit
-twa-project/
-
-# Bubblewrap build logs
-bw-*.log
-bubblewrap-*.log
-bw-answers.txt
-release/
+# Ключи подписи — никогда в репозиторий
+*.keystore
+*.jks
+android/keystore.properties
 
 # Capacitor
 node_modules/
 
-# генерируется из корня: npm run build
+# www/ собирается из корня: npm run build
 www/
-
-# пароли от ключа подписи
-android/keystore.properties
 
 # копия www/ внутри Android-проекта, кладётся при cap sync
 android/app/src/main/assets/public/
 android/app/src/main/assets/capacitor.config.json
+
+# сборка Android
+android/.gradle/
+android/local.properties
+release/

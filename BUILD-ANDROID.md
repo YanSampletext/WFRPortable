@@ -5,8 +5,8 @@
 ни зависимости от GitHub Pages, ни интернета для работы не нужно —
 шрифты тоже лежат внутри (`fonts/`, подключены через `css/fonts.css`).
 
-Прежняя TWA-сборка (`build-apk.ps1`, Bubblewrap) остаётся рабочей: она
-делает оболочку **над сайтом** на Pages. Отличия — в конце файла.
+Готовые сборки лежат в [Releases](../../releases) — их делает CI при
+пуше тега.
 
 Минимальная версия системы — **Android 11 (API 30)**, задана в
 `android/variables.gradle`.
@@ -15,17 +15,19 @@
 
 - Node.js 20+ и выполненный `npm install`: gradle-проект ссылается на
   плагины прямо в `node_modules`, без них сборка не стартует
-- JDK 17 (например `C:\Users\Yann\.bubblewrap\jdk64` от прежней сборки)
-- Android SDK, platform 34+ и build-tools (Android Studio ставит сам)
+- JDK 17 или новее
+- Android SDK, platform 36 и build-tools (Android Studio ставит сам)
 - Переменная `ANDROID_HOME` (или файл `android/local.properties`
   со строкой `sdk.dir=C\:\\Users\\Yann\\AppData\\Local\\Android\\Sdk`)
 
 ## Ключ подписи
 
-Подписывать нужно **тем же** keystore, что и прежний APK
-(`twa-project/android.keystore`, alias `android`) — тогда приложение
-встанет обновлением поверх установленного. Другой ключ = Android
-потребует сначала удалить старое приложение.
+Ключ — `wfrp4.keystore`, alias `android`. Он **не** в репозитории и не
+должен туда попасть: это единственный способ выпускать обновления. Держи
+резервную копию в надёжном месте.
+
+Обновлять установленное приложение можно только APK, подписанным тем же
+ключом. Со сменой ключа Android потребует сначала удалить старое.
 
 ```powershell
 copy android\keystore.properties.example android\keystore.properties
@@ -61,7 +63,7 @@ npm run apk          # www/ → android → gradle assembleRelease
 
 | Секрет | Значение |
 |---|---|
-| `ANDROID_KEYSTORE_BASE64` | `twa-project/android.keystore` в base64 |
+| `ANDROID_KEYSTORE_BASE64` | `wfrp4.keystore` в base64 |
 | `ANDROID_KEYSTORE_PASSWORD` | пароль хранилища |
 | `ANDROID_KEY_ALIAS` | `android` |
 | `ANDROID_KEY_PASSWORD` | пароль ключа |
@@ -69,7 +71,8 @@ npm run apk          # www/ → android → gradle assembleRelease
 base64 из PowerShell:
 
 ```powershell
-[Convert]::ToBase64String([IO.File]::ReadAllBytes("twa-project\android.keystore")) | Set-Clipboard
+$b64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes((Resolve-Path .\wfrp4.keystore).Path))
+$b64 | gh secret set ANDROID_KEYSTORE_BASE64
 ```
 
 Дальше `git push origin v1.1.0` — и APK появится в релизе. Проверить
@@ -128,13 +131,3 @@ workflow (тогда APK останется артефактом запуска,
 «Загрузки»), поставить новое, затем **«Ещё → Импорт»**. Сделать это нужно
 до удаления старого приложения — иначе придётся открывать сайт в Chrome и
 экспортировать оттуда.
-
-## Чем отличается от TWA-сборки
-
-| | Capacitor (`npm run apk`) | TWA (`build-apk.ps1`) |
-|---|---|---|
-| Где живут файлы | внутри APK | на GitHub Pages |
-| Адресная строка | нет никогда | нет только после assetlinks |
-| Работа без сети | полная | только то, что успел закешировать SW |
-| Обновление вёрстки | новым APK | само, с Pages |
-| Нужен `.well-known/assetlinks.json` | нет | да |
