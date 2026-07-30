@@ -1,5 +1,5 @@
 // WFRP4 Dossier — service worker (cache-first для оффлайна)
-const CACHE = 'wfrp4-v13';
+const CACHE = 'wfrp4-v14';
 const ASSETS = [
   './', './index.html', './manifest.json',
   './css/base.css','./css/reskin.css','./css/marks.css','./css/gate-fix.css','./css/ui-fixes.css',
