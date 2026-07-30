@@ -30,12 +30,22 @@ js/health.js    восстановление + проверка смерти
 js/marks.js     печати и отметки ГМ
 manifest.json   PWA
 sw.js           service worker (офлайн-кэш)
+fonts/          шрифты Google, зашитые локально (css/fonts.css)
+scripts/        сборка www/ и запуск gradle
+android/        Android-проект Capacitor (см. BUILD-ANDROID.md)
 ```
 
 ## Запуск
-Открыть `index.html` в браузере — всё. Для PWA/APK нужен хостинг
-(GitHub Pages): Settings → Pages → deploy from branch, затем
-[pwabuilder.com](https://pwabuilder.com) соберёт APK по адресу сайта.
+Открыть `index.html` в браузере — всё. Веб-версия живёт на GitHub Pages
+(Settings → Pages → deploy from branch).
+
+## Приложение для Android
+`npm run apk` — Capacitor зашивает сайт целиком внутрь APK: без адресной
+строки, без интернета, без зависимости от Pages. Подробно, включая ключ
+подписи и переезд данных: [BUILD-ANDROID.md](BUILD-ANDROID.md).
+
+Прежняя TWA-оболочка над сайтом (`build-apk.ps1`, Bubblewrap) тоже
+осталась — сравнение подходов в конце того же файла.
 
 ## Лицензия
 Неофициальный фанатский инструмент. Warhammer Fantasy Roleplay —

@@ -6,3 +6,16 @@ bw-*.log
 bubblewrap-*.log
 bw-answers.txt
 release/
+
+# Capacitor
+node_modules/
+
+# генерируется из корня: npm run build
+www/
+
+# пароли от ключа подписи
+android/keystore.properties
+
+# копия www/ внутри Android-проекта, кладётся при cap sync
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json

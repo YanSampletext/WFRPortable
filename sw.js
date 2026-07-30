@@ -1,7 +1,8 @@
 // WFRP4 Dossier — service worker (cache-first для оффлайна)
-const CACHE = 'wfrp4-v14';
+const CACHE = 'wfrp4-v15';
 const ASSETS = [
   './', './index.html', './manifest.json',
+  './css/fonts.css',
   './css/base.css','./css/reskin.css','./css/marks.css','./css/gate-fix.css','./css/ui-fixes.css',
   './js/dialogs.js','./js/app.js','./js/marks.js','./js/health.js','./js/collapse.js','./js/crit.js','./js/schemes.js','./js/diseases.js','./js/psych.js','./js/spells.js',
   './icons/icon-192.png','./icons/icon-512.png'
@@ -12,7 +13,18 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
 });
+// Файлы шрифтов перечислять поимённо не нужно: всё своё и уже запрошенное
+// докладывается в кеш на лету, поэтому офлайн работает и типографика тоже
 self.addEventListener('fetch', e => {
   if(e.request.method !== 'GET') return;
-  e.respondWith(caches.match(e.request).then(hit => hit || fetch(e.request)));
+  e.respondWith(caches.match(e.request).then(hit => {
+    if(hit) return hit;
+    return fetch(e.request).then(res => {
+      if(res.ok && new URL(e.request.url).origin === self.location.origin){
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, copy));
+      }
+      return res;
+    });
+  }));
 });

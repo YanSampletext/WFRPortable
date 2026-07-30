@@ -1,0 +1,12 @@
+{
+  "appId": "com.yansampletext.wfrp4",
+  "appName": "WFRP4",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#160D05"
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}

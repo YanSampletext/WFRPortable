@@ -1,0 +1,22 @@
+{
+  "name": "wfrportable",
+  "version": "1.0.0",
+  "private": true,
+  "description": "WFRP 4 — Досье Ордо: создание и ведение персонажа Warhammer Fantasy Roleplay 4 (рус.)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YanSampletext/WFRPortable.git"
+  },
+  "license": "ISC",
+  "scripts": {
+    "build": "node scripts/build-www.mjs",
+    "sync": "npm run build && cap sync android",
+    "apk": "npm run sync && node scripts/gradle.mjs assembleRelease",
+    "aab": "npm run sync && node scripts/gradle.mjs bundleRelease"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^8.4.2",
+    "@capacitor/cli": "^8.4.2",
+    "@capacitor/core": "^8.4.2"
+  }
+}
