@@ -267,6 +267,9 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
   </main>
 </div>
 
+<!-- до app.js: подменяет запись в localStorage, чтобы копия персонажей
+     сразу уходила в нативное хранилище приложения -->
+<script src="js/storage-native.js"></script>
 <script src="js/dialogs.js"></script>
 <script src="js/app.js"></script>
 <link rel="stylesheet" href="css/marks.css">

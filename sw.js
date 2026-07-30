@@ -1,10 +1,10 @@
 // WFRP4 Dossier — service worker (cache-first для оффлайна)
-const CACHE = 'wfrp4-v15';
+const CACHE = 'wfrp4-v16';
 const ASSETS = [
   './', './index.html', './manifest.json',
   './css/fonts.css',
   './css/base.css','./css/reskin.css','./css/marks.css','./css/gate-fix.css','./css/ui-fixes.css',
-  './js/dialogs.js','./js/app.js','./js/marks.js','./js/health.js','./js/collapse.js','./js/crit.js','./js/schemes.js','./js/diseases.js','./js/psych.js','./js/spells.js',
+  './js/storage-native.js','./js/dialogs.js','./js/app.js','./js/marks.js','./js/health.js','./js/collapse.js','./js/crit.js','./js/schemes.js','./js/diseases.js','./js/psych.js','./js/spells.js',
   './icons/icon-192.png','./icons/icon-512.png'
 ];
 self.addEventListener('install', e => {
