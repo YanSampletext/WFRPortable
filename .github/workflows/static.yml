@@ -33,12 +33,14 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v5
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - name: Собрать сайт
-        # только само приложение: Android-проект, скрипты сборки и
-        # документация на сайте ни к чему
-        run: |
-          mkdir -p _site
-          cp -r index.html manifest.json sw.js css js fonts icons _site/
+        # тем же скриптом, что и содержимое APK: только приложение,
+        # с минифицированным CSS и с service worker для офлайна
+        run: node scripts/build-www.mjs --target=web --out=_site
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

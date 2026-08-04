@@ -2522,8 +2522,9 @@ function byId(id){ return document.getElementById(id); }
 // === «Лист дела»: фактура бумаги, кляксы порчи, прожог при смерти ===
 
 function renderTabMore(){
+  // data-tile вместо кода в атрибуте: разбирает его один обработчик ниже
   const tile = (fn, icon, label, sub) =>
-    `<button class="ordo-tile" onclick="${fn}">
+    `<button class="ordo-tile" data-tile="${escAttr(fn)}">
       <span class="ordo-tile-ic">${icon}</span>
       <span class="ordo-tile-l">${label}</span>
       ${sub?`<span class="ordo-tile-s">${sub}</span>`:''}

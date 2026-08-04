@@ -111,3 +111,39 @@
     startX = startY = null;
   }, { passive: true });
 })();
+
+// ── одно делегирование на всю статическую разметку ──────────────────────────
+// Кнопки в index.html размечены через data-act вместо инлайновых onclick:
+// обработчик один, а не два с половиной десятка, и разметка не тащит в себе код.
+document.addEventListener('click', function (e) {
+  var el = e.target.closest('[data-act]');
+  if (!el) return;
+  var act = el.dataset.act;
+  try {
+    if (act === 'step') goStep(parseInt(el.dataset.arg, 10));
+    else if (act === 'print') window.print();
+    else if (typeof window[act] === 'function') window[act]();
+    else return;
+  } catch (err) {
+    notify('Не вышло: ' + err.message);
+  }
+});
+
+// Плитки вкладки «Ещё»: код перехода лежит в data-tile, а не в onclick
+document.addEventListener('click', function (e) {
+  var el = e.target.closest('[data-tile]');
+  if (!el) return;
+  var call = el.dataset.tile;
+  var m = /^sv4NavGo\('([a-z]+)'\)$/.exec(call);
+  try {
+    if (m) { sv4NavGo(m[1]); return; }
+    m = /^sv4DoAction\('([a-z]+)'\)$/.exec(call);
+    if (m) { sv4DoAction(m[1]); return; }
+    m = /^goStep\((\d+)\)$/.exec(call);
+    if (m) { goStep(parseInt(m[1], 10)); return; }
+    if (call === 'toggleTheme()') { toggleTheme(); return; }
+    if (call.indexOf('gmOpen') >= 0) { if (typeof gmOpen === 'function') gmOpen(); return; }
+  } catch (err) {
+    notify('Не вышло: ' + err.message);
+  }
+});

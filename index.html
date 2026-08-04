@@ -56,7 +56,7 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
 
     <div class="actions-grid">
       <!-- Создать нового -->
-      <div class="create-card" onclick="handleCreate()">
+      <div class="create-card" data-act="handleCreate">
         <div class="card-corner tl"></div><div class="card-corner tr"></div>
         <div class="card-corner bl"></div><div class="card-corner br"></div>
         <div class="card-icon-wrap">
@@ -113,7 +113,7 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
     </button>
     <div class="app-bar-title" id="app-bar-title">Создание досье</div>
-    <button class="app-bar-btn" onclick="goHome()" id="app-bar-home" aria-label="На главную">
+    <button class="app-bar-btn" data-act="goHome" id="app-bar-home" aria-label="На главную">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7"/><path d="M6 10v9h12v-9"/></svg>
     </button>
   </header>
@@ -135,7 +135,7 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
     <section class="page" data-step="0">
       <!-- название экрана держит верхняя панель, импорт уехал в меню -->
       <div class="ark-head">
-        <button class="btn btn-gold" onclick="startNewCharacter()">+ Завести досье</button>
+        <button class="btn btn-gold" data-act="startNewCharacter">+ Завести досье</button>
         <input type="file" id="import-roster" accept=".json" style="display:none" onchange="importToRoster(this)" />
       </div>
       <div id="roster-area"></div>
@@ -147,19 +147,19 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
       <div class="quick-gen-box">
         <div class="quick-gen-title">🎲 Быстрый персонаж</div>
         <p class="muted" style="margin:4px 0 10px;">Не хочешь проходить все шаги? Сгенерируй всё сразу — народ, карьеру, характеристики, возраст, рост и внешность. Останется только вписать имя.</p>
-        <button class="btn btn-gold" onclick="rollFullRandomCharacter()">🎲 Сгенерировать персонажа целиком</button>
+        <button class="btn btn-gold" data-act="rollFullRandomCharacter">🎲 Сгенерировать персонажа целиком</button>
       </div>
       <div class="quick-gen-or">— или собери вручную —</div>
       <p class="muted">Выбери народ персонажа. Можно бросить 1d100 (+20 XP за согласие).</p>
       <div style="margin:10px 0;">
-        <button class="btn btn-gold" onclick="rollRandomRace()" id="btn-roll-race">🎲 Бросить 1d100 (+20 XP за согласие)</button>
+        <button class="btn btn-gold" data-act="rollRandomRace" id="btn-roll-race">🎲 Бросить 1d100 (+20 XP за согласие)</button>
         <span id="race-roll-result" class="muted" style="margin-left:10px;"></span>
       </div>
       <div class="cards" id="race-cards"></div>
       <div id="race-detail"></div>
       <div class="nav-bottom">
         <span></span>
-        <button class="btn btn-gold" onclick="goStep(2)" id="btn-next-1">К классу и карьере →</button>
+        <button class="btn btn-gold" data-act="step" data-arg="2" id="btn-next-1">К классу и карьере →</button>
       </div>
     </section>
 
@@ -168,8 +168,8 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
       <h2>2 · Класс и карьера</h2>
       <p class="muted">Класс — общественное положение. Карьера — род занятий. Можно бросить 1d100.</p>
       <div style="margin:10px 0;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-        <button class="btn" onclick="rollRandomCareer()" id="btn-roll-career-1">🎲 Бросить 1d100 (+50 XP)</button>
-        <button class="btn" onclick="rollRandomCareer3()" id="btn-roll-career-3">🎲 Бросить 3 раза (+25 XP)</button>
+        <button class="btn" data-act="rollRandomCareer" id="btn-roll-career-1">🎲 Бросить 1d100 (+50 XP)</button>
+        <button class="btn" data-act="rollRandomCareer3" id="btn-roll-career-3">🎲 Бросить 3 раза (+25 XP)</button>
         <span id="career-roll-result" class="muted" style="margin-left:6px;"></span>
       </div>
       <div style="margin:10px 0;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
@@ -183,8 +183,8 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
       <div class="cards" id="class-cards"></div>
       <div id="class-detail"></div>
       <div class="nav-bottom">
-        <button class="btn" onclick="goStep(1)">← Народ</button>
-        <button class="btn btn-gold" onclick="goStep(3)" id="btn-next-2">К характеристикам →</button>
+        <button class="btn" data-act="step" data-arg="1">← Народ</button>
+        <button class="btn btn-gold" data-act="step" data-arg="3" id="btn-next-2">К характеристикам →</button>
       </div>
     </section>
 
@@ -193,8 +193,8 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
       <h2>3 · Характеристики</h2>
       <p class="muted">Брось 2d10 за каждую характеристику и прибавь расовый модификатор.</p>
       <div id="stats-controls" style="margin:10px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-        <button class="btn btn-gold" onclick="rollAllStats()" id="btn-roll-all-stats">🎲 Бросить все характеристики</button>
-        <button class="btn" onclick="resetStats()" title="Очистить значения и перейти к ручному вводу (0 XP). Повторный бросок недоступен.">Сбросить → ручной ввод</button>
+        <button class="btn btn-gold" data-act="rollAllStats" id="btn-roll-all-stats">🎲 Бросить все характеристики</button>
+        <button class="btn" data-act="resetStats" title="Очистить значения и перейти к ручному вводу (0 XP). Повторный бросок недоступен.">Сбросить → ручной ввод</button>
         <span id="stats-summary" class="muted"></span>
       </div>
       <div id="stats-area"></div>
@@ -203,8 +203,8 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
         <div id="career-stat-advances"></div>
       </div>
       <div class="nav-bottom">
-        <button class="btn" onclick="goStep(2)">← Карьера</button>
-        <button class="btn btn-gold" onclick="goStep(4)" id="btn-next-3">К судьбе и упорству →</button>
+        <button class="btn" data-act="step" data-arg="2">← Карьера</button>
+        <button class="btn btn-gold" data-act="step" data-arg="4" id="btn-next-3">К судьбе и упорству →</button>
       </div>
     </section>
 
@@ -214,8 +214,8 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
       <p class="muted">Базовые судьба и упорство зависят от народа; дополнительные пункты распредели между ними.</p>
       <div id="fate-area"></div>
       <div class="nav-bottom">
-        <button class="btn" onclick="goStep(3)">← Характеристики</button>
-        <button class="btn btn-gold" onclick="goStep(5)" id="btn-next-4">К навыкам и талантам →</button>
+        <button class="btn" data-act="step" data-arg="3">← Характеристики</button>
+        <button class="btn btn-gold" data-act="step" data-arg="5" id="btn-next-4">К навыкам и талантам →</button>
       </div>
     </section>
 
@@ -232,8 +232,8 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
         <div id="career-skills-area"></div>
       </div>
       <div class="nav-bottom">
-        <button class="btn" onclick="goStep(4)">← Судьба</button>
-        <button class="btn btn-gold" onclick="goStep(6)" id="btn-next-5">К имуществу →</button>
+        <button class="btn" data-act="step" data-arg="4">← Судьба</button>
+        <button class="btn btn-gold" data-act="step" data-arg="6" id="btn-next-5">К имуществу →</button>
       </div>
     </section>
 
@@ -243,8 +243,8 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
       <p class="muted">Получи имущество за класс и за 1-ю ступень карьеры.</p>
       <div id="trappings-area"></div>
       <div class="nav-bottom">
-        <button class="btn" onclick="goStep(5)">← Навыки</button>
-        <button class="btn btn-gold" onclick="goStep(7)" id="btn-next-6">К последним штрихам →</button>
+        <button class="btn" data-act="step" data-arg="5">← Навыки</button>
+        <button class="btn btn-gold" data-act="step" data-arg="7" id="btn-next-6">К последним штрихам →</button>
       </div>
     </section>
 
@@ -254,8 +254,8 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
       <p class="muted">Имя, возраст, внешность, мотивация, амбиции.</p>
       <div id="finishing-area"></div>
       <div class="nav-bottom">
-        <button class="btn" onclick="goStep(6)">← Имущество</button>
-        <button class="btn btn-gold" onclick="finishAndSaveCharacter()">💾 Сохранить персонажа →</button>
+        <button class="btn" data-act="step" data-arg="6">← Имущество</button>
+        <button class="btn btn-gold" data-act="finishAndSaveCharacter">💾 Сохранить персонажа →</button>
       </div>
     </section>
 
@@ -270,8 +270,8 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
       <p class="muted">Трать накопленные XP на развитие характеристик, навыков, талантов и карьеры.</p>
       <div id="shop-area"></div>
       <div class="nav-bottom">
-        <button class="btn" onclick="goStep(8)">← Бланк</button>
-        <button class="btn btn-gold" onclick="window.print()">🖨 Печать</button>
+        <button class="btn" data-act="step" data-arg="8">← Бланк</button>
+        <button class="btn btn-gold" data-act="print">🖨 Печать</button>
       </div>
     </section>
 
