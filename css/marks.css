@@ -1,12 +1,11 @@
-.gm-wrap{ margin:16px 6px 6px; border:1px solid var(--gold-dim); background:linear-gradient(180deg,#16100a,#100b07); padding:12px 13px; border-radius:2px; box-shadow:0 0 0 1px #0a0705; }
-.gm-h{ font-family:"EB Garamond",serif; font-weight:600; font-size:13px; letter-spacing:.1em; color:var(--gold2); text-transform:uppercase; margin-bottom:10px; }
-.gm-ctrls{ display:flex; flex-wrap:wrap; gap:9px 14px; align-items:center; }
+
+
+
 .gm-tog{ display:inline-flex; align-items:center; gap:6px; font-family:"EB Garamond",serif; font-size:13px; color:var(--text); cursor:pointer; }
 .gm-tog input{ accent-color:#bf4231; width:15px; height:15px; }
 .gm-sel{ display:inline-flex; align-items:center; gap:6px; font-family:"EB Garamond",serif; font-size:13px; color:var(--text2); }
 .gm-sel select{ font-family:"EB Garamond",serif; font-size:13px; background:#0c0805; color:var(--text); border:1px solid var(--gold-dim); padding:3px 6px; border-radius:2px; }
-.gm-seals{ display:flex; flex-wrap:wrap; gap:9px; margin-top:12px; min-height:6px; }
-.gm-empty{ font-family:"EB Garamond",serif; font-style:italic; font-size:12px; color:var(--text3); }
+
 .gm-seal{ display:inline-flex; align-items:center; gap:7px; }
 .gm-stamp{ color:var(--gc); border:2.5px double currentColor; border-radius:3px; padding:3px 9px; transform:rotate(-3deg); opacity:.92; }
 .gm-stamp b{ font-family:"UnifrakturCook",serif; font-weight:700; font-size:12px; }

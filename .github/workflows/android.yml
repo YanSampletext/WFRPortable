@@ -1,13 +1,10 @@
 # Собирает APK и выкладывает его в релиз при пуше тега вида v1.2.3.
 #
-# Прошлая CI-сборка была на Bubblewrap и делала TWA — оболочку над сайтом,
-# которой для работы нужны и Pages, и assetlinks. Здесь собирается
-# самодостаточное приложение Capacitor: весь сайт внутри APK.
+# Собирается приложение Capacitor: весь сайт зашит внутрь APK.
 #
 # Секреты репозитория (Settings → Secrets and variables → Actions):
-#   ANDROID_KEYSTORE_BASE64  — twa-project/android.keystore в base64:
-#                              base64 -w0 android.keystore                     (Linux)
-#                              [Convert]::ToBase64String([IO.File]::ReadAllBytes("android.keystore"))  (PowerShell)
+#   ANDROID_KEYSTORE_BASE64  — wfrp4.keystore в base64:
+#                              [Convert]::ToBase64String([IO.File]::ReadAllBytes("wfrp4.keystore"))
 #   ANDROID_KEYSTORE_PASSWORD
 #   ANDROID_KEY_ALIAS        — у нашего ключа это android
 #   ANDROID_KEY_PASSWORD
@@ -88,7 +85,7 @@ jobs:
           SRC=$(find android/app/build/outputs/apk/release -name '*.apk' | head -1)
           SUFFIX=""
           if [ "$HAS_SIGNING_KEY" != "true" ]; then SUFFIX="-unsigned"; fi
-          DEST="wfrp4-dossier-${VERSION}${SUFFIX}.apk"
+          DEST="dosye-ordo-${VERSION}${SUFFIX}.apk"
           cp "$SRC" "$DEST"
           echo "path=$DEST" >> "$GITHUB_OUTPUT"
           echo "Собрано: $DEST ($(du -h "$DEST" | cut -f1))"
@@ -109,6 +106,6 @@ jobs:
           TAG: ${{ inputs.tag != '' && inputs.tag || github.ref_name }}
         run: |
           gh release create "$TAG" "$APK" \
-            --title "WFRP 4 — Досье Ордо $TAG" \
+            --title "Досье Ордо $TAG" \
             --notes "Самодостаточное приложение: весь сайт внутри APK, без адресной строки и без интернета. Android 11 и новее." \
           || gh release upload "$TAG" "$APK" --clobber

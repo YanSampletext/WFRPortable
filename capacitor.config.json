@@ -1,6 +1,6 @@
 {
   "appId": "com.yansampletext.wfrp4",
-  "appName": "WFRP4",
+  "appName": "Досье Ордо",
   "webDir": "www",
   "android": {
     "allowMixedContent": false,

@@ -4,8 +4,7 @@
 .sv4-disease-head { display:flex; align-items:center; gap:8px; font-size:13px; }
 .sv4-disease-phase { font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--gold2);
   border:1px solid var(--gold-dk); border-radius:3px; padding:1px 6px; margin-left:auto; }
-tr.offcareer td { opacity:.62; }
-tr.offcareer td b { color: var(--text2) !important; }
+
 .cstat-adv-card { border:1px solid var(--border); border-radius:4px; padding:9px 12px; text-align:center; background:rgba(0,0,0,.2); min-width:96px; }
 .cstat-adv-card.has { border-color:var(--gold-dk); background:rgba(212,175,55,.07); }
 .cstat-adv-name { font-family:Cinzel,serif; font-size:13px; font-weight:600; color:var(--gold2); }

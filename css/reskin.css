@@ -68,19 +68,11 @@ body.theme-light::before{ opacity:.22 !important; }
 
 /* ─── 4. ТИПОГРАФИКА: канцелярия (Special Elite) + готика (UnifrakturCook)
         + лапидарь (Cinzel) + буквицы (Cinzel Decorative) ──────────── */
-.title-eyebrow, .arch-serial, .sv4-tier-l, .sv4-c-l, .sv4-v-l, .sv4-stat-l, .sv4-i-l,
-.sv4-az-l, .sv4-m-l, .sv4-xp-l, .sv4-hp-l, .stat-full, .xp-label, .money-label, .money-cell-label,
-.card-sub, .hero-card-stat-l, .sv4-topbar-sub, .sv4-nav-item small, .sv4-tal-src,
-.classif-stamp, .masthead-classif, .caption-mono, th, .sv4-tbl th, .step,
-.dossier-caseline{
+.title-eyebrow, .arch-serial, .sv4-tier-l, .sv4-c-l, .sv4-v-l, .sv4-stat-l, .sv4-i-l, .sv4-az-l, .sv4-m-l, .sv4-hp-l, .stat-full, .xp-label, .card-sub, .hero-card-stat-l, .sv4-nav-item small, .sv4-tal-src, .classif-stamp, .masthead-classif, th, .sv4-tbl th, .step {
   font-family:'Special Elite', 'Courier New', monospace !important;
   letter-spacing:.08em;
 }
-h1, h2, h3, .title-main, .title-version, .sec-title, .panel-title, .sv4-section-title,
-.sv4-block-title, .sv4-tier-name, .sv4-c-v, .sv4-v-v, .sv4-stat-v, .sv4-i-v, .sv4-az b,
-.sv4-tal-name, .quick-gen-title, .vital-title, .num-gold, .sv4-tbl td.num-gold,
-.app-header h1, .btn, .btn-sm, .btn-gold, .btn-red, .btn-home, .step .num, .sv4-back,
-.sv4-tier-badge .sv4-tier-name, .sv4-xp-v, .sv4-roll-skill, .sv4-roll-outcome{
+h1, h2, h3, .title-main, .title-version, .sec-title, .panel-title, .sv4-section-title, .sv4-block-title, .sv4-tier-name, .sv4-c-v, .sv4-v-v, .sv4-stat-v, .sv4-i-v, .sv4-az b, .sv4-tal-name, .quick-gen-title, .num-gold, .sv4-tbl td.num-gold, .app-header h1, .btn, .btn-sm, .btn-gold, .btn-red, .btn-home, .step .num, .sv4-back, .sv4-tier-badge .sv4-tier-name, .sv4-roll-skill, .sv4-roll-outcome {
   font-family:'Cinzel', serif !important;
 }
 /* Готический блэклеттер — крупные имена и гербовые надписи */
@@ -315,22 +307,17 @@ label{ color:var(--text3); font-family:'Special Elite',monospace !important; let
   radial-gradient(ellipse 140% 100% at 50% 100%, rgba(0,0,0,.5), transparent 50%),
   var(--bg); }
 
-/* Верхняя шапка / бургер / XP */
-.sv4-topbar{ background:linear-gradient(180deg,#0c0805 92%, transparent); border-bottom:1px solid var(--gold-dk); }
-.sv4-burger{ background:linear-gradient(180deg,var(--panel3),var(--panel)); border-color:var(--gold); color:var(--gold2); }
-.sv4-topbar-name{ color:var(--gold2); font-family:'Cinzel',serif !important; letter-spacing:.03em; }
-.sv4-topbar-sub{ color:var(--text3); letter-spacing:.16em; }
+
+
 .sv4-xp{ background:linear-gradient(180deg, rgba(226,164,66,.14), rgba(226,164,66,.04)); border-color:var(--gold-dim); }
-.sv4-xp-v{ color:var(--gold2); }
-.sv4-xp-ico svg{ stroke:var(--gold2); }
+
 .sv4-back{ border-color:var(--gold-dk); color:var(--gold2); }
 .sv4-back:hover{ border-color:var(--gold); background:rgba(226,164,66,.06); }
 
 /* Боковое меню — корешок архива */
 .sv4-nav{ background:linear-gradient(180deg,#1a130a,#080503); border-right:1px solid var(--gold); }
-.sv4-nav-header{ border-bottom-color:var(--gold-dk); }
-.sv4-nav-name{ color:var(--gold2); font-family:'Cinzel',serif !important; }
-.sv4-nav-sub{ color:var(--text3); }
+
+
 .sv4-nav-item{ color:var(--text); }
 .sv4-nav-item:hover{ background:rgba(226,164,66,.06); border-left-color:var(--gold-dim); }
 .sv4-nav-item.active{ background:linear-gradient(90deg, rgba(226,164,66,.18), rgba(226,164,66,.04)); border-color:rgba(226,164,66,.32); border-left-color:var(--gold2); color:var(--gold2); }
@@ -378,12 +365,7 @@ body.theme-light .sv4-hero::before{ mix-blend-mode:multiply; opacity:.4; }
 .sv4-hf input{ color:var(--text); border-bottom-color:var(--gold-dk); }
 .sv4-hero-emblem{ color:var(--gold-dim); opacity:.09; }
 .arch-serial{ color:var(--text3); opacity:.6; letter-spacing:.12em; }
-.arch-note{ color:var(--text3); }
-.arch-divider{ background:linear-gradient(90deg,transparent,var(--gold-dk) 20%, var(--gold-dk) 80%,transparent); }
-.arch-stamp{
-  color:var(--blood2); border:2px solid var(--blood2); transform:rotate(-6deg); opacity:.6;
-  -webkit-mask-image:var(--inkmask); mask-image:var(--inkmask); -webkit-mask-size:cover; mask-size:cover;
-}
+
 
 /* Ступень */
 .sv4-tier-badge{
@@ -499,8 +481,8 @@ body.theme-light .sv4-hero::before{ mix-blend-mode:multiply; opacity:.4; }
 /* Деньги — гилт-монеты */
 .sv4-money-cell, .money-cell{ border-color:var(--gold-dk); background:linear-gradient(180deg,var(--panel3),var(--panel2)); }
 .sv4-money-cell.gold, .money-cell.gold{ border-color:var(--gold); }
-.sv4-m-l, .money-cell-label{ color:var(--gold); letter-spacing:.08em; }
-.sv4-money-cell.gold .sv4-m-l, .money-cell.gold .money-cell-label{ color:var(--gold2); }
+.sv4-m-l { color:var(--gold); letter-spacing:.08em; }
+.sv4-money-cell.gold .sv4-m-l { color:var(--gold2); }
 .sv4-m-input, .money-cell input{ color:var(--gold2); font-family:'Cinzel',serif !important; }
 
 /* Броня / снаряжение зоны */
@@ -547,12 +529,8 @@ body.theme-light .sv4-hero::before{ mix-blend-mode:multiply; opacity:.4; }
 /* Карточка XP на бланке */
 .sv4-xp-card{ border-color:var(--gold-dim); background:linear-gradient(160deg, rgba(226,164,66,.1), var(--panel) 70%); box-shadow:inset 0 0 0 1px rgba(194,161,76,.08); }
 .sv4-xp-big{ color:var(--gold2); }
-.sv4-xp-cap, .sv4-xp-meta{ color:var(--text3); }
-.sv4-xp-meta b{ color:var(--gold2); }
-
+.sv4-xp-cap { color:var(--text3); }
 /* Карточка состояния листа: панель печатей дела (gm-*) — тёплый кант */
-.gm-wrap{ border-color:var(--gold-dk); background:linear-gradient(180deg,#16100a,#0e0a06); box-shadow:inset 0 0 0 1px rgba(194,161,76,.08), 0 3px 10px rgba(0,0,0,.4); }
-.gm-h{ color:var(--gold2); letter-spacing:.14em; }
 
 /* Полоса прокрутки */
 ::-webkit-scrollbar-thumb{ background:var(--gold-dk); }
@@ -561,7 +539,7 @@ body.theme-light .sv4-hero::before{ mix-blend-mode:multiply; opacity:.4; }
 /* ─── 10. ТОЧЕЧНЫЕ ПРАВКИ СВЕТЛОЙ ТЕМЫ ───────────────────────────── */
 body.theme-light .sv4-hp-input{ text-shadow:none; }
 body.theme-light .title-main{ text-shadow:0 1px 0 rgba(255,240,200,.5); }
-body.theme-light .arch-stamp, body.theme-light .classif-stamp, body.theme-light .sv4-hero::before{ opacity:.7; }
+body.theme-light .classif-stamp, body.theme-light .sv4-hero::before { opacity:.7; }
 
 /* ─── 11. ДОВОДКА: запас прочности типографики на узких экранах ──── */
 @media (max-width:560px){
@@ -640,10 +618,7 @@ body.theme-light .arch-stamp, body.theme-light .classif-stamp, body.theme-light 
 .sv4-page{ padding:8px 10px 94px !important; }
 
 /* ── ЕДИНАЯ ячейка/секция досье: одинаковые рамка · фон · радиус · тень ── */
-.sv4-stat, .sv4-vit, .sv4-combat-card, .sv4-info, .sv4-az,
-.sv4-block, .sv4-block.gold-bordered, .sv4-xp-card, .sv4-skills, .sv4-tier-badge,
-.sv4-quick-talents, .sv4-weapon, .sv4-tal-full, .sv4-armor-item, .sv4-trap-item,
-.sv4-cond, .sv4-money-cell, .gm-wrap{
+.sv4-stat, .sv4-vit, .sv4-combat-card, .sv4-info, .sv4-az, .sv4-block, .sv4-block.gold-bordered, .sv4-xp-card, .sv4-skills, .sv4-tier-badge, .sv4-quick-talents, .sv4-weapon, .sv4-tal-full, .sv4-armor-item, .sv4-trap-item, .sv4-cond, .sv4-money-cell {
   border:1px solid var(--gold-dk) !important;
   border-radius:2px !important;
   background:
@@ -688,18 +663,11 @@ body.theme-light .arch-stamp, body.theme-light .classif-stamp, body.theme-light 
 .sv4-skills, .sv4-block{ margin-bottom:8px !important; }
 .sv4-quick-talents{ margin-top:8px !important; margin-bottom:0 !important; }
 
-/* ── ПЕЧАТИ ДЕЛА: единая секция как все, штампы видно НА странице ── */
-.gm-wrap{ display:flex !important; flex-direction:column; gap:10px; padding:11px 12px !important; }
-.gm-wrap .gm-h{
-  order:0; margin:0 !important;
-  font-family:'Cinzel',serif !important; color:var(--gold2) !important;
-  font-size:12px !important; letter-spacing:.16em !important; text-transform:uppercase !important;
-  border-bottom:1px solid var(--gold-dk); padding-bottom:8px;
-}
-.gm-wrap .gm-seals{ order:1; margin:0 !important; display:flex !important; flex-wrap:wrap; gap:9px; }
-.gm-wrap .gm-seals:empty{ display:none !important; }
-.gm-empty{ display:none !important; }                  /* «отметок нет» не показываем */
-.gm-wrap .gm-ctrls{ order:2; margin:0 !important; padding-top:9px; border-top:1px dashed var(--gold-dk); gap:9px 14px !important; }
+/* ── ПЕЧАТИ ДЕЛА: единая секция как все { display:flex !important; flex-direction:column; gap:10px; padding:11px 12px !important; }
+
+
+
+
 .gm-stamp{ transform:rotate(-3deg); }
 .gm-stamp b{ font-size:13px; }
 /* ══════════════════════════════════════════════════════════════════

@@ -1057,19 +1057,6 @@ function _editSchemeApply(ans){
   if(typeof autosave==='function') autosave();
 }
 
-function setCareerStatAdv(s, v){
-  const n = parseInt(v, 10);
-  if(isNaN(n) || n < 0) delete state.careerStatAdv[s];
-  else state.careerStatAdv[s] = n;
-  updateCareerStatSum();
-}
-
-function updateCareerStatSum(){
-  const sum = Object.values(state.careerStatAdv).reduce((a,b)=>a+b, 0);
-  const el = document.getElementById('career-stat-sum');
-  if(el) el.textContent = `Распределено шагов: ${sum} / 5 ${sum > 5 ? 'слишком много' : ''}`;
-}
-
 // ===================== STEP 4 : FATE =====================
 function renderFateArea(){
   const el = document.getElementById('fate-area');
@@ -2533,26 +2520,6 @@ function byId(id){ return document.getElementById(id); }
 // === Вкладка «Ещё»: сетка разделов дела + системные действия ===
 
 // === «Лист дела»: фактура бумаги, кляксы порчи, прожог при смерти ===
-function ordoLeafOverlays(){
-  const cor = (state.sheet && state.sheet.corruption) || 0;
-  const n = Math.min(cor, 9);
-  // детерминированные позиции клякс (без дрожания при перерисовке)
-  let blots = '';
-  for(let k=0;k<n;k++){
-    const cx = 8 + ((k*137+41) % 84);   // 8..92 %
-    const cy = 10 + ((k*89+23) % 78);   // 10..88 %
-    const rr = 4 + (k*53 % 8);
-    blots += `<ellipse cx="${cx}%" cy="${cy}%" rx="${rr}" ry="${Math.max(3,rr-2)}" transform="rotate(${(k*47)%40-20} ${cx} ${cy})"/>`;
-    if(k%2===0) blots += `<circle cx="${Math.min(94,cx+3)}%" cy="${Math.max(4,cy-3)}%" r="${1.5+(k%3)}"/>`;
-  }
-  const dead = state.sheet && state.sheet.gmDead;
-  return `<span class="leaf-grain" aria-hidden="true"></span>
-    <span class="leaf-vign" aria-hidden="true"></span>
-    ${n?`<svg class="leaf-blots" aria-hidden="true" preserveAspectRatio="none"><g fill="#1a1208" opacity="${Math.min(.28+cor*.05,.6)}" filter="url(#inkRough)">${blots}</g></svg>`:''}
-    <span class="ordo-note" aria-hidden="true" style="right:10px;top:8px;">пров.&nbsp;✓</span>
-    ${cor>0?`<span class="ordo-note red" aria-hidden="true" style="right:14px;bottom:22px;">!&nbsp;надзор</span>`:''}
-    ${dead?`<span class="leaf-burn" aria-hidden="true"></span>`:''}`;
-}
 
 function renderTabMore(){
   const tile = (fn, icon, label, sub) =>
@@ -2591,11 +2558,6 @@ function renderTabMore(){
   return h;
 }
 
-function sv4NavToggle(){
-  const n = byId('sv4-nav'), b = byId('sv4-nav-bd');
-  if(n) n.classList.toggle('open');
-  if(b) b.classList.toggle('open');
-}
 function sv4NavClose(){
   const n = byId('sv4-nav'), b = byId('sv4-nav-bd');
   if(n) n.classList.remove('open');

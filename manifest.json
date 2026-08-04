@@ -1,6 +1,6 @@
 {
-  "name": "WFRP 4 — Досье Ордо",
-  "short_name": "WFRP4",
+  "name": "Досье Ордо",
+  "short_name": "Досье Ордо",
   "description": "Создание и ведение персонажа Warhammer Fantasy Roleplay 4 (рус.)",
   "start_url": "./index.html",
   "scope": "./",

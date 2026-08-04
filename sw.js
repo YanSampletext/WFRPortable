@@ -1,5 +1,5 @@
-// WFRP4 Dossier — service worker (cache-first для оффлайна)
-const CACHE = 'wfrp4-v17';
+// Досье Ордо — service worker (cache-first для оффлайна)
+const CACHE = 'ordo-v18';
 const ASSETS = [
   './', './index.html', './manifest.json',
   './css/fonts.css',
