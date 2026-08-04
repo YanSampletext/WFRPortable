@@ -657,6 +657,95 @@ await check('ключи хранения не переименованы', () =>
   return !!localStorage.getItem('wfrp4_roster_v1') && src.length > 0;
 }));
 
+// ── правки бланка доходят до хранилища ──────────────────────────────────────
+// renderTabHealth перерисовывает вкладку, но не сохраняет: пока увечья и
+// болезни полагались на него, они жили только в памяти до первого renderSheet.
+await check('увечье записывается сразу', () => ev(() => {
+  state.sheet.injuries = []; autosave();
+  sv4NavGo('health');
+  const inp = document.getElementById('inj-input');
+  if (!inp) return 'поля увечья нет на вкладке';
+  inp.value = 'Сломана рука';
+  sv2AddInjury();
+  const saved = JSON.parse(localStorage.getItem('wfrp4_roster_v1') || '[]')
+    .find(x => x.id === state.id);
+  return !!saved && (saved.sheet.injuries || []).length === 1;
+}));
+
+await check('снятое увечье тоже записывается', () => ev(() => {
+  sv2RemInjury(0);
+  const saved = JSON.parse(localStorage.getItem('wfrp4_roster_v1') || '[]')
+    .find(x => x.id === state.id);
+  return !!saved && (saved.sheet.injuries || []).length === 0;
+}));
+
+await check('болезнь записывается сразу', () => ev(() => {
+  state.sheet.diseases = []; autosave();
+  sv4NavGo('health');
+  const inp = document.getElementById('dis-input');
+  if (!inp) return 'поля болезни нет на вкладке';
+  inp.value = 'Гнойная рана';
+  sv2AddDisease();
+  const saved = JSON.parse(localStorage.getItem('wfrp4_roster_v1') || '[]')
+    .find(x => x.id === state.id);
+  const ok = !!saved && (saved.sheet.diseases || []).length === 1;
+  sv2RemDisease(0);
+  return ok;
+}));
+
+await check('переполнение памяти не выдаётся за сохранение', () => ev(() => {
+  const orig = localStorage.setItem.bind(localStorage);
+  let told = '';
+  const origNotify = window.notify;
+  window.notify = t => { told += t; };
+  localStorage.setItem = () => { const e = new Error('full'); e.name = 'QuotaExceededError'; throw e; };
+  const ok = saveRoster([{ id: 'x' }]);
+  localStorage.setItem = orig;
+  window.notify = origNotify;
+  return ok === false && /переполнена/.test(told);
+}));
+
+// ── враждебные имена в разметке ─────────────────────────────────────────────
+// Импорт может принести имя с переносом строки, апострофом или слэшем. Пока
+// имена вклеивались прямо в onclick, перенос рвал обработчик целиком.
+await check('имя с переносом строки не ломает бланк', () => ev(() => {
+  state.sheet.extraSkills = [{ name: 'Навык с\nпереносом', adv: 5 }];
+  sv4NavGo('skills');
+  const cell = [...document.querySelectorAll('[data-call="roll"]')]
+    .find(c => c.dataset.v.indexOf('\n') >= 0);
+  if (!cell) return 'навык не отрисовался';
+  state.sheet.rollLog = [];
+  cell.click();
+  const m = document.getElementById('roll-modal');
+  if (m) m.classList.remove('show');
+  const r = state.sheet.rollLog[0];
+  return !!r && r.name === 'Навык с\nпереносом';
+}));
+
+await check('апостроф, кавычки и слэш доходят целыми', () => ev(() => {
+  const names = ["О'кей", 'Кавычки "тут"', 'Слэш\\сюда', 'Тир & Ко'];
+  state.sheet.extraSkills = names.map(n => ({ name: n, adv: 3 }));
+  sv4NavGo('skills');
+  const got = [...document.querySelectorAll('[data-call="roll"]')].map(c => c.dataset.v);
+  return names.every(n => got.indexOf(n) >= 0);
+}));
+
+await check('в разметке не осталось имён внутри onclick', () => ev(() => {
+  // Признак старой схемы: одинарная кавычка внутри onclick вокруг текста
+  const bad = [...document.querySelectorAll('.sv4-page [onclick]')]
+    .map(el => el.getAttribute('onclick'))
+    .filter(a => /'[^']*[А-Яа-я][^']*'/.test(a));
+  return bad.length === 0;
+}));
+
+await check('урон оружия считается без динамического кода', () => ev(() => {
+  const ok = calcWeaponDamage('+РС+4', 4) === 8
+          && calcWeaponDamage('+7', 0) === 7
+          && calcWeaponDamage('особый', 4) === null
+          && calcWeaponDamage('alert(1)', 4) === null;
+  return ok && !/Function\s*\(/.test(String(calcWeaponDamage));
+}));
+
 // ── ярлыки с иконки (shortcuts.js) ──────────────────────────────────────────
 await check('ярлык «кубы» открывает журнал бросков', () => ev(() => {
   appMode = 'character';

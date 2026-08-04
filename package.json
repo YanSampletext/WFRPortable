@@ -10,6 +10,8 @@
   "license": "ISC",
   "scripts": {
     "build": "node scripts/build-www.mjs",
+    "audit": "node scripts/audit.mjs",
+    "check": "node scripts/audit.mjs && node scripts/check-features.mjs && node scripts/check-app.mjs",
     "sync": "npm run build && cap sync android",
     "apk": "npm run sync && node scripts/gradle.mjs assembleRelease",
     "aab": "npm run sync && node scripts/gradle.mjs bundleRelease"

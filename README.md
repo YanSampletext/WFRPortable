@@ -28,7 +28,8 @@
 ```
 index.html      каркас
 css/            base, reskin (грим-тема), marks (печати), ui-fixes
-js/app.js       ядро: данные, мастер, бланк, магазин
+js/data.js      справочник: народы, карьеры, таланты, каталоги оружия и брони
+js/app.js       ядро: мастер, бланк, магазин (подключается ПОСЛЕ data.js)
 js/schemes.js   схемы развития карьер
 js/crit.js      критические раны
 js/diseases.js  болезни
@@ -44,6 +45,8 @@ js/encounter.js трекер схватки (свой ключ wfrp4_encounter_v
 js/archive.js   карточки досье, поиск, сортировка
 js/shell.js     верхняя панель, меню, шаги
 js/dialogs.js   диалоги в стиле приложения
+js/ad-slot.js   место под баннер
+js/fab-scroll.js регулятор здоровья прячется при прокрутке
 js/storage-native.js  дублирование персонажей в хранилище приложения
 manifest.json   PWA
 sw.js           service worker (офлайн-кэш)
@@ -61,9 +64,11 @@ android/        Android-проект Capacitor (см. BUILD-ANDROID.md)
 (`npx http-server . -p 8099 -s &`):
 
 ```
+npm run check                    все три прогона подряд
 node scripts/audit.mjs           статика: мёртвый код, потерянные обработчики,
                                  целостность кеша sw.js и комментариев в CSS
-node scripts/check-features.mjs  51 проверка живых функций всех модулей
+                                 (этот идёт и в CI — браузера не требует)
+node scripts/check-features.mjs  87 проверок живых функций всех модулей
 node scripts/check-app.mjs       обход всех вкладок, шагов и пунктов меню,
                                  контраст светлой темы и зоны нажатия
 node scripts/check-apk.mjs f.apk что уцелело после сжатия R8: мост WebView,

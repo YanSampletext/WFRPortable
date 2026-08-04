@@ -58,6 +58,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Статический аудит: потерянные обработчики, мёртвые объявления,
+      # неиспользуемые селекторы, целостность комментариев в CSS и совпадение
+      # подключённого в странице со списком в service worker. Браузера не
+      # требует и идёт секунду, поэтому стоит до сборки: незачем собирать APK
+      # из заведомо сломанного кода. Прогоны в Chromium остаются локальными —
+      # тащить Playwright в каждый запуск дороже, чем он тут стоит.
+      - name: Audit sources
+        run: node scripts/audit.mjs
+
       - name: Build web bundle and sync Android project
         run: npm run sync
 
@@ -89,6 +98,10 @@ jobs:
           cp "$SRC" "$DEST"
           echo "path=$DEST" >> "$GITHUB_OUTPUT"
           echo "Собрано: $DEST ($(du -h "$DEST" | cut -f1))"
+
+      # Что уцелело после сжатия R8: мост WebView, плагины, ярлыки, сайт внутри
+      - name: Check the built APK
+        run: node scripts/check-apk.mjs "${{ steps.apk.outputs.path }}"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
