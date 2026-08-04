@@ -5,7 +5,7 @@
 //
 //   node scripts/check-apk.mjs путь/к/файлу.apk
 import { execFileSync } from 'node:child_process';
-import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { readFileSync, readdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -73,6 +73,32 @@ console.log('\n── мост, который зовут строкой ──'
 say(dex.includes('Lcom/getcapacitor/MessageHandler;'), 'MessageHandler — приёмник сообщений из JS');
 say(dex.includes('postMessage'), 'postMessage — метод, который зовёт androidBridge');
 say(dex.includes('nativeCallback'), 'nativeCallback — ответ из Java в JS');
+
+// Ярлыки с иконки: shrinkResources переименовывает res/xml/shortcuts.xml во
+// что-то вроде res/Eq.xml, а строки в манифесте лежат в UTF-16 — искать их
+// обычным поиском по UTF-8 бесполезно, находится пустота при живых ярлыках.
+console.log('\n── ярлыки с иконки ──');
+{
+  const manifest = (() => {
+    try {
+      execFileSync('unzip', ['-o', '-q', apk, 'AndroidManifest.xml', 'res/*.xml', 'resources.arsc', '-d', dir]);
+      return readFileSync(join(dir, 'AndroidManifest.xml'));
+    } catch (e) { return Buffer.alloc(0); }
+  })();
+  const inManifest = manifest.includes(Buffer.from('android.app.shortcuts', 'utf16le'));
+  say(inManifest, 'манифест объявляет ярлыки');
+
+  let found = '';
+  try {
+    for (const f of readdirSync(join(dir, 'res'))) {
+      if (!f.endsWith('.xml')) continue;
+      const b = readFileSync(join(dir, 'res', f));
+      if (b.includes(Buffer.from('ordo_go', 'utf16le')) || b.includes('ordo_go')) { found = f; break; }
+    }
+  } catch (e) {}
+  say(!!found, 'описание ярлыков уцелело' + (found ? ' (res/' + found + ')' : ''));
+  say(dex.includes('ordo_go'), 'MainActivity читает ordo_go из намерения');
+}
 
 // Если R8 не отработал, dex останется прежним — а это тихая потеря 5 МБ.
 console.log('\n── сжатие ──');
