@@ -1,10 +1,10 @@
 // Досье Ордо — service worker (cache-first для оффлайна)
-const CACHE = 'ordo-v18';
+const CACHE = 'ordo-v19';
 const ASSETS = [
   './', './index.html', './manifest.json',
   './css/fonts.css',
   './css/base.css','./css/reskin.css','./css/marks.css','./css/ui-fixes.css',
-  './js/storage-native.js','./js/dialogs.js','./js/app.js','./js/marks.js','./js/health.js','./js/collapse.js','./js/crit.js','./js/schemes.js','./js/diseases.js','./js/psych.js','./js/spells.js',
+  './js/storage-native.js','./js/dialogs.js','./js/app.js','./js/marks.js','./js/health.js','./js/collapse.js','./js/crit.js','./js/schemes.js','./js/diseases.js','./js/psych.js','./js/spells.js','./js/back-nav.js',
   './icons/icon-192.png','./icons/icon-512.png'
 ];
 self.addEventListener('install', e => {

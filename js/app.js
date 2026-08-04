@@ -2567,6 +2567,8 @@ function sv4NavGo(tabId){
   _sheetTab = tabId;
   sv4NavClose();
   renderSheet();
+  if(typeof navEnter === 'function') navEnter('tab', tabId);
+  if(typeof navGoingBack === 'function' && navGoingBack()) return;
   setTimeout(() => window.scrollTo({ top: 0, behavior: 'instant' }), 10);
 }
 function sv4DoAction(action){
@@ -4986,7 +4988,9 @@ function goStep(n){
   }
   if(n === 9) renderShop();
   updateLockedButtons();
-  window.scrollTo(0, 0);
+  if(typeof navEnter === 'function') navEnter('step', n);
+  // при возврате по кнопке «назад» позицию восстанавливает back-nav.js
+  if(!(typeof navGoingBack === 'function' && navGoingBack())) window.scrollTo(0, 0);
 }
 
 // ===================== LANDING =====================
@@ -5017,6 +5021,7 @@ function goHome(){
   appMode = 'landing';
   renderLandingChars();
   showRandomEpigraph();
+  if(typeof navEnter === 'function') navEnter('home', '');
 }
 
 // === Переключение темы (тёмная / тёплый пергамент) ===
