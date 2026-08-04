@@ -2028,3 +2028,17 @@ body.has-ad .sv4-bottom-nav{ bottom: var(--ad-h); }
 .sv4-fab-hp{ transition: transform .18s ease, opacity .18s ease; }
 .sv4-fab-hp.tucked{ transform: translateX(calc(100% + 12px)); opacity: 0; pointer-events: none; }
 @media (prefers-reduced-motion: reduce){ .sv4-fab-hp{ transition: none; } }
+/* Преимущество в боевой сводке: счётчик с кнопками прямо на бланке */
+.sv4-combat-card.adv{ cursor: default; }
+.sv4-adv-row{ display: flex; align-items: center; justify-content: center; gap: var(--sp-2); margin: 2px 0; }
+.sv4-adv-btn{
+  width: 44px; height: 44px; flex: 0 0 auto; border-radius: 8px; cursor: pointer;
+  background: rgba(0,0,0,.28); border: 1px solid var(--gold-dk);
+  color: var(--gold2); font-size: var(--fs-xl); line-height: 1;
+}
+.sv4-adv-btn:active{ background: rgba(201,162,39,.16); }
+.sv4-combat-card.adv .sv4-c-v{ min-width: 34px; text-align: center; }
+.sv4-adv-reset{
+  background: none; border: none; padding: 0; cursor: pointer;
+  color: var(--gold2); font: inherit; text-decoration: underline dotted;
+}

@@ -2371,15 +2371,18 @@ function sv2CondDelta(name, delta){
 // Преимущество (боевой счётчик) — лёгкое обновление без полной перерисовки
 function sv2AdvDelta(delta){
   state.sheet.advantage = Math.max(0, (state.sheet.advantage||0)+delta);
-  const el = document.getElementById('sv4-adv-val');
-  if(el) el.textContent = state.sheet.advantage;
+  sv2AdvSync();
   autosave();
 }
 function sv2AdvReset(){
   state.sheet.advantage = 0;
-  const el = document.getElementById('sv4-adv-val');
-  if(el) el.textContent = 0;
+  sv2AdvSync();
   autosave();
+}
+// Счётчик виден и на бланке, и на вкладке здоровья — обновляем оба места
+function sv2AdvSync(){
+  const v = state.sheet.advantage || 0;
+  document.querySelectorAll('[data-adv-val], #sv4-adv-val').forEach(el => { el.textContent = v; });
 }
 
 // Увечия / болезни / мутации (теперь без полной перерисовки)
@@ -2750,6 +2753,15 @@ function renderTabPersona(){
       <div class="sv4-c-icon">${ICONS.boot}</div>
       <div class="sv4-c-v">${calc.move}</div>
       <div class="sv4-c-sub">шаг ${calc.move*2} · бег ${calc.move*4}</div>
+    </div>
+    <div class="sv4-combat-card adv">
+      <div class="sv4-c-l">ПРЕИМУЩЕСТВО</div>
+      <div class="sv4-adv-row">
+        <button class="sv4-adv-btn" onclick="event.stopPropagation();sv2AdvDelta(-1)" aria-label="Убрать пункт">−</button>
+        <b class="sv4-c-v" data-adv-val>${state.sheet.advantage||0}</b>
+        <button class="sv4-adv-btn" onclick="event.stopPropagation();sv2AdvDelta(1)" aria-label="Добавить пункт">+</button>
+      </div>
+      <div class="sv4-c-sub">+10 к бою за пункт · <button class="sv4-adv-reset" onclick="event.stopPropagation();sv2AdvReset()">сброс</button></div>
     </div>
   </div>`;
 
@@ -3134,7 +3146,7 @@ function renderTabHealthInner(){
     <div class="sv4-block-title">Преимущество</div>
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
       <button class="sv4-cond-btn" style="font-size:20px;" onclick="sv2AdvDelta(-1)">−</button>
-      <b id="sv4-adv-val" style="font-family:'Cinzel',serif;font-size:30px;color:var(--gold2);min-width:32px;text-align:center;">${state.sheet.advantage||0}</b>
+      <b id="sv4-adv-val" data-adv-val style="font-family:'Cinzel',serif;font-size:30px;color:var(--gold2);min-width:32px;text-align:center;">${state.sheet.advantage||0}</b>
       <button class="sv4-cond-btn" style="font-size:20px;" onclick="sv2AdvDelta(1)">+</button>
       <button class="sv4-btn-mini" style="margin-left:auto;" onclick="sv2AdvReset()" title="Сбросить (конец боя, провал и т.п.)">Сброс</button>
     </div>
