@@ -32,5 +32,7 @@
 
     <!-- Permissions -->
 
+    <!-- Требуется движку WebView, на котором построено приложение.
+         Наружу оно не ходит: весь код и шрифты лежат внутри пакета. -->
     <uses-permission android:name="android.permission.INTERNET" />
 </manifest>

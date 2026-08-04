@@ -1,4 +1,4 @@
-package com.yansampletext.wfrp4;
+package ru.yansampletext.ordo;
 
 import android.os.Bundle;
 import android.view.View;

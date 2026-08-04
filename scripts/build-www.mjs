@@ -21,7 +21,7 @@ const out = join(root, arg('out', 'www'));
 // файлы и так локальные, а его кеш пережил бы обновление приложения и
 // продолжил отдавать старую вёрстку.
 const ITEMS = ['index.html', 'manifest.json', 'css', 'js', 'fonts', 'icons']
-  .concat(target === 'web' ? ['sw.js'] : []);
+  .concat(target === 'web' ? ['sw.js', 'privacy.html'] : []);
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });

@@ -9,16 +9,15 @@ if (keystorePropsFile.exists()) {
 }
 
 android {
-    namespace = "com.yansampletext.wfrp4"
+    namespace = "ru.yansampletext.ordo"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.yansampletext.wfrp4"
+        applicationId "ru.yansampletext.ordo"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Растёт с каждым выпуском, иначе Android не поставит обновление
-        versionCode 7
-        versionName "1.2.1"
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        versionCode 8
+        versionName "1.2.2"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
@@ -64,9 +63,6 @@ dependencies {
     // WindowInsetsCompat — системные отступы под часы, вырез камеры и панель жестов
     implementation "androidx.core:core:$androidxCoreVersion"
     implementation project(':capacitor-android')
-    testImplementation "junit:junit:$junitVersion"
-    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
-    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
 }
 
