@@ -2046,3 +2046,64 @@ body.has-ad .sv4-bottom-nav{ bottom: var(--ad-h); }
   background: none; border: none; padding: 0; cursor: pointer;
   color: var(--gold2); font: inherit; text-decoration: underline dotted;
 }
+
+/* ════════════════════════════════════════════════════
+   ЛОТОК КУБОВ
+════════════════════════════════════════════════════ */
+/* ровная сетка 3×2: при flex-wrap последний ряд растягивался вдвое */
+.dice-quick-row{ display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-2); margin-bottom: var(--sp-3); }
+.dice-quick{ min-height: 48px; font-family: 'Cinzel', serif; font-size: var(--fs-sm);
+  text-transform: none; }  /* «1d10», а не «1D10»: запись броска пишется строчной */
+.dice-free{ display: flex; gap: var(--sp-2); }
+.dice-free input{ flex: 1 1 auto; min-width: 0; text-align: center;
+  font-family: 'Cinzel', serif; font-size: var(--fs-md); }
+.dice-free .sv4-btn-mini{ flex: 0 0 auto; }
+.dice-hint{ font-size: var(--fs-xs); margin-top: var(--sp-2); }
+
+/* ════════════════════════════════════════════════════
+   СХВАТКА: очередь, раны, преимущество
+════════════════════════════════════════════════════ */
+/* «Следующий ход» — главное действие, ему целая строка; остальное поровну */
+.enc-tools{ display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-2); margin-bottom: var(--sp-3); }
+.enc-tools .sv4-btn-mini{ min-height: 48px; }
+.enc-tools .enc-next{ grid-column: 1 / -1; }
+.enc-list{ display: flex; flex-direction: column; gap: var(--sp-2); }
+.enc-empty{ font-size: var(--fs-sm); padding: var(--sp-3) 0; }
+/* Имя и кнопки в две строки: в один ряд четыре кнопки по 44px не оставляли
+   имени места — «Разбойник с длинным именем» ужимался до «Разбойни…» */
+.enc-row{
+  display: grid; grid-template-columns: auto 1fr;
+  align-items: center; column-gap: var(--sp-3); row-gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--border); border-radius: 6px;
+  background: rgba(0,0,0,.18);
+}
+.enc-row.now{ border-color: var(--gold2); background: rgba(201,162,39,.1); }
+.enc-row.down{ opacity: .5; }
+.enc-init{
+  grid-row: 1 / span 2; min-width: 34px; text-align: center;
+  font-family: 'Cinzel', serif; font-size: var(--fs-lg); color: var(--gold2);
+}
+.enc-main{ grid-column: 2; min-width: 0; }
+.enc-name{ font-family: 'Cinzel', serif; font-size: var(--fs-sm); color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.enc-tag{ font-size: var(--fs-xs); color: var(--gold2); letter-spacing: .1em; text-transform: uppercase; }
+.enc-hp-bar{ height: 3px; margin: 3px 0; background: rgba(0,0,0,.4); border-radius: 2px; overflow: hidden; }
+.enc-hp-bar i{ display: block; height: 100%; background: linear-gradient(90deg, var(--blood2), var(--gold2)); }
+.enc-sub{ font-size: var(--fs-xs); color: var(--text3); }
+.enc-btns{ grid-column: 2; display: flex; gap: var(--sp-1); }
+.enc-b{
+  flex: 1 1 44px; max-width: 88px;
+  height: 44px; border-radius: 6px; cursor: pointer;
+  background: rgba(0,0,0,.28); border: 1px solid var(--border2);
+  color: var(--text2); font-size: var(--fs-md); line-height: 1;
+}
+.enc-b:active{ background: rgba(201,162,39,.16); }
+.enc-b.adv{ color: var(--gold2); }
+.enc-b.del{ color: var(--blood2); }
+.enc-form-row{ display: flex; gap: var(--sp-2); }
+.enc-form-row .ordo-dlg-input{ flex: 1 1 0; min-width: 0; }
+body.theme-light .enc-row{ background: rgba(125,95,36,.07); }
+body.theme-light .enc-b{ background: rgba(125,95,36,.09); }

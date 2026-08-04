@@ -1988,7 +1988,7 @@ const SHEET_TABS = [
   { id: 'stats',   label: 'Статы',    icon: 'dice' },
   { id: 'fate',    label: 'Судьба',   icon: 'compass' },
   { id: 'health',  label: 'Здоровье', icon: 'heart' },
-  { id: 'crit',    label: 'Критические раны', icon: 'heart' },
+  { id: 'crit',    label: 'Схватка и раны', icon: 'heart' },
   { id: 'skills',  label: 'Навыки',   icon: 'target' },
   { id: 'magic',   label: 'Магия / Вера', icon: 'scroll' },
   { id: 'downtime', label: 'Между приключениями', icon: 'compass' },
@@ -2262,7 +2262,8 @@ function rollLogClear(){
   renderSheet();
 }
 function renderTabRollLog(){
-  return `<div class="sv4-block">
+  const tray = (typeof diceTrayHtml === 'function') ? diceTrayHtml() : '';
+  return tray + `<div class="sv4-block">
     <div class="sv4-block-title">🎲 Журнал бросков</div>
     <p class="muted" style="font-size:11px;">Последние 30 проверок d100. Сбрасывается кнопкой ниже.</p>
     <div class="sv4-row" style="gap:8px;margin:8px 0;flex-wrap:wrap;">
@@ -2664,7 +2665,7 @@ function renderTabContent(tab){
     case 'stats':    return renderTabStats();
     case 'fate':     return renderTabFate();
     case 'health':   return renderTabHealthInner();
-    case 'crit':     return renderTabCrit();
+    case 'crit':     return (typeof encounterHtml === 'function' ? encounterHtml() : '') + renderTabCrit();
     case 'more':     return renderTabMore();
     case 'skills':   return renderTabSkills();
     case 'magic':    return renderTabArcane();
