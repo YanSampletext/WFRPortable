@@ -42,8 +42,10 @@ for (const t of tabs) {
         if (dup[el.id]) dupes.push(el.id); else dup[el.id] = 1;
       });
       // настоящее переполнение — только если ни один предок не прокручивает и не обрезает
+      // Доходим до самого html: обрезка объявлена на body (декоративный череп
+      // нарочно свисает за край), и остановка на нём давала ложную тревогу.
       const scrolls = el => {
-        for (let n = el.parentElement; n && n !== document.body; n = n.parentElement) {
+        for (let n = el.parentElement; n; n = n.parentElement) {
           const o = getComputedStyle(n).overflowX;
           if (o === 'auto' || o === 'scroll' || o === 'hidden' || o === 'clip') return true;
         }

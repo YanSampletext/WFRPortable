@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Ярлыки по долгому нажатию на иконку. Каждый несёт в намерении строку
+  ordo_go — MainActivity передаёт её странице, а та открывает нужный экран.
+  Если передать не успеет, приложение просто откроется как обычно.
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <shortcut
+        android:shortcutId="dice"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_dice_short"
+        android:shortcutLongLabel="@string/shortcut_dice_long">
+        <intent
+            android:action="android.intent.action.MAIN"
+            android:targetPackage="ru.yansampletext.ordo"
+            android:targetClass="ru.yansampletext.ordo.MainActivity">
+            <extra android:name="ordo_go" android:value="dice" />
+        </intent>
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="fight"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_fight_short"
+        android:shortcutLongLabel="@string/shortcut_fight_long">
+        <intent
+            android:action="android.intent.action.MAIN"
+            android:targetPackage="ru.yansampletext.ordo"
+            android:targetClass="ru.yansampletext.ordo.MainActivity">
+            <extra android:name="ordo_go" android:value="fight" />
+        </intent>
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="archive"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_archive_short"
+        android:shortcutLongLabel="@string/shortcut_archive_long">
+        <intent
+            android:action="android.intent.action.MAIN"
+            android:targetPackage="ru.yansampletext.ordo"
+            android:targetClass="ru.yansampletext.ordo.MainActivity">
+            <extra android:name="ordo_go" android:value="archive" />
+        </intent>
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+</shortcuts>

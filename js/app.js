@@ -2785,7 +2785,7 @@ function renderTabPersona(){
   if((state.sheet.weapons||[]).length){
     h += `<div class="sv4-section-title"><span class="ic">${ICONS.sword}</span> Оружие в руке</div>`;
     h += `<div class="sv4-weapons">`;
-    state.sheet.weapons.forEach(w => {
+    state.sheet.weapons.forEach((w, wi) => {
       const dmgFormula = w.damage || '—';
       const rs = Math.floor((totals['С']||0)/10);
       let dmgComputed = dmgFormula;
@@ -2799,6 +2799,7 @@ function renderTabPersona(){
           ${w.range?`<span><b>Дист:</b> ${escHtml(w.range)}</span>`:''}
           ${w.qualities?`<span><b>Кач:</b> ${escHtml(w.qualities)}</span>`:''}
         </div>
+        <button class="sv4-btn-mini btn-gold sv4-w-atk" data-atk="${wi}">Атаковать</button>
       </div>`;
     });
     h += `</div>`;
@@ -4114,6 +4115,12 @@ function renderShop(){
     <div class="ordo-xp static"><b>${avail}</b><span>XP доступно</span></div>
   </div>`;
 
+  // Промах по кнопке замечают сразу — держим один шаг назад под рукой
+  if(typeof xpUndoButtonHtml === 'function'){
+    const undo = xpUndoButtonHtml();
+    if(undo) html += `<div class="xp-undo-row">${undo}</div>`;
+  }
+
   // Тулбар (без дублей навигации)
   html += `<div class="sheet-toolbar" style="margin-bottom:10px;">
     ${inRoster
@@ -4549,6 +4556,10 @@ function cartApply(){
       if(exE) exE.level = (exE.level||1) + 1; else state.sheet.extraTalents.push({ name: it.name, level: 1, hint });
     }
   });
+  // Снимок для отмены — до того, как корзина опустеет
+  if(typeof xpRemember === 'function'){
+    xpRemember({ kind:'cart', cost: total, items: JSON.parse(JSON.stringify(cart)) });
+  }
   state.sheet.spentXP = (state.sheet.spentXP||0) + total;
   state.sheet._cart = [];
   notify(`Принято! Потрачено ${total} XP.`);
@@ -4582,6 +4593,13 @@ function changeCareer(mode, cost){
     toTier = 1;
   }
 
+  // Снимок для отмены — пока карьера ещё прежняя
+  if(typeof xpRemember === 'function'){
+    xpRemember({ kind:'career', cost, career: state.career, cls: state.cls,
+                 tier: state.sheet.tier, tier1Done: state.sheet.careerTier1Done,
+                 override: state.sheet.tierCompleteOverride,
+                 toName: `${toCareer} · ${toTier}` });
+  }
   state.sheet.spentXP = (state.sheet.spentXP || 0) + cost;
   state.career = toCareer;
   state.sheet.tier = toTier;

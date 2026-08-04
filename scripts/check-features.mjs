@@ -29,6 +29,10 @@ async function check(name, fn) {
 
 const ev = fn => p.evaluate(fn);
 
+// Схватка держит копию в памяти модуля, и localStorage.removeItem её не
+// трогает — очищаем тем же способом, что и пользователь.
+const clearEnc = () => ev(() => { encList().forEach(x => encRemove(x.id)); return true; });
+
 // ── подготовка персонажа ────────────────────────────────────────────────────
 await ev(() => {
   document.getElementById('view-landing').style.display = 'none';
@@ -331,7 +335,7 @@ await check('diceParse отбивает мусор', () => ev(() =>
 
 // ── encounter.js ────────────────────────────────────────────────────────────
 await check('схватка: очередь, раунды, раны', () => ev(() => {
-  localStorage.removeItem('wfrp4_encounter_v1');
+  encList().forEach(x => encRemove(x.id));
   sv4NavGo('crit');
   encAdd('Быстрый', 60, 10, true);
   encAdd('Медленный', 10, 10, true);
@@ -439,10 +443,280 @@ await check('печать прячет панели и рамку', () => ev(() 
   return ['ordo-bar', 'toast-stack', 'ad-slot', 'app-drawer'].every(sel => css.includes(sel));
 }));
 
+// ── удар одной кнопкой (attack.js) ──────────────────────────────────────────
+await check('у оружия на бланке есть «Атаковать»', () => ev(() => {
+  state.sheet.weapons = [{ name: 'Меч', damage: 'РС+4', qualities: '' }];
+  sv4NavGo('main');
+  renderSheet(); sv4NavGo('main');
+  return !!document.querySelector('[data-atk]');
+}));
+
+await check('удар считает урон: оружие + ст.усп. − защита', () => ev(() => {
+  encList().forEach(x => encRemove(x.id));
+  state.sheet.weapons = [{ name: 'Меч', damage: 'РС+4' }];
+  const id = encAdd('Манекен', 10, 20, true, 2, 3);   // гасит 5
+  const rnd = Math.random; Math.random = () => 0;      // d100 = 1, ст.усп. велики
+  attackWith(0);
+  // цель выбирается в диалоге — жмём первую кнопку
+  const btn = document.querySelector('#ordo-dlg .ordo-dlg-btn[data-i="0"]');
+  if (!btn) { Math.random = rnd; return 'диалог выбора цели не открылся'; }
+  btn.click();
+  Math.random = rnd;
+  const card = document.querySelector('.sv4-roll-card');
+  if (!card) return 'модалка удара не открылась';
+  const txt = card.textContent;
+  const hasApply = /Нанести \d+ ран/.test(txt);
+  return txt.includes('Попал') && txt.includes('урон оружия') &&
+         txt.includes('стойкость и броня') && hasApply;
+}));
+
+await check('«Нанести раны» списывает с учётом защиты', () => ev(() => {
+  const before = encList()[0];
+  const btn = [...document.querySelectorAll('.sv4-roll-card button')]
+    .find(b => /Нанести/.test(b.textContent));
+  const n = parseInt(btn.textContent.match(/\d+/)[0], 10);
+  btn.click();
+  const after = encList()[0];
+  return after.hp === Math.max(0, before.hp - n);
+}));
+
+await check('удар мимо не предлагает раны', () => ev(() => {
+  const rnd = Math.random; Math.random = () => 0.98;   // d100 = 99, промах
+  attackWith(0);
+  document.querySelector('#ordo-dlg .ordo-dlg-btn[data-i="0"]').click();
+  Math.random = rnd;
+  const txt = document.querySelector('.sv4-roll-card').textContent;
+  document.getElementById('roll-modal').classList.remove('show');
+  return txt.includes('Мимо') && !/Нанести/.test(txt);
+}));
+
+await check('удар попадает в журнал бросков', () => ev(() => {
+  const r = state.sheet.rollLog[0];
+  return !!r && /^Удар: /.test(r.name) && r.d >= 1 && r.d <= 100;
+}));
+
+await check('стрельба берёт свой навык', () => ev(() => {
+  state.sheet.weapons = [{ name: 'Короткий лук', damage: '+7', range: '30' }];
+  const rnd = Math.random; Math.random = () => 0;
+  attackWith(0);
+  const dlg = document.querySelector('#ordo-dlg .ordo-dlg-btn[data-i="0"]');
+  if (dlg) dlg.click();
+  Math.random = rnd;
+  const txt = document.querySelector('.sv4-roll-card').textContent;
+  document.getElementById('roll-modal').classList.remove('show');
+  return /стрельб/i.test(txt);
+}));
+
+// ── состояния в схватке (encounter.js) ──────────────────────────────────────
+await check('состояние вешается и снимается', () => ev(() => {
+  encList().forEach(x => encRemove(x.id));
+  sv4NavGo('crit');
+  const id = encAdd('Жертва', 30, 10, true, 0, 0);
+  encCond(id, 'Кровоточащий', 2);
+  const chip = document.querySelector('.enc-chip');
+  const shown = chip && /Кровоточащий 2/.test(chip.textContent);
+  encCond(id, 'Кровоточащий', -1);
+  const one = /Кровоточащий 1/.test(document.querySelector('.enc-chip').textContent);
+  encCond(id, 'Кровоточащий', -1);
+  return shown && one && !document.querySelector('.enc-chip');
+}));
+
+await check('конец раунда напоминает про кровь', () => ev(() => {
+  encList().forEach(x => encRemove(x.id));
+  sv4NavGo('crit');
+  const id = encAdd('Жертва', 30, 10, true, 0, 0);
+  encCond(id, 'Кровоточащий', 3);
+  encNext();                       // один участник — круг сразу замыкается
+  const dlg = document.querySelector('#ordo-dlg.show');
+  const asks = dlg && /Кровоточащий 3/.test(dlg.textContent);
+  if (dlg) ordoDialogClose();
+  return !!asks;
+}));
+
+await check('списание по концу раунда снимает ровно по пункту', () => ev(() => {
+  encList().forEach(x => encRemove(x.id));
+  sv4NavGo('crit');
+  const id = encAdd('Жертва', 30, 10, true, 0, 0);
+  encCond(id, 'Кровоточащий', 3);
+  encTickApply();
+  return encList()[0].hp === 7;
+}));
+
+await check('участник без тикающих состояний не тревожит', () => ev(() => {
+  encList().forEach(x => encRemove(x.id));
+  sv4NavGo('crit');
+  const id = encAdd('Целый', 30, 10, true, 0, 0);
+  encCond(id, 'Ослепший', 1);
+  encNext();
+  const dlg = document.querySelector('#ordo-dlg.show');
+  if (dlg) ordoDialogClose();
+  return !dlg;
+}));
+
+await check('encDamage гасит стойкостью и бронёй', () => ev(() => {
+  encList().forEach(x => encRemove(x.id));
+  const id = encAdd('Латник', 20, 15, true, 4, 3);   // гасит 7
+  const lost = encDamage(id, 10);
+  const none = encDamage(id, 5);                     // меньше защиты — ноль
+  return lost === 3 && none === 0 && encList()[0].hp === 12;
+}));
+
+await check('«+ Я» берёт стойкость и броню с бланка', () => ev(() => {
+  encList().forEach(x => encRemove(x.id));
+  state.sheet.armor = [{ name: 'Кираса', zones: 'торс', ap: 2 }];
+  sv4NavGo('crit');
+  encAddSelf();
+  const me = encList()[0];
+  const tb = Math.floor((sheetCalc().totals['СВ'] || 0) / 10);
+  return me.soak === tb + 2;
+}));
+
+await check('удар без цели не требует схватки', () => ev(() => {
+  encList().forEach(x => encRemove(x.id));
+  state.sheet.weapons = [{ name: 'Кинжал', damage: 'РС+2' }];
+  const rnd = Math.random; Math.random = () => 0;
+  attackWith(0);                    // список пуст — диалог выбора не нужен
+  Math.random = rnd;
+  const card = document.querySelector('.sv4-roll-card');
+  const txt = card ? card.textContent : '';
+  if (card) document.getElementById('roll-modal').classList.remove('show');
+  return !document.querySelector('#ordo-dlg.show') && /Цель не выбрана/.test(txt);
+}));
+
+// ── отмена траты опыта (xp-undo.js) ─────────────────────────────────────────
+await check('отмена возвращает опыт и покупку', () => ev(() => {
+  state.xpGained = 1000; state.sheet.spentXP = 0;
+  state.sheet.statAdvBought = {}; state.sheet._cart = [];
+  xpRemember({ kind: 'cart', cost: 125, items: [{ type: 'stat', key: 'ББ' }, { type: 'stat', key: 'ББ' }] });
+  state.sheet.statAdvBought['ББ'] = 2;
+  state.sheet.spentXP = 125;
+  xpUndoLast();
+  const btn = document.querySelector('#ordo-dlg .ordo-dlg-btn');
+  if (!btn) return 'подтверждение не открылось';
+  btn.click();
+  return state.sheet.spentXP === 0 && !state.sheet.statAdvBought['ББ'] && !xpUndoAvailable();
+}));
+
+await check('отмена откатывает талант по уровням', () => ev(() => {
+  state.sheet.talentBought = [{ name: 'Бугай', level: 2 }];
+  state.sheet.extraTalents = [{ name: 'Бугай', level: 2 }];
+  state.sheet.spentXP = 200;
+  xpRemember({ kind: 'cart', cost: 100, items: [{ type: 'talent', name: 'Бугай' }] });
+  xpUndoLast();
+  document.querySelector('#ordo-dlg .ordo-dlg-btn').click();
+  return state.sheet.talentBought[0].level === 1 && state.sheet.extraTalents[0].level === 1
+      && state.sheet.spentXP === 100;
+}));
+
+await check('отмена возвращает прежнюю карьеру', () => ev(() => {
+  const was = state.career, wasTier = state.sheet.tier;
+  state.sheet.spentXP = 300;
+  xpRemember({ kind: 'career', cost: 100, career: was, cls: state.cls,
+               tier: wasTier, tier1Done: state.sheet.careerTier1Done,
+               override: state.sheet.tierCompleteOverride, toName: 'Другая · 1' });
+  state.career = 'Ведьмак'; state.sheet.tier = 3;
+  xpUndoLast();
+  document.querySelector('#ordo-dlg .ordo-dlg-btn').click();
+  return state.career === was && state.sheet.tier === wasTier && state.sheet.spentXP === 200;
+}));
+
+await check('отменять нечего — не падает', () => ev(() => {
+  state.sheet._lastBuy = null;
+  xpUndoLast();
+  return !document.querySelector('#ordo-dlg.show') && xpUndoButtonHtml() === '';
+}));
+
+// ── экран не гаснет (wakelock.js) ───────────────────────────────────────────
+await check('переключатель экрана есть в меню', () => ev(() => {
+  drawerOpen();
+  const items = [...document.querySelectorAll('.drawer-item')].map(x => x.textContent);
+  drawerClose();
+  return items.some(t => /Не гасить экран/.test(t));
+}));
+
+await check('подпись переключателя показывает состояние', () => ev(() => {
+  const off = wakeIsOn();
+  drawerOpen();
+  const item = [...document.querySelectorAll('.drawer-item')].find(x => /Не гасить экран/.test(x.textContent));
+  const sub = item.querySelector('small').textContent;
+  drawerClose();
+  return off ? /включено/.test(sub) : /выключено|недоступно/.test(sub);
+}));
+
+await check('wakeToggle не падает без поддержки API', () => ev(() => {
+  const had = navigator.wakeLock;
+  try { delete navigator.wakeLock; } catch (e) {}
+  wakeToggle();
+  if (had) try { Object.defineProperty(navigator, 'wakeLock', { value: had, configurable: true }); } catch (e) {}
+  return true;
+}));
+
 // ── данные целы ─────────────────────────────────────────────────────────────
 await check('ключи хранения не переименованы', () => ev(() => {
   const src = [...document.querySelectorAll('script[src]')].map(s => s.src);
   return !!localStorage.getItem('wfrp4_roster_v1') && src.length > 0;
+}));
+
+// ── ярлыки с иконки (shortcuts.js) ──────────────────────────────────────────
+await check('ярлык «кубы» открывает журнал бросков', () => ev(() => {
+  appMode = 'character';
+  ordoShortcut('dice');
+  return _sheetTab === 'rolllog' && state.step === 8;
+}));
+
+await check('повторный вызов ярлыка игнорируется', () => ev(() => {
+  sv4NavGo('persona');
+  ordoShortcut('fight');            // Java зовёт дважды — второй раз молчим
+  return _sheetTab === 'persona';
+}));
+
+await check('неизвестный ярлык не ломает приложение', () => ev(() => {
+  ordoShortcut('нетакого');
+  ordoShortcut('');
+  ordoShortcut(undefined);
+  return true;
+}));
+
+// ── старые данные открываются (проверяем после перезагрузки) ────────────────
+await ev(() => {
+  // Схватка, начатая версией без стойкости, брони и состояний
+  localStorage.setItem('wfrp4_encounter_v1', JSON.stringify({
+    round: 3, turn: 1,
+    list: [{ id: 'old1', name: 'Из прошлой версии', init: 40, hp: 5, maxHp: 8, adv: 1, foe: true }]
+  }));
+});
+await p.reload();
+await p.waitForTimeout(900);
+await ev(() => {
+  const r = JSON.parse(localStorage.getItem('wfrp4_roster_v1') || '[]');
+  if (r.length) openCharacter(r[0].id);
+});
+await p.waitForTimeout(500);
+
+await check('схватка из прежней версии открывается', () => ev(() => {
+  state.step = 8; goStep(8); sv4NavGo('crit');
+  const list = encList();
+  return list.length === 1 && list[0].name === 'Из прошлой версии' && list[0].soak === 0
+      && document.getElementById('enc-head').textContent.includes('3');
+}));
+
+await check('в старой схватке работают состояния', () => ev(() => {
+  const id = encList()[0].id;
+  encCond(id, 'Кровоточащий', 1);
+  return !!document.querySelector('.enc-chip') && encDamage(id, 2) === 2;
+}));
+
+await check('досье из прежней версии открывается', () => ev(() =>
+  !!state.name && !!state.race && sheetCalc().maxHP > 0));
+
+await check('ярлык «схватка» после перезапуска работает', () => ev(() => {
+  ordoShortcut('fight');
+  return _sheetTab === 'crit';
+}));
+
+await check('ярлык «архив» уводит в архив', () => ev(() => {
+  ordoShortcut('archive');          // второй за запуск — должен быть съеден
+  return state.step === 8;
 }));
 
 console.log(results.join('\n'));

@@ -4,4 +4,13 @@
     <string name="title_activity_main">Досье Ордо</string>
     <string name="package_name">ru.yansampletext.ordo</string>
     <string name="custom_url_scheme">ru.yansampletext.ordo</string>
+
+    <!-- Ярлыки по долгому нажатию на иконку. Короткая подпись помещается
+         под иконкой, длинная показывается в самом списке. -->
+    <string name="shortcut_dice_short">Кубы</string>
+    <string name="shortcut_dice_long">Бросить кубы</string>
+    <string name="shortcut_fight_short">Схватка</string>
+    <string name="shortcut_fight_long">Открыть трекер схватки</string>
+    <string name="shortcut_archive_short">Архив</string>
+    <string name="shortcut_archive_long">Архив досье</string>
 </resources>

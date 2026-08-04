@@ -10,9 +10,16 @@
     { label: 'Магазин опыта',    sub: 'трата XP',              act: function () { goStep(9); }, needChar: true },
     { label: 'Импорт из JSON',   sub: 'вернуть выгруженное',   act: function () { var i = document.getElementById('import-roster'); if (i) i.click(); } },
     { label: 'Тема',             sub: 'светлая или тёмная',    act: function () { toggleTheme(); }, keepOpen: true },
+    { label: 'Не гасить экран',  sub: subAwake,                act: function () { wakeToggle(); }, keepOpen: true },
     { label: 'Поддержать проект', sub: 'boosty.to/ordodos',     act: function () { openSupport(); } },
     { label: 'О приложении',     sub: 'что это такое',         act: function () { about(); } }
   ];
+
+  // Живая подпись: видно, включено ли сейчас
+  function subAwake() {
+    if (typeof wakeIsOn !== 'function') return 'недоступно';
+    return wakeIsOn() ? 'сейчас включено' : 'выключено';
+  }
 
   function hasChar() {
     return typeof appMode !== 'undefined' && appMode === 'character';
@@ -54,8 +61,9 @@
     if (!d) return;
     d.querySelector('.drawer-list').innerHTML = MENU.map(function (m, i) {
       var off = m.needChar && !hasChar();
+      var sub = (typeof m.sub === 'function') ? m.sub() : m.sub;
       return '<button class="drawer-item' + (off ? ' off' : '') + '" data-i="' + i + '"' +
-             (off ? ' disabled' : '') + '><span>' + m.label + '</span><small>' + m.sub + '</small></button>';
+             (off ? ' disabled' : '') + '><span>' + m.label + '</span><small>' + sub + '</small></button>';
     }).join('');
     d.classList.add('open');
     document.body.classList.add('drawer-open');
@@ -110,6 +118,8 @@
         var m = MENU[+item.dataset.i];
         if (!m.keepOpen) drawerClose();
         try { m.act(); } catch (err) { notify('Не вышло: ' + err.message); }
+        // «Тема» и «Не гасить экран» меняют то, что сами же и показывают
+        if (m.keepOpen && drawerIsOpen()) setTimeout(drawerOpen, 60);
       }
     }
   });

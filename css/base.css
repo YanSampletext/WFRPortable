@@ -2105,3 +2105,38 @@ body.has-ad .sv4-bottom-nav{ bottom: var(--ad-h); }
 .enc-form-row .ordo-dlg-input{ flex: 1 1 0; min-width: 0; }
 body.theme-light .enc-row{ background: rgba(125,95,36,.07); }
 body.theme-light .enc-b{ background: rgba(125,95,36,.09); }
+
+/* ════════════════════════════════════════════════════
+   УДАР: кнопка у оружия и разбор урона в модалке
+════════════════════════════════════════════════════ */
+.sv4-w-atk{ margin-top: var(--sp-2); width: 100%; min-height: 44px; }
+.atk-dmg{
+  margin: var(--sp-3) 0 0; padding-top: var(--sp-3);
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+.atk-line{ font-size: var(--fs-sm); line-height: 1.5; }
+.atk-line + .atk-line{ margin-top: var(--sp-1); }
+.atk-net{ color: var(--blood2); font-family: 'Cinzel', serif; font-size: var(--fs-lg); }
+
+/* ════════════════════════════════════════════════════
+   СОСТОЯНИЯ УЧАСТНИКОВ СХВАТКИ
+════════════════════════════════════════════════════ */
+.enc-conds{ display: flex; flex-wrap: wrap; gap: var(--sp-1); margin-top: var(--sp-1); }
+.enc-chip{
+  font-size: var(--fs-xs); line-height: 1;
+  padding: 5px 8px; min-height: 28px;
+  border: 1px solid var(--border2); border-radius: 12px;
+  background: rgba(0,0,0,.25); color: var(--text2); cursor: pointer;
+}
+/* Кровь и огонь срабатывают в конце раунда — их видно сразу */
+.enc-chip.tick{ border-color: var(--blood); color: var(--blood2); }
+.enc-b.cond{ color: var(--text3); }
+.enc-form-hint{ font-size: var(--fs-xs); margin: var(--sp-2) 0 0; }
+body.theme-light .enc-chip{ background: rgba(125,95,36,.10); }
+
+/* ════════════════════════════════════════════════════
+   ОТМЕНА ПОСЛЕДНЕЙ ТРАТЫ ОПЫТА
+════════════════════════════════════════════════════ */
+.xp-undo-row{ padding: var(--sp-2) var(--sp-3) 0; }
+.xp-undo{ width: 100%; min-height: 44px; text-transform: none; }
