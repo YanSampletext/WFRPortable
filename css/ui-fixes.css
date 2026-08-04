@@ -71,12 +71,6 @@ body.theme-light .panel-title { color: #5d4310; }
 /* 3. ───────── МОБИЛЬНАЯ ВЁРСТКА ───────── */
 @media (max-width: 560px){
 
-  /* Компактная шапка: заголовок в одну-две строки вместо трёх */
-  .app-header { padding: 7px 10px !important; gap: 8px !important; align-items: center !important; }
-  .app-header h1 { font-size: 14px !important; letter-spacing: .05em !important; line-height: 1.2 !important; }
-  .app-header .sub { font-size: 9px !important; margin-top: 1px !important; }
-  .app-header button { padding: 6px 8px !important; font-size: 9px !important; }
-
   /* Красное дерево, как у досье-шапки: крупные карточки бланка и вкладок (тёмная тема) */
   body:not(.theme-light) .sv4-block, body:not(.theme-light) .sv4-armor-zones,
   body:not(.theme-light) .sv4-xp-card, body:not(.theme-light) .sv4-skills,
@@ -437,8 +431,6 @@ body.sheet-mode .page[data-step="9"] > p.muted{ display:none !important; }
 body.theme-light .sv4-btn-dmg{ background:rgba(139,26,26,.14); color:#8f2620; border-color:#8f2620; }
 body.theme-light .sv4-btn-heal{ background:rgba(58,90,36,.16); color:#3d6b22; border-color:#3d6b22; }
 body.theme-light .ordo-tile-s{ color:#5b4a2c; }
-body.theme-light .dot{ border-color:#8c6c2e; }
-body.theme-light .dot.filled{ background:#8c6c2e; }
 
 /* ═══ Зоны нажатия: ничего меньше 44px по высоте ═══
    Требование мобильных гайдлайнов и ТЗ. Поля ввода в правило base.css

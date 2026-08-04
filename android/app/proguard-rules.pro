@@ -1,21 +1,46 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
+# Правила для R8 (minifyEnabled true).
 #
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Без сжатия в APK ехал весь androidx целиком: classes.dex занимал 7,1 МБ
+# из 8,5 МБ пакета. R8 выбрасывает то, до чего нельзя дойти по коду, — но
+# до половины нужного здесь доходят не по коду, а по имени: WebView зовёт
+# методы моста строкой из JavaScript, а Capacitor поднимает плагины через
+# рефлексию по аннотации. Всё такое перечислено ниже поимённо.
+#
+# Часть правил приходит сама: capacitor-android объявляет
+# consumerProguardFiles, поэтому его -keep для @CapacitorPlugin и наследников
+# com.getcapacitor.Plugin применяются к сборке автоматически. Ниже — то,
+# чего в них нет.
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# ── мост между JavaScript и Java ────────────────────────────────────────────
+# Методы с @JavascriptInterface вызываются из JS по имени. Такое же правило
+# есть в proguard-android.txt от AGP; повторяем явно, чтобы оно не зависело
+# от того, какой файл по умолчанию подключён.
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Ядро Capacitor целиком: мост, конфигурация, обработчики плагинов.
+-keep class com.getcapacitor.** { *; }
+-keep interface com.getcapacitor.** { *; }
+-keepattributes *Annotation*, JavascriptInterface, Signature, InnerClasses, EnclosingMethod
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# ── наш код ─────────────────────────────────────────────────────────────────
+# MainActivity поднимается системой по имени из манифеста.
+-keep class ru.yansampletext.ordo.** { *; }
+
+# ── плагины Capacitor ───────────────────────────────────────────────────────
+# @capacitor/preferences — им хранятся копии досье в SharedPreferences.
+-keep class com.capacitorjs.plugins.** { *; }
+
+# Плагины Cordova (их нет, но модуль-обёртка в проекте есть).
+-keep class org.apache.cordova.** { *; }
+
+# ── прочее ──────────────────────────────────────────────────────────────────
+# WebChromeClient дёргают по имени из движка WebView.
+-keepclassmembers class * extends android.webkit.WebChromeClient {
+    public void *(android.webkit.WebView, java.lang.String);
+}
+
+# Понятные стектрейсы, если приложение всё-таки упадёт.
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile

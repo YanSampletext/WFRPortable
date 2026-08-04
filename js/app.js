@@ -4691,19 +4691,8 @@ function finishAndSaveCharacter(){
   setTimeout(() => window.scrollTo({ top: 0, behavior: 'instant' }), 10);
 }
 
-function exportCharacter(id){
-  const roster = loadRoster();
-  const p = roster.find(x => x.id === id);
-  if(!p) return;
-  const data = JSON.stringify(p, null, 2);
-  const blob = new Blob([data], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = (p.name || 'wfrp4_character').replace(/\s+/g,'_') + '.json';
-  a.click();
-  URL.revokeObjectURL(url);
-}
+// Выгрузка одного досье живёт в archive.js (exportOne) — там же, где карточки
+// и меню «⋯», из которого её и вызывают.
 
 function importToRoster(input){
   const file = input.files[0];
@@ -5044,19 +5033,6 @@ function handleCreate(){
   goStep(1);
 }
 
-function handleContinueFromLanding(id){
-  const roster = loadRoster();
-  const p = roster.find(x => x.id === id);
-  if(!p){ notify('Персонаж не найден.'); return; }
-  Object.assign(state, freshState());
-  Object.assign(state, JSON.parse(JSON.stringify(p)));
-  migrateState();
-  showApp('character');
-  renderSteps();
-  goStep(8);
-}
-
-// Переопределяем openCharacter для работы внутри app-режима
 function openCharacter(id){
   const roster = loadRoster();
   const p = roster.find(x => x.id === id);

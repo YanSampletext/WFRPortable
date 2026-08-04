@@ -290,7 +290,6 @@ p { line-height: 1.55; margin-bottom: 6px; }
 
 
 
-.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); border: 1px solid var(--border2); }
 
 
 
@@ -1067,6 +1066,8 @@ textarea { background: var(--panel); border: 1px solid var(--border2); color: va
 }
 .sv4-hero-name:focus { outline: none; border-bottom-color: var(--gold); }
 .sv4-hero-sub { color: var(--text2); font-size: 13px; font-style: italic; }
+/* Разделитель «●» в подзаголовке: только символ, без коробки-кружка —
+   старое правило .dot рисовало поверх него залитый квадратик с рамкой */
 .sv4-hero-sub .dot { color: var(--gold-dim); margin: 0 4px; }
 .sv4-hero-fields {
   display: grid; grid-template-columns: 1fr 1fr;
@@ -1731,7 +1732,6 @@ table input.sv4-mini { width: 100%; min-width: 38px; }
   .sv4-bottom-item { min-height: 52px; padding-top: 8px; padding-bottom: 8px; }
   .sv4-fab-btn { width: 46px; height: 44px; }
   .sv4-fab-hp { width: 54px; }
-  .icon-btn { width: 40px; height: 40px; }
   .sv4-cond-btn { min-width: 34px; min-height: 34px; }
   .sv4-cond-help { width: 30px; height: 30px; font-size: 15px; margin-left: 5px; }
   .sv4-roll-close, .sv4-roll-again { min-height: 44px; }
@@ -1742,11 +1742,9 @@ table input.sv4-mini { width: 100%; min-width: 38px; }
 /* 3) Hover-эффекты залипают на тач (срабатывают по тапу и не сбрасываются).
       Включаем их ТОЛЬКО для устройств с настоящим курсором. */
 @media (hover: none) {
-  .hero-card:hover { border-color: var(--border); transform: none; }
   .card:hover { border-color: var(--border2); transform: none; box-shadow: none; }
   .card:hover .card-emblem { color: inherit; transform: none; }
   .card:hover .card-corner { color: inherit; opacity: inherit; }
-  .icon-btn:hover { border-color: var(--border2); color: var(--parch2); }
   .btn:hover { color: inherit; border-color: var(--border2); box-shadow: none; }
   .sv4-bottom-item:hover { color: var(--text3); }
   .sv4-stat:hover { border-color: var(--border2); transform: none; }
@@ -1774,7 +1772,7 @@ table input.sv4-mini { width: 100%; min-width: 38px; }
    PRINT
 ════════════════════════════════════════════════════ */
 @media print {
-  #view-landing, .app-header, .steps, .nav-bottom, .sheet-toolbar, .add-row, button { display: none !important; }
+  #view-landing, .steps, .nav-bottom, .sheet-toolbar, .add-row, button { display: none !important; }
   .page { display: block !important; }
   .page:not(.active) { display: none !important; }
   .sheet { background: white; border: 1px solid #333; box-shadow: none; color: black; }

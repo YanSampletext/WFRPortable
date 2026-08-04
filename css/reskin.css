@@ -81,8 +81,6 @@ h1, h2, h3, .title-main, .title-version, .sec-title, .panel-title, .sv4-section-
   font-family:'Cinzel', serif !important;
 }
 body:not(.theme-light) .sv4-hero-name,
-body:not(.theme-light) .hero-card-name,
-body:not(.theme-light) .char-name,
 body:not(.theme-light) .masthead-goth{
   text-shadow:0 0 14px rgba(226,164,66,.32), 0 0 2px rgba(226,164,66,.5);
 }
@@ -163,7 +161,6 @@ p, li{ color:var(--text); }
 
 
 
-.dot{ background:var(--border); border-color:var(--gold-dk); }
 
 
 .footer-quote{ color:var(--text3); }
