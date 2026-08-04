@@ -107,14 +107,25 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
 
 <!-- ╔══ APP (шаги 0–9) ══╗ -->
 <div id="view-app">
-  <header class="app-header">
-    <div>
-      <h1>WARHAMMER FANTASY ROLEPLAY 4</h1>
-      <div class="sub" id="app-sub">Создание досье</div>
-    </div>
-    <button class="btn-home" onclick="toggleTheme()" id="theme-btn" title="Сменить тему" style="margin-right:6px;">🕯️ Тема</button>
-    <button class="btn-home" onclick="goHome()">⚜ На главную</button>
+  <!-- верхняя панель: меню слева, название экрана, одно действие справа -->
+  <header class="app-bar">
+    <button class="app-bar-btn" id="app-bar-menu" aria-label="Меню">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+    <div class="app-bar-title" id="app-bar-title">Создание досье</div>
+    <button class="app-bar-btn" onclick="goHome()" id="app-bar-home" aria-label="На главную">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7"/><path d="M6 10v9h12v-9"/></svg>
+    </button>
   </header>
+
+  <!-- выдвижное меню -->
+  <div id="app-drawer" aria-hidden="true">
+    <div class="drawer-scrim"></div>
+    <nav class="drawer-panel" aria-label="Разделы">
+      <div class="drawer-head">Досье Ордо</div>
+      <div class="drawer-list"></div>
+    </nav>
+  </div>
 
   <nav class="steps" id="steps"></nav>
 
@@ -122,11 +133,9 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
 
     <!-- Шаг 0: Галерея персонажей -->
     <section class="page" data-step="0">
-      <h2>Архив досье</h2>
-      <p class="muted">Сохранённые персонажи. Открой, перейди в Магазин XP или удали.</p>
-      <div style="margin:10px 0;display:flex;gap:6px;flex-wrap:wrap;">
-        <button class="btn btn-gold" onclick="startNewCharacter()">+ Создать досье</button>
-        <button class="btn btn-sm" onclick="document.getElementById('import-roster').click()">⬆ Импорт JSON</button>
+      <!-- название экрана держит верхняя панель, импорт уехал в меню -->
+      <div class="ark-head">
+        <button class="btn btn-gold" onclick="startNewCharacter()">+ Завести досье</button>
         <input type="file" id="import-roster" accept=".json" style="display:none" onchange="importToRoster(this)" />
       </div>
       <div id="roster-area"></div>
@@ -273,6 +282,8 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
      сразу уходила в нативное хранилище приложения -->
 <script src="js/storage-native.js"></script>
 <script src="js/dialogs.js"></script>
+<script src="js/archive.js"></script>
+<script src="js/shell.js"></script>
 <script src="js/app.js"></script>
 <script src="js/marks.js"></script>
 <script src="js/health.js"></script>

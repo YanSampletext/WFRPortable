@@ -66,10 +66,6 @@ html, body { overflow-x: clip; }
 
 /* 2. Светлая тема: контраст */
 body.theme-light .tbl tr:nth-child(even) td { background: rgba(140,108,52,0.12); }
-body.theme-light .app-header h1 {
-  background: linear-gradient(180deg, #6b4d14, #3a2a08);
-  -webkit-background-clip: text; background-clip: text;
-}
 body.theme-light .panel-title { color: #5d4310; }
 
 /* 3. ───────── МОБИЛЬНАЯ ВЁРСТКА ───────── */
@@ -216,15 +212,6 @@ body.theme-light .ordo-tile{ background:rgba(125,95,36,.06); }
 body.theme-light .ordo-tile-l{ color:#2a1c0c; }
 .ordo-tile-s{ font-size:9.5px; line-height:1.25; color:var(--text3, #8a7a5c); }
 .ordo-grid.sys .ordo-tile{ min-height:72px; opacity:.88; }
-
-
-
-
-
-
-
-/* ═══ Один экран — одна шапка: на бланке прячем глобальную шапку и степпер ═══ */
-body.sheet-mode .app-header{ display:none !important; }
 body.sheet-mode .steps{ display:none !important; }
 body.sheet-mode .app{ padding-top:0 !important; margin-top:0 !important; }
 

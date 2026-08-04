@@ -53,6 +53,17 @@ function ordoChoice(opts){
     };
   });
 }
+/* Просто сообщение с одной кнопкой */
+function ordoAlert(opts){
+  const o = opts || {};
+  _ordoDialogShell(`
+    <div class="ordo-dlg-seal">✠</div>
+    <div class="ordo-dlg-title">${o.title || 'Сообщение'}</div>
+    <div class="ordo-dlg-text">${o.text || ''}</div>
+    <div class="ordo-dlg-btns">
+      <button class="ordo-dlg-btn gold" onclick="ordoDialogClose()">${o.ok || 'Понятно'}</button>
+    </div>`);
+}
 /* Выбор числа кнопками (без клавиатуры) — для рангов страха/ужаса */
 function ordoNumber(opts){
   const o = opts || {};

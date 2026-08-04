@@ -56,10 +56,12 @@
       try { history.pushState({ ordo: stack.length }, ''); } catch (e) {}
       return;
     }
-    // 2. Затем выдвинутое боковое меню
+    // 2. Затем выдвижное меню оболочки или боковое меню бланка
     var nav = document.getElementById('sv4-nav');
-    if (nav && nav.classList.contains('open')) {
-      if (typeof sv4NavClose === 'function') sv4NavClose();
+    var drawerUp = (typeof drawerIsOpen === 'function') && drawerIsOpen();
+    if (drawerUp || (nav && nav.classList.contains('open'))) {
+      if (drawerUp) drawerClose();
+      else if (typeof sv4NavClose === 'function') sv4NavClose();
       try { history.pushState({ ordo: stack.length }, ''); } catch (e) {}
       return;
     }

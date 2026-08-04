@@ -66,18 +66,19 @@ body::before{ background:
   radial-gradient(ellipse 120% 92% at 50% 50%, transparent 56%, rgba(0,0,0,.46) 100%); }
 body.theme-light::before{ opacity:.22 !important; }
 
-/* ─── 4. ТИПОГРАФИКА: канцелярия (Special Elite) + готика (UnifrakturCook)
-        + лапидарь (Cinzel) + буквицы (Cinzel Decorative) ──────────── */
-.title-eyebrow, .arch-serial, .sv4-tier-l, .sv4-c-l, .sv4-v-l, .sv4-stat-l, .sv4-i-l, .sv4-az-l, .sv4-m-l, .sv4-hp-l, .stat-full, .xp-label, .card-sub, .hero-card-stat-l, .sv4-nav-item small, .sv4-tal-src, .classif-stamp, .masthead-classif, th, .sv4-tbl th, .step {
-  font-family:'Special Elite', 'Courier New', monospace !important;
+/* ─── 4. ТИПОГРАФИКА: три семейства — лапидарный Cinzel для заголовков и
+        печатей, EB Garamond для текста, узкий Barlow Condensed
+        для канцелярских меток, интерфейса и цифр ──────────────────── */
+.title-eyebrow, .arch-serial, .sv4-tier-l, .sv4-c-l, .sv4-v-l, .sv4-stat-l, .sv4-i-l, .sv4-az-l, .sv4-m-l, .sv4-hp-l, .stat-full, .card-sub, .sv4-nav-item small, .sv4-tal-src, .classif-stamp, .masthead-classif, th, .sv4-tbl th, .step {
+  font-family:'Barlow Condensed', 'Courier New', monospace !important;
   letter-spacing:.08em;
 }
-h1, h2, h3, .title-main, .title-version, .sec-title, .panel-title, .sv4-section-title, .sv4-block-title, .sv4-tier-name, .sv4-c-v, .sv4-v-v, .sv4-stat-v, .sv4-i-v, .sv4-az b, .sv4-tal-name, .quick-gen-title, .num-gold, .sv4-tbl td.num-gold, .app-header h1, .btn, .btn-sm, .btn-gold, .btn-red, .btn-home, .step .num, .sv4-back, .sv4-tier-badge .sv4-tier-name, .sv4-roll-skill, .sv4-roll-outcome {
+h1, h2, h3, .title-main, .title-version, .sec-title, .panel-title, .sv4-section-title, .sv4-block-title, .sv4-tier-name, .sv4-c-v, .sv4-v-v, .sv4-stat-v, .sv4-i-v, .sv4-az b, .sv4-tal-name, .quick-gen-title, .num-gold, .sv4-tbl td.num-gold, .btn, .btn-sm, .btn-gold, .btn-red, .step .num, .sv4-back, .sv4-tier-badge .sv4-tier-name, .sv4-roll-skill, .sv4-roll-outcome {
   font-family:'Cinzel', serif !important;
 }
 /* Готический блэклеттер — крупные имена и гербовые надписи */
-.sv4-hero-name, .hero-card-name, .char-name, .masthead-goth, .sv4-hp-input{
-  font-family:'UnifrakturCook', 'Cinzel', serif !important;
+.sv4-hero-name, .masthead-goth, .sv4-hp-input {
+  font-family:'Cinzel', serif !important;
 }
 body:not(.theme-light) .sv4-hero-name,
 body:not(.theme-light) .hero-card-name,
@@ -90,7 +91,7 @@ p, li{ color:var(--text); }
 
 /* Буквица (Б) — на повествовательных абзацах листа */
 .sv4-lore::first-letter, .sv4-tal-body p:first-child::first-letter{
-  font-family:'Cinzel Decorative', serif; font-weight:900;
+  font-family:'Cinzel', serif; font-weight:900;
   font-size:3em; float:left; line-height:.72; padding:.06em .14em 0 0;
   color:var(--blood2);
 }
@@ -153,43 +154,23 @@ p, li{ color:var(--text); }
     linear-gradient(160deg,#16100a,#0e0a06);
   box-shadow:0 0 0 1px var(--gold-dk), inset 0 0 0 1px rgba(194,161,76,.1), 0 18px 40px -14px #000;
 }
-.section-label{ font-family:'Special Elite',monospace !important; color:var(--gold-dim); letter-spacing:.2em; border-bottom-color:var(--gold-dk); }
+.section-label{ font-family:'Barlow Condensed', monospace !important; color:var(--gold-dim); letter-spacing:.2em; border-bottom-color:var(--gold-dk); }
 
-/* Строка персонажа — арочный портрет + восковая печать + блэклеттер */
-.char-row{ border-color:var(--gold-dk); background:linear-gradient(180deg, rgba(226,164,66,.03), transparent), linear-gradient(180deg,var(--panel2),var(--panel)); }
-.char-row:hover{ border-color:var(--gold-dim); box-shadow:0 4px 14px rgba(0,0,0,.6); }
-.char-row::before{ background:linear-gradient(180deg,transparent,var(--gold),transparent); }
-.char-portrait-placeholder{
-  position:relative;
-  border-radius:50% 50% 5px 5px; border:2px solid var(--gold-dk);
-  background:radial-gradient(circle at 32% 28%, rgba(226,164,66,.18), transparent 70%), linear-gradient(180deg,#1c1408,#0b0906) !important;
-  box-shadow:inset 0 0 14px rgba(0,0,0,.7), 0 0 0 4px #0c0807, 0 0 16px rgba(226,164,66,.1);
-}
-.char-portrait-placeholder::after{
-  content:''; position:absolute; right:-9px; bottom:-9px; width:26px; height:26px;
-  background:var(--waxseal) center/contain no-repeat; filter:drop-shadow(0 1px 2px #000);
-  pointer-events:none;
-}
-.char-portrait-placeholder .ic svg, .char-portrait-placeholder svg{ color:var(--gold); opacity:.6; }
-.char-name{ color:var(--gold2); font-size:19px; }
-.char-meta{ color:var(--text3); }
-.xp-value{ color:var(--gold2); font-family:'Cinzel',serif !important; }
+
+
+
+
+
+
+
 .dot{ background:var(--border); border-color:var(--gold-dk); }
-.dot.filled{ background:var(--gold); border-color:var(--gold2); box-shadow:0 0 5px rgba(226,164,66,.5); }
-.char-del-btn{ color:var(--blood2); border-color:var(--gold-dk); }
-.empty-icon{ color:var(--gold-dim); }
+
+
 .footer-quote{ color:var(--text3); }
 
-/* ─── 6. КАРКАС ПРИЛОЖЕНИЯ ───────────────────────────────────────── */
-.app-header{
-  background:linear-gradient(180deg,#180f06 0%, transparent 100%), radial-gradient(ellipse at center top, rgba(226,164,66,.1), transparent 60%);
-  border-bottom:1px solid var(--gold-dk);
-}
-.app-header::before, .app-header::after{ background:linear-gradient(90deg,transparent,var(--gold),transparent); }
-.app-header h1{ color:var(--gold2); letter-spacing:.18em; text-shadow:0 0 18px rgba(226,164,66,.22), 0 2px 1px #000; }
-.app-header .sub{ color:var(--text3); font-style:italic; }
-.btn-home{ border-color:var(--gold-dk); color:var(--text3); background:linear-gradient(180deg, rgba(226,164,66,.06), transparent); }
-.btn-home:hover{ border-color:var(--gold); color:var(--gold2); background:rgba(226,164,66,.08); }
+
+
+
 
 /* Лента шагов — как корешок дела */
 .steps{ background:linear-gradient(180deg,var(--panel2),var(--panel)); border-bottom:1px solid var(--gold-dk); }
@@ -215,9 +196,7 @@ p, li{ color:var(--text); }
 .btn-gold:hover{ background:linear-gradient(180deg,#f3d588 0%, #e0c373 45%, #a07c30 100%); box-shadow:0 1px 0 rgba(255,228,150,.5) inset, 0 0 16px rgba(226,164,66,.3); }
 .btn-red{ background:linear-gradient(180deg,#8c2118,#4e0f08); color:var(--bone); border-color:var(--blood); }
 .btn-red:hover{ background:linear-gradient(180deg,#bf4231,#8c2118); box-shadow:0 0 14px rgba(191,66,49,.4); }
-.icon-btn{ border-color:var(--gold-dk); color:var(--text2); }
-.icon-btn:hover{ border-color:var(--gold); color:var(--gold2); }
-.icon-btn.danger{ color:var(--blood2); }
+
 
 /* Панель — гравированная плашка дела (с углами) */
 .panel{
@@ -279,27 +258,14 @@ input[type="text"], input[type="number"], input[type="search"], textarea, select
   background:rgba(0,0,0,.32); border-color:var(--gold-dk); color:var(--text);
 }
 input:focus, textarea:focus, select:focus{ border-color:var(--blood2); box-shadow:0 0 8px var(--blood-dim); }
-label{ color:var(--text3); font-family:'Special Elite',monospace !important; letter-spacing:.08em; }
+label{ color:var(--text3); font-family:'Barlow Condensed', monospace !important; letter-spacing:.08em; }
 
-/* ─── 8. ГАЛЕРЕЯ ПЕРСОНАЖЕЙ — карточки-дела ──────────────────────── */
-.hero-card{
-  border:1px solid var(--gold-dk);
-  background:
-    var(--corner-tl) top 7px left 7px / 24px 24px no-repeat,
-    var(--corner-tr) top 7px right 7px / 24px 24px no-repeat,
-    var(--corner-bl) bottom 7px left 7px / 24px 24px no-repeat,
-    var(--corner-br) bottom 7px right 7px / 24px 24px no-repeat,
-    linear-gradient(160deg,var(--panel3),var(--panel) 72%);
-  box-shadow:0 0 0 1px var(--gold-dk), inset 0 0 0 1px rgba(194,161,76,.1), 0 4px 12px rgba(0,0,0,.5);
-}
-.hero-card:hover{ border-color:var(--gold); box-shadow:0 0 0 1px var(--gold-dk), 0 0 22px rgba(226,164,66,.12), 0 4px 12px rgba(0,0,0,.5); }
-.hero-card-bg{ opacity:.06; }
-.hero-card-name{ color:var(--gold2); font-size:21px; }
-.hero-card-race{ color:var(--text2); }
-.hero-card-stats{ background:rgba(0,0,0,.3); border-color:var(--gold-dk); }
-.hero-card-stat-l{ color:var(--text3); }
-.hero-card-stat-v{ color:var(--text); }
-.hero-card-stat-v.gold{ color:var(--gold2); }
+
+
+
+
+
+
 
 /* ─── 9. БЛАНК ПЕРСОНАЖА (V4) — главное досье ─────────────────────── */
 .sheet-v4{ background:
@@ -340,7 +306,7 @@ label{ color:var(--text3); font-family:'Special Elite',monospace !important; let
 .sv4-hero::before{
   content:'СЕКРЕТНО'; position:absolute; z-index:3; top:9px; right:14px;
   color:var(--blood2); border:2.5px solid var(--blood2); border-radius:2px;
-  padding:3px 9px; font-family:'Special Elite',monospace; font-size:11px; letter-spacing:.18em;
+  padding:3px 9px; font-family:'Barlow Condensed', monospace; font-size:11px; letter-spacing:.18em;
   transform:rotate(7deg); opacity:.5; mix-blend-mode:screen; pointer-events:none;
   -webkit-mask-image:var(--inkmask); mask-image:var(--inkmask); -webkit-mask-size:cover; mask-size:cover;
 }
@@ -708,7 +674,7 @@ body.theme-light .classif-stamp, body.theme-light .sv4-hero::before { opacity:.7
 .gm-pin .gm-seal{ transform:none; }            /* наклон задаёт сам .gm-pin */
 .gm-pin.big .gm-stamp{ transform:scale(1.22); }
 .gm-pin.scrawl .gm-scrawl{
-  font-family:'Caveat', cursive !important; font-size:25px !important; font-style:normal !important;
+  font-family:'EB Garamond', serif !important; font-size:25px !important; font-style:normal !important;
   font-weight:700; color:#c4392b !important; text-decoration:none !important; white-space:nowrap;
   text-shadow:0 1px 0 rgba(0,0,0,.45);
 }

@@ -8,7 +8,7 @@
 
 .gm-seal{ display:inline-flex; align-items:center; gap:7px; }
 .gm-stamp{ color:var(--gc); border:2.5px double currentColor; border-radius:3px; padding:3px 9px; transform:rotate(-3deg); opacity:.92; }
-.gm-stamp b{ font-family:"UnifrakturCook",serif; font-weight:700; font-size:12px; }
+.gm-stamp b{ font-family:'Cinzel', serif; font-weight:700; font-size:12px; }
 .gm-stamp i{ font-family:"EB Garamond",serif; font-weight:600; font-style:normal; font-size:11px; letter-spacing:.05em; text-transform:uppercase; margin-left:2px; }
 .gm-scrawl{ font-family:"EB Garamond",serif; font-style:italic; font-size:16px; color:#bf4231; transform:rotate(-4deg); text-decoration:underline; text-decoration-color:#8c2118; text-underline-offset:3px; }
 .gm-god,.gm-mage{ border:1px solid var(--gc); border-radius:2px; padding:4px 9px 4px 6px; background:rgba(0,0,0,.28); }

@@ -2460,7 +2460,7 @@ function renderSheet(){
 
   // === ШАПКА-КОРЕШОК ДЕЛА (одна строка) ===
   html += `<div class="ordo-bar">
-    <button class="ordo-seal" onclick="sv4NavGo('more')" title="Меню">☰</button>
+    <button class="ordo-seal" onclick="drawerOpen()" title="Меню">☰</button>
     <div class="ordo-meta">
       <div class="ordo-no">Дело · ${escHtml(r.name)} · ${escHtml(state.career||'—')}</div>
       <div class="ordo-name">${escHtml(state.name||'Без имени')}</div>
@@ -2530,27 +2530,27 @@ function renderTabMore(){
     </button>`;
   let h = `<div class="sv4-block"><div class="sv4-block-title">Разделы дела</div>
     <div class="ordo-grid">
-      ${tile("sv4NavGo('gear')",'⚖','Имущество','оружие · броня · кошель')}
-      ${tile("sv4NavGo('magic')",'✦','Магия / Вера','заклинания · молитвы')}
-      ${tile("sv4NavGo('stats')",'⚄','Статы','характеристики')}
-      ${tile("sv4NavGo('fate')",'☘','Судьба','удача · решимость')}
-      ${tile("sv4NavGo('race')",'⚑','Народ','')}
-      ${tile("sv4NavGo('career')",'§','Карьера','ступени · смена')}
-      ${tile("sv4NavGo('downtime')",'⌛','Отдых','между приключениями')}
-      ${tile("sv4NavGo('notes')",'✎','Штрихи','имя · внешность · XP')}
-      ${tile("sv4NavGo('rolllog')",'⚂','Журнал','история бросков')}
-      ${tile("sv4NavGo('print')",'▤','Бланк','печатный вид')}
-      ${tile("typeof gmOpen==='function'&&gmOpen()",'✠','Печати ГМ','отметки на деле')}
-      ${tile("goStep(9)",'◈','Магазин XP','трата опыта')}
+      ${tile("sv4NavGo('gear')",ICONS.pack,'Имущество','оружие · броня · кошель')}
+      ${tile("sv4NavGo('magic')",ICONS.sparkle,'Магия / Вера','заклинания · молитвы')}
+      ${tile("sv4NavGo('stats')",ICONS.dice,'Статы','характеристики')}
+      ${tile("sv4NavGo('fate')",ICONS.compass,'Судьба','удача · решимость')}
+      ${tile("sv4NavGo('race')",ICONS.flag,'Народ','')}
+      ${tile("sv4NavGo('career')",ICONS.scroll,'Карьера','ступени · смена')}
+      ${tile("sv4NavGo('downtime')",ICONS.moon,'Отдых','между приключениями')}
+      ${tile("sv4NavGo('notes')",ICONS.feather,'Штрихи','имя · внешность · XP')}
+      ${tile("sv4NavGo('rolllog')",ICONS.book,'Журнал','история бросков')}
+      ${tile("sv4NavGo('print')",ICONS.sheet,'Бланк','печатный вид')}
+      ${tile("typeof gmOpen==='function'&&gmOpen()",ICONS.emblem,'Печати ГМ','отметки на деле')}
+      ${tile("goStep(9)",ICONS.shop,'Магазин XP','трата опыта')}
     </div></div>`;
   h += `<div class="sv4-block"><div class="sv4-block-title">Архив и файлы</div>
     <div class="ordo-grid sys">
-      ${tile("toggleTheme()",'◐','Тема','светлая / тёмная')}
-      ${tile("sv4DoAction('save')",'🖫','Сохранить','в архив')}
-      ${tile("sv4DoAction('export')",'⇩','Экспорт','JSON-файл')}
-      ${tile("sv4DoAction('import')",'⇧','Импорт','из JSON')}
-      ${tile("sv4DoAction('print')",'🖶','Печать','PDF из браузера')}
-      ${tile("sv4DoAction('gallery')",'⌂','В архив','на главную')}
+      ${tile("toggleTheme()",ICONS.candle,'Тема','светлая / тёмная')}
+      ${tile("sv4DoAction('save')",ICONS.save,'Сохранить','в архив')}
+      ${tile("sv4DoAction('export')",ICONS.download,'Экспорт','JSON-файл')}
+      ${tile("sv4DoAction('import')",ICONS.upload,'Импорт','из JSON')}
+      ${tile("sv4DoAction('print')",ICONS.print,'Печать','PDF из браузера')}
+      ${tile("sv4DoAction('gallery')",ICONS.home,'В архив','на главную')}
     </div>
     <input type="file" id="import-file" accept=".json" style="display:none" onchange="importSheet(this)" />
     <button class="btn btn-sm" style="margin-top:14px;border-color:var(--blood2);color:var(--blood2);" onclick="sv4DoAction('delete')">✕ Удалить персонажа из архива</button>
@@ -4612,58 +4612,8 @@ function freshState(){
 
 // Стартовая страница: список персонажей
 function renderRoster(){
-  const el = document.getElementById('roster-area');
-  const roster = loadRoster();
-  if(!roster.length){
-    el.innerHTML = `<div class="panel" style="margin-top:14px;">
-      <div class="panel-title">Пусто</div>
-      <p>Сохранённых персонажей ещё нет. Нажми «Создать нового персонажа», пройди шаги 1–7 и сохрани героя кнопкой «<span class="ic">${ICONS.save}</span> Сохранить как нового персонажа» на бланке.</p>
-    </div>`;
-    return;
-  }
-  let html = '<div class="roster-grid">';
-  roster.forEach((p) => {
-    const r = p.race ? DATA.races[p.race] : null;
-    const c = p.career ? DATA.careers[p.career] : null;
-    const tier = (c && c.tiers[(p.sheet?.tier||1)-1]) || null;
-    const xp = (p.xpGained||0) - (p.sheet?.spentXP||0);
-    const emoji = r ? r.emoji : '👤';
-    const raceName = r ? r.name : '?';
-    const careerName = p.career || '?';
-    const hp = p.sheet?.currentHP;
-    const updated = p._updated ? new Date(p._updated).toLocaleDateString('ru-RU') : '';
-    html += `<div class="hero-card" onclick="openCharacter('${escAttr(p.id)}')" style="cursor:pointer;">
-      <div class="hero-card-bg">${emoji}</div>
-      <div class="hero-card-name">${escHtml(p.name || '(без имени)')}</div>
-      <div class="hero-card-race">${raceName} — ${escHtml(careerName)}</div>
-      <div class="hero-card-stats">
-        <div class="hero-card-stat">
-          <span class="hero-card-stat-l">Ступень</span>
-          <span class="hero-card-stat-v">${p.sheet?.tier||1}${tier?' · '+escHtml(tier.name):''}</span>
-        </div>
-        <div class="hero-card-stat">
-          <span class="hero-card-stat-l">Опыт</span>
-          <span class="hero-card-stat-v gold">${xp}</span>
-        </div>
-        ${hp!=null?`<div class="hero-card-stat">
-          <span class="hero-card-stat-l">HP</span>
-          <span class="hero-card-stat-v">${hp}</span>
-        </div>`:''}
-        ${updated?`<div class="hero-card-stat">
-          <span class="hero-card-stat-l">изменён</span>
-          <span class="hero-card-stat-v" style="font-size:11px;">${escHtml(updated)}</span>
-        </div>`:''}
-      </div>
-      <div class="hero-card-actions" onclick="event.stopPropagation();">
-        <button class="btn btn-sm btn-gold" onclick="event.stopPropagation();openCharacter('${escAttr(p.id)}')">Открыть</button>
-        <button class="icon-btn" title="Магазин XP" onclick="event.stopPropagation();openCharacterShop('${escAttr(p.id)}')"><span class="ic">${ICONS.shop}</span></button>
-        <button class="icon-btn" title="Экспорт JSON" onclick="event.stopPropagation();exportCharacter('${escAttr(p.id)}')"><span class="ic">${ICONS.download}</span></button>
-        <button class="icon-btn danger" title="Удалить" onclick="deleteCharacter('${escAttr(p.id)}', event)"><span class="ic">${ICONS.trash}</span></button>
-      </div>
-    </div>`;
-  });
-  html += '</div>';
-  el.innerHTML = html;
+  // разметку карточек держит js/archive.js — один источник на оба экрана
+  renderArchiveInto(document.getElementById('roster-area'), { tools: true });
 }
 
 function genCharId(){
@@ -4691,8 +4641,6 @@ function finishAndSaveCharacter(){
   }
   saveCharacterToRoster();
   appMode = 'character';
-  const sub = document.getElementById('app-sub');
-  if(sub) sub.textContent = 'Бланк персонажа';
   _sheetTab = 'persona';
   renderSteps();
   goStep(8);
@@ -4918,15 +4866,9 @@ const CHARACTER_STEPS = [
 ];
 
 function renderSteps(){
-  const nav = document.getElementById('steps');
-  const stepsToShow = (appMode === 'character') ? CHARACTER_STEPS : CREATION_STEPS;
-  const fi = firstIncompleteStep();
-  nav.innerHTML = stepsToShow.map(s => {
-    let cls = (state.step === s.n) ? 'active' : (state.step > s.n ? 'done' : '');
-    if(s.n > fi) cls += ' locked';
-    return `<div class="step ${cls}" onclick="goStep(${s.n})">
-      <span class="num">${s.n}</span> ${s.name}</div>`;
-  }).join('');
+  // ленту из девяти шагов заменили индикатор «Шаг N из 7» и заголовок экрана
+  if(typeof renderStepsCompact === 'function') renderStepsCompact();
+  if(typeof shellSyncBar === 'function') shellSyncBar();
 }
 
 function stepComplete(n){
@@ -4946,6 +4888,8 @@ function firstIncompleteStep(){
   return 99;
 }
 function goStep(n){
+  // направление перехода — для анимации экрана (вперёд влево, назад вправо)
+  try{ document.body.classList.toggle('nav-back', typeof state.step === 'number' && n < state.step); }catch(e){}
   // Шаг 9 разрешён только в режиме 'character'
   if(n === 9 && appMode === 'creation') {
     notify('Магазин XP доступен после сохранения персонажа.');
@@ -5046,9 +4990,6 @@ function showApp(mode){
   appMode = mode;
   document.getElementById('view-landing').style.display = 'none';
   document.getElementById('view-app').style.display = 'block';
-  const subEl = document.getElementById('app-sub');
-  if(mode === 'creation') subEl.textContent = 'Создание персонажа';
-  if(mode === 'character') subEl.textContent = 'Персонаж';
 }
 
 function handleCreate(){
@@ -5084,7 +5025,6 @@ function openCharacter(id){
     showApp('character');
   } else {
     appMode = 'character';
-    document.getElementById('app-sub').textContent = 'Персонаж';
   }
   renderSteps();
   goStep(8);
@@ -5101,7 +5041,6 @@ function openCharacterShop(id){
     showApp('character');
   } else {
     appMode = 'character';
-    document.getElementById('app-sub').textContent = 'Персонаж';
   }
   renderSteps();
   goStep(9);
@@ -5112,7 +5051,7 @@ function startNewCharacter(){
   Object.assign(state, freshState());
   migrateState();
   appMode = 'creation';
-  document.getElementById('app-sub').textContent = 'Создание персонажа';
+  showApp('creation');
   renderSteps();
   goStep(1);
 }
@@ -5142,50 +5081,7 @@ function deleteCharacter(id, ev, skipConfirm){
 
 // ===================== LANDING CHARS =====================
 function renderLandingChars(){
-  const list = document.getElementById('landing-char-list');
-  if(!list) return;
-  const roster = loadRoster();
-
-  if(!roster.length){
-    list.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon"><span class="ic">${ICONS.scroll}</span></div>
-        <div class="empty-text">Здесь будут твои герои.<br>Начни своё первое приключение.</div>
-      </div>`;
-    return;
-  }
-
-  list.innerHTML = roster.map((p, i) => {
-    const r = p.race ? DATA.races[p.race] : null;
-    const c = p.career ? DATA.careers[p.career] : null;
-    const tier = (c && c.tiers[(p.sheet?.tier||1)-1]) || null;
-    const xp = (p.xpGained||0) - (p.sheet?.spentXP||0);
-    const emoji = r ? r.emoji : '👤';
-    const raceName = r ? r.name : '?';
-    const careerName = p.career || '?';
-    const dots = [1,2,3,4].map(n =>
-      `<div class="dot${n <= (p.sheet?.tier||1) ? ' filled' : ''}"></div>`
-    ).join('');
-
-    return `
-      <div class="char-row" onclick="handleContinueFromLanding('${p.id}')" style="animation:fadeUp 0.5s ease ${0.1+i*0.07}s both">
-        <div class="char-portrait">
-          <div class="char-portrait-placeholder" style="background:linear-gradient(160deg,#1c1208,#0b0906)">
-            <span style="font-size:20px;">${emoji}</span>
-          </div>
-        </div>
-        <div class="char-info">
-          <div class="char-name">${p.name || '(без имени)'}</div>
-          <div class="char-meta">${raceName} · ${careerName}</div>
-        </div>
-        <div class="char-xp-badge">
-          <div class="xp-value">${xp}</div>
-          <div class="xp-label">XP</div>
-          <div class="char-tier-dot">${dots}</div>
-        </div>
-        <button class="char-del-btn" onclick="event.stopPropagation();deleteCharacter('${p.id}', event)" title="Удалить"><span class="ic">${ICONS.trash}</span></button>
-      </div>`;
-  }).join('');
+  renderArchiveInto(document.getElementById('landing-char-list'), { tools: false });
 }
 
 // ===================== INIT =====================
