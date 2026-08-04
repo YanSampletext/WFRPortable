@@ -109,6 +109,66 @@ for (let i = 0; i < menu.length; i++) {
 }
 await p.evaluate(() => drawerClose());
 
+// ── светлая тема: читается ли текст ─────────────────────────────────────────
+// Цвета смешиваем с подложкой: полупрозрачный фон сам по себе ничего не значит.
+console.log('\n── светлая тема ──');
+await p.evaluate(() => document.body.classList.add('theme-light'));
+for (const t of tabs) {
+  const bad = await p.evaluate(tab => {
+    sv4NavGo(tab);
+    const parse = c => {
+      const m = (c || '').match(/[\d.]+/g);
+      if (!m) return null;
+      return { r: +m[0], g: +m[1], b: +m[2], a: m[3] === undefined ? 1 : +m[3] };
+    };
+    const over = (top, bottom) => ({
+      r: top.r * top.a + bottom.r * (1 - top.a),
+      g: top.g * top.a + bottom.g * (1 - top.a),
+      b: top.b * top.a + bottom.b * (1 - top.a), a: 1
+    });
+    const lum = c => (0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b) / 255;
+    const bgOf = el => {
+      let acc = null;
+      for (let n = el; n; n = n.parentElement) {
+        const c = parse(getComputedStyle(n).backgroundColor);
+        if (!c || c.a === 0) continue;
+        acc = acc ? over(acc, c) : c;
+        if (acc.a >= 1) break;
+      }
+      return acc;
+    };
+    const out = [];
+    document.querySelectorAll('.sv4-page *').forEach(el => {
+      if (!el.textContent.trim() || el.children.length) return;
+      const fg = parse(getComputedStyle(el).color), bg = bgOf(el);
+      if (!fg || !bg) return;
+      if (Math.abs(lum(over(fg, bg)) - lum(bg)) < 0.13)
+        out.push((el.className || el.tagName).toString().slice(0, 26));
+    });
+    return [...new Set(out)].slice(0, 3);
+  }, t);
+  await p.waitForTimeout(160);
+  console.log(`  ${t.padEnd(10)} ${bad.length ? '⚠ сливается: ' + bad.join(' | ') : 'читается'}`);
+}
+await p.evaluate(() => document.body.classList.remove('theme-light'));
+
+// ── зоны нажатия ────────────────────────────────────────────────────────────
+console.log('\n── зоны нажатия меньше 44px ──');
+for (const t of ['persona', 'health', 'skills', 'gear', 'more']) {
+  const small = await p.evaluate(tab => {
+    sv4NavGo(tab);
+    const out = [];
+    document.querySelectorAll('.sv4-page button, .sv4-page [onclick], .sv4-page input:not([type=checkbox]), .sv4-page select').forEach(el => {
+      const r = el.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      if (r.height < 44) out.push(`${(el.className || el.tagName).toString().slice(0, 22)} ${Math.round(r.width)}×${Math.round(r.height)}`);
+    });
+    return [...new Set(out)].slice(0, 4);
+  }, t);
+  await p.waitForTimeout(160);
+  console.log(`  ${t.padEnd(10)} ${small.length ? '⚠ ' + small.join(' | ') : 'все зоны достаточные'}`);
+}
+
 console.log('\nвсего ошибок JS за прогон:', errs.length);
 if (errs.length) console.log(errs.slice(0, 8).map(e => '  · ' + e).join('\n'));
 await b.close();

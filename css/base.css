@@ -1754,10 +1754,14 @@ table input.sv4-mini { width: 100%; min-width: 38px; }
 
 /* === Печать === */
 @media print {
-  .sv4-nav, .sv4-nav-backdrop, .sv4-topbar, .sv4-back, .sv4-print-controls,
-  .app-header, .nav-bottom, .sv4-bottom-nav, .sv4-fab-hp { display: none !important; }
+  .sv4-nav, .sv4-nav-backdrop, .sv4-back, .sv4-print-controls,
+  .app-bar, .nav-bottom, .sv4-bottom-nav, .sv4-fab-hp,
+  /* экранная мелочь, которой на бумаге делать нечего */
+  #toast-stack, #ark-undo, #saved-tick, #app-drawer, #ad-slot,
+  .ordo-bar { display: none !important; }
   .sheet-v4 { background: white; margin: 0; }
-  .sv4-page { padding: 0; }
+  .sv4-page { padding: 0 !important; }
+  .sv4-page::after { display: none !important; }
   .sv4-print-page { box-shadow: none; }
 }
 

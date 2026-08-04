@@ -432,3 +432,31 @@ body.sheet-mode .page[data-step="9"] > p.muted{ display:none !important; }
    вычисляемый (панель + баннер), и последний блок вылезал из-под рамки.
    Привязываем рамку к тем же величинам. */
 .sv4-page::after{ bottom: calc(var(--ordo-navh) + var(--ad-h, 0px) + 4px) !important; }
+
+/* ═══ Светлая тема: то, что сливалось с фоном ═══ */
+body.theme-light .sv4-btn-dmg{ background:rgba(139,26,26,.14); color:#8f2620; border-color:#8f2620; }
+body.theme-light .sv4-btn-heal{ background:rgba(58,90,36,.16); color:#3d6b22; border-color:#3d6b22; }
+body.theme-light .ordo-tile-s{ color:#5b4a2c; }
+body.theme-light .dot{ border-color:#8c6c2e; }
+body.theme-light .dot.filled{ background:#8c6c2e; }
+
+/* ═══ Зоны нажатия: ничего меньше 44px по высоте ═══
+   Требование мобильных гайдлайнов и ТЗ. Поля ввода в правило base.css
+   не попадали вовсе, а счётчики состояний были явно занижены до 34px. */
+.sv4-page input:not([type="checkbox"]):not([type="radio"]),
+.sv4-page select,
+.sv4-page textarea{ min-height:44px; }
+.sv4-hp-input, .sv4-mini, .sv4-m-input, .sv4-text, .sv4-select{ min-height:44px !important; }
+.sv4-cond-btn, .stp{ min-width:44px !important; min-height:44px !important; }
+.sv4-hero-name{ min-height:44px; }
+@media (max-width:560px){
+  .sv4-cond-btn{ min-width:44px !important; min-height:44px !important; }
+}
+/* добор по мелочи: строки навыков, ячейки бросков, чекбоксы, подсказки */
+.sv4-skill.rollable{ min-height:44px; }
+.sv4-roll-cell{ display:inline-flex; align-items:center; justify-content:flex-end;
+  min-height:44px; min-width:44px; padding:0 4px; }
+.sv4-cond-help{ min-height:44px !important; }
+.sv4-page input[type="checkbox"]{ width:22px; height:22px; }
+.sv4-adv-reset{ padding:0 6px; }
+body.theme-light .ordo-tile-s{ color:#3d3018; }
