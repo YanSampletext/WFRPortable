@@ -23,12 +23,16 @@
   // Ссылка наружу: в приложении её открывает системный браузер, иначе
   // страница подменила бы собой приложение внутри WebView.
   window.openSupport = function () {
-    try {
-      var w = window.open(SUPPORT_URL, '_blank', 'noopener');
-      if (!w) location.href = SUPPORT_URL;
-    } catch (e) {
-      location.href = SUPPORT_URL;
-    }
+    var w = null;
+    try { w = window.open(SUPPORT_URL, '_blank', 'noopener'); } catch (e) { w = null; }
+    if (w) return;
+    // Переход по location увёл бы приложение на сайт прямо внутри WebView,
+    // и вернуться можно было бы только кнопкой «назад». Показываем адрес.
+    ordoAlert({
+      title: 'Поддержать проект',
+      text: 'Не вышло открыть браузер. Адрес страницы:\n\n' + SUPPORT_URL,
+      ok: 'Понятно'
+    });
   };
 
   function about() {
