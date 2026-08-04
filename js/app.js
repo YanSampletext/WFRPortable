@@ -2297,8 +2297,10 @@ function showRollResult(name, target, d, outcome, cls, slText){
     <div class="sv4-roll-die">${d}</div>
     <div class="sv4-roll-outcome">${outcome}</div>
     <div class="sv4-roll-sl">${slText}</div>
-    <button class="sv4-roll-close" onclick="document.getElementById('roll-modal').classList.remove('show')">Закрыть</button>
-    <button class="sv4-roll-again" onclick="rollCheck('${jsArg(name)}',${target})"><span class="ic">${ICONS.dice}</span> Ещё раз</button>
+    <div class="sv4-roll-btns">
+      <button class="sv4-roll-close" onclick="document.getElementById('roll-modal').classList.remove('show')">Закрыть</button>
+      <button class="sv4-roll-again" onclick="rollCheck('${jsArg(name)}',${target})"><span class="ic">${ICONS.dice}</span> Ещё раз</button>
+    </div>
   </div>`;
   modal.classList.add('show');
 }

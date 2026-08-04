@@ -460,3 +460,14 @@ body.theme-light .dot.filled{ background:#8c6c2e; }
 .sv4-page input[type="checkbox"]{ width:22px; height:22px; }
 .sv4-adv-reset{ padding:0 6px; }
 body.theme-light .ordo-tile-s{ color:#3d3018; }
+
+/* Кнопки в окне броска стояли в блочной строке и разъезжались по базовой
+   линии — теперь одна строка с равной высотой */
+.sv4-roll-btns{ display:flex; gap:10px; justify-content:center; align-items:stretch; margin-top:14px; }
+.sv4-roll-btns .sv4-roll-close, .sv4-roll-btns .sv4-roll-again{ margin:0 !important; flex:0 1 auto; min-height:48px; }
+
+/* «120 ХР · ЛАВКА» стояло вплотную: число и подпись в столбик, как и задумано */
+.ordo-xp{ flex-direction:column; align-items:center; gap:2px; line-height:1.1; }
+.ordo-xp b{ display:block; }
+.ordo-xp span{ display:block; }
+.sv4-roll-btns .sv4-roll-again{ display:inline-flex; align-items:center; justify-content:center; gap:8px; }
