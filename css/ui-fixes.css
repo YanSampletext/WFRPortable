@@ -104,7 +104,8 @@ body.theme-light .panel-title { color: #5d4310; }
   /* Плотнее: меньше «воздуха» между блоками */
   .sv4-page { row-gap: 0 !important; }
   .sv4-section-title { margin: 8px 0 5px !important; padding-bottom: 4px !important; }
-  .sv4-block { margin-bottom: 6px !important; padding: 9px 10px !important; }
+  /* поля с запасом под угловые орнаменты 18px, иначе они лезут на текст */
+  .sv4-block { margin-bottom: 6px !important; padding: 14px 14px 12px !important; }
   .sv4-hero, .sv4-tier-badge, .sv4-armor-zones, .sv4-xp-card,
   .sv4-skills, .sv4-combat-row, .sv4-stats, .sv4-vitals { margin-bottom: 6px !important; }
   .sv4-roll-tip { margin: 2px 0 5px !important; }
@@ -376,7 +377,7 @@ body.theme-light .ordo-dlg-input{ background:rgba(255,255,255,.6); color:#2a1c0c
 body.theme-light .sv4-bottom-nav{ box-shadow:0 -6px 18px rgba(60,45,20,.18); }
 
 /* Контент заканчивается над панелью — под неё ничего не заползает */
-.sv4-page{ padding-bottom:calc(var(--ordo-navh) + 18px) !important; }
+.sv4-page{ padding-bottom:calc(var(--ordo-navh) + var(--ad-h, 0px) + 18px) !important; }
 
 /* Бланк во всю ширину: убираем боковые отступы .app и компенсирующие
    отрицательные поля .sheet-v4 (они не совпадали и давали перекос на 2px) */
@@ -384,9 +385,9 @@ body.sheet-full .app{ padding:0 !important; }
 body.sheet-full .sheet-v4{ margin:0 !important; min-height:100dvh; }
 
 /* Плавающие элементы держатся над панелью, а не поверх неё */
-.sv4-fab-hp{ bottom:calc(var(--ordo-navh) + 12px) !important; z-index:85; }
+.sv4-fab-hp{ bottom:calc(var(--ordo-navh) + var(--ad-h, 0px) + 12px) !important; z-index:85; }
 /* «✓ сохранено» — над панелью и в левом углу, чтобы не спорить с регулятором ХП */
-#saved-tick{ bottom:calc(var(--ordo-navh) + 12px); left:12px; right:auto; }
+#saved-tick{ bottom:calc(var(--ordo-navh) + var(--ad-h, 0px) + 12px); left:12px; right:auto; }
 body.sheet-full .sv4-cart-badge{ bottom:calc(var(--ordo-navh) + 12px); }
 
 /* Уведомления: столбиком под шапкой, а не друг поверх друга поверх имени дела */

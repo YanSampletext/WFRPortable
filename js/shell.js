@@ -10,6 +10,7 @@
     { label: 'Магазин опыта',    sub: 'трата XP',              act: function () { goStep(9); }, needChar: true },
     { label: 'Импорт из JSON',   sub: 'вернуть выгруженное',   act: function () { var i = document.getElementById('import-roster'); if (i) i.click(); } },
     { label: 'Тема',             sub: 'светлая или тёмная',    act: function () { toggleTheme(); }, keepOpen: true },
+    { label: 'Поддержать проект', sub: 'boosty.to/ordodos',     act: function () { openSupport(); } },
     { label: 'О приложении',     sub: 'что это такое',         act: function () { about(); } }
   ];
 
@@ -17,12 +18,27 @@
     return typeof appMode !== 'undefined' && appMode === 'character';
   }
 
+  var SUPPORT_URL = 'https://boosty.to/ordodos/donate';
+
+  // Ссылка наружу: в приложении её открывает системный браузер, иначе
+  // страница подменила бы собой приложение внутри WebView.
+  window.openSupport = function () {
+    try {
+      var w = window.open(SUPPORT_URL, '_blank', 'noopener');
+      if (!w) location.href = SUPPORT_URL;
+    } catch (e) {
+      location.href = SUPPORT_URL;
+    }
+  };
+
   function about() {
     ordoAlert({
       title: 'Досье Ордо',
       text: 'Лист персонажа для настольной ролевой игры.\n' +
             'Работает без интернета, всё хранится в самом приложении.\n' +
-            'Выгружай досье в JSON, если хочешь перенести их на другое устройство.'
+            'Выгружай досье в JSON, если хочешь перенести их на другое устройство.\n\n' +
+            'Поддержать проект: boosty.to/ordodos',
+      ok: 'Закрыть'
     });
   }
 
@@ -142,6 +158,7 @@ document.addEventListener('click', function (e) {
     m = /^goStep\((\d+)\)$/.exec(call);
     if (m) { goStep(parseInt(m[1], 10)); return; }
     if (call === 'toggleTheme()') { toggleTheme(); return; }
+    if (call === 'openSupport()') { openSupport(); return; }
     if (call.indexOf('gmOpen') >= 0) { if (typeof gmOpen === 'function') gmOpen(); return; }
   } catch (err) {
     notify('Не вышло: ' + err.message);

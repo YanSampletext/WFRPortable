@@ -1978,7 +1978,7 @@ body.theme-light #app-drawer .drawer-panel{ background: linear-gradient(180deg,#
 
 #ark-undo{
   position: fixed; left: 50%; transform: translateX(-50%) translateY(20px);
-  bottom: calc(var(--ordo-navh, 62px) + 12px); z-index: 150;
+  bottom: calc(var(--ordo-navh, 62px) + var(--ad-h, 0px) + 12px); z-index: 150;
   display: flex; align-items: center; gap: var(--sp-3);
   padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-4);
   background: linear-gradient(180deg,#2a1c08,#160f06);
@@ -1997,3 +1997,34 @@ body.sheet-mode .app-bar{ display: none !important; }
 /* иконки плиток «Ещё» — SVG вместо символов-заглушек */
 .ordo-tile-ic svg{ width: 26px; height: 26px; fill: none; stroke: currentColor;
   stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ════════════════════════════════════════════════════
+   МЕСТО ПОД БАННЕР: пока пусто — не занимает ничего
+════════════════════════════════════════════════════ */
+:root{ --ad-h: 0px; }
+#ad-slot{
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 88;
+  height: calc(var(--ad-h) + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  display: none; align-items: center; justify-content: center;
+  overflow: hidden;
+  background: #0c0805; border-top: 1px solid var(--border);
+}
+body.has-ad #ad-slot{ display: flex; }
+body.theme-light #ad-slot{ background: #e7dcc4; }
+.ad-demo{
+  font-family: 'Barlow Condensed', sans-serif; font-size: var(--fs-xs);
+  letter-spacing: .12em; text-transform: uppercase; color: var(--text3);
+  border: 1px dashed var(--border2); border-radius: 4px; padding: 6px 14px;
+}
+/* Нижняя панель бланка садится над баннером, а не под него */
+body.has-ad .sv4-bottom-nav{ bottom: var(--ad-h); }
+/* Свободный ввод опыта рядом с быстрыми кнопками */
+.sv4-xp-free{ display: flex; gap: var(--sp-2); align-items: center; margin-top: var(--sp-2); }
+.sv4-xp-free input{ flex: 1 1 90px; min-width: 0; min-height: 44px; text-align: center;
+  font-family: 'Cinzel', serif; font-size: var(--fs-md); }
+.sv4-xp-free .sv4-btn-mini{ flex: 0 0 auto; }
+/* Регулятор ХП уезжает за край, пока листают, и возвращается на остановке */
+.sv4-fab-hp{ transition: transform .18s ease, opacity .18s ease; }
+.sv4-fab-hp.tucked{ transform: translateX(calc(100% + 12px)); opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: reduce){ .sv4-fab-hp{ transition: none; } }

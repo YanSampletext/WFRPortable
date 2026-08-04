@@ -2181,6 +2181,14 @@ function updateBloodVignette(max){
 }
 
 // Изменить полученный опыт (с защитой от ухода ниже потраченного)
+// Свободный ввод: мастер выдаёт сколько угодно, а не только круглые числа
+function addXPFree(sign){
+  const el = document.getElementById('xp-free');
+  const n = Math.abs(parseInt(el && el.value, 10) || 0);
+  if(!n){ notify('Впиши, сколько опыта начислить.'); if(el) el.focus(); return; }
+  addXP(sign === -1 ? -n : n);
+}
+
 function addXP(delta){
   const spent = state.sheet.spentXP || 0;
   let next = (state.xpGained || 0) + delta;
@@ -2552,6 +2560,7 @@ function renderTabMore(){
       ${tile("sv4DoAction('import')",ICONS.upload,'Импорт','из JSON')}
       ${tile("sv4DoAction('print')",ICONS.print,'Печать','PDF из браузера')}
       ${tile("sv4DoAction('gallery')",ICONS.home,'В архив','на главную')}
+      ${tile("openSupport()",ICONS.coins,'Поддержать','автору на кости')}
     </div>
     <input type="file" id="import-file" accept=".json" style="display:none" onchange="importSheet(this)" />
     <button class="btn btn-sm" style="margin-top:14px;border-color:var(--blood2);color:var(--blood2);" onclick="sv4DoAction('delete')">✕ Удалить персонажа из архива</button>
@@ -2816,10 +2825,17 @@ function renderTabPersona(){
       <div class="sv4-xp-big">${xpAv}<span class="sv4-xp-cap"> доступно</span></div>
     </div>
     <div class="sv4-xp-btns">
+      <button class="sv4-btn-mini btn-gold" onclick="addXP(5)">+5</button>
       <button class="sv4-btn-mini btn-gold" onclick="addXP(10)">+10</button>
       <button class="sv4-btn-mini btn-gold" onclick="addXP(25)">+25</button>
       <button class="sv4-btn-mini btn-gold" onclick="addXP(50)">+50</button>
-      <button class="sv4-btn-mini btn-gold" onclick="addXP(100)">+100</button>
+    </div>
+    <!-- мастер может дать любое число, поэтому рядом свободный ввод -->
+    <div class="sv4-xp-free">
+      <input type="number" id="xp-free" class="sv4-mini" inputmode="numeric" step="1"
+             placeholder="сколько" aria-label="Начислить опыт" onkeydown="if(event.key==='Enter')addXPFree()" />
+      <button class="sv4-btn-mini btn-gold" onclick="addXPFree()">Начислить</button>
+      <button class="sv4-btn-mini" onclick="addXPFree(-1)" title="Списать столько же">Списать</button>
     </div>
     <button class="sv4-btn-wide" style="margin-top:8px;" onclick="goStep(9)"><span class="ic">${ICONS.shop}</span> Потратить опыт →</button>
   </div>`;
