@@ -426,3 +426,9 @@ body.sheet-mode .page[data-step="9"] > p.muted{ display:none !important; }
 
 /* Заблокированные шаги мастера (было отдельным файлом gate-fix.css) */
 .step.locked{ pointer-events:none !important; opacity:.4 !important; cursor:not-allowed !important; }
+
+/* Рамка листа рисуется через .sv4-page::after с фиксированным bottom:96px —
+   он подбирался под старый padding-bottom:100px. Теперь низ у страницы
+   вычисляемый (панель + баннер), и последний блок вылезал из-под рамки.
+   Привязываем рамку к тем же величинам. */
+.sv4-page::after{ bottom: calc(var(--ordo-navh) + var(--ad-h, 0px) + 4px) !important; }

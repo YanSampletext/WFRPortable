@@ -1,5 +1,5 @@
 // Досье Ордо — service worker (cache-first для оффлайна)
-const CACHE = 'ordo-v25';
+const CACHE = 'ordo-v26';
 const ASSETS = [
   './', './index.html', './manifest.json',
   './css/fonts.css',

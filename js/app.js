@@ -2200,8 +2200,19 @@ function addXP(delta){
 }
 
 // === d100 проверка по навыку/характеристике ===
+// Названия, к которым по книге применяется преимущество: бой и оружейные навыки
+function advantageApplies(name){
+  const n = String(name || '').toLowerCase();
+  return n === 'бб' || n === 'дб' ||
+         n.startsWith('рукопашный бой') || n.startsWith('стрельба');
+}
+
 function rollCheck(name, target){
   target = parseInt(target)||0;
+  // Преимущество: +10 за пункт к боевым проверкам — как и написано на бланке
+  const adv = (state.sheet && state.sheet.advantage) || 0;
+  const advBonus = (adv > 0 && advantageApplies(name)) ? adv * 10 : 0;
+  target += advBonus;
   const d = Math.floor(Math.random()*100) + 1; // 1..100
   let outcome, cls, slvl = 0;
   // Уровни успеха/провала: разница десятков
@@ -2219,7 +2230,8 @@ function rollCheck(name, target){
   }
   const slText = (d<=target ? '+' : '') + slvl + ' ст.усп.';
   if(navigator.vibrate) navigator.vibrate(d<=target?[20]:[40,30,40]);
-  showRollResult(name, target, d, outcome, cls, slText);
+  showRollResult(advBonus ? name + ' (+' + advBonus + ' за преимущество)' : name,
+                 target, d, outcome, cls, slText);
 }
 function rollLogRows(){
   const log = (state.sheet && state.sheet.rollLog) || [];
