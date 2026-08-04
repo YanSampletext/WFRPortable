@@ -57,6 +57,8 @@ node scripts/audit.mjs           статика: мёртвый код, поте
 node scripts/check-features.mjs  51 проверка живых функций всех модулей
 node scripts/check-app.mjs       обход всех вкладок, шагов и пунктов меню,
                                  контраст светлой темы и зоны нажатия
+node scripts/check-apk.mjs f.apk что уцелело после сжатия R8: мост WebView,
+                                 плагины, сайт внутри пакета
 ```
 
 ## Приложение для Android
