@@ -36,5 +36,10 @@
 [BUILD-ANDROID.md](BUILD-ANDROID.md).
 
 ## Лицензия
+Код — [PolyForm Noncommercial 1.0.0](LICENSE): читать, чинить и
+пользоваться можно, продавать нельзя. Это source-available, а не open
+source: права ограничены намеренно.
+
 Неофициальный фанатский инструмент. Warhammer Fantasy Roleplay —
-собственность Games Workshop / Cubicle 7. Не для продажи.
+собственность Games Workshop / Cubicle 7; лицензия на код никаких прав
+на их материалы не даёт.
