@@ -878,6 +878,26 @@ const makePhoto = () => ev(async () => {
   return true;
 });
 
+await check('рамка портрета квадратная', () => ev(() => {
+  sv4NavGo('main');
+  const el = document.querySelector('.sv4-portrait');
+  if (!el) return 'рамки нет';
+  const r = el.getBoundingClientRect();
+  return Math.round(r.width) === Math.round(r.height) && r.width > 0;
+}));
+
+await check('заглушка помещается в рамку', () => ev(() => {
+  // Печать сургуча свисает за рамку намеренно, поэтому меряем не коробку,
+  // а сам значок с подписью: они обязаны уместиться внутри.
+  const el = document.querySelector('.sv4-portrait');
+  const box = el.getBoundingClientRect();
+  return [...el.children].every(c => {
+    const r = c.getBoundingClientRect();
+    return r.top >= box.top - 1 && r.bottom <= box.bottom + 1
+        && r.left >= box.left - 1 && r.right <= box.right + 1;
+  });
+}));
+
 await check('пустое место зовёт добавить портрет', () => ev(() => {
   state.sheet.portrait = null;
   sv4NavGo('main'); renderSheet(); sv4NavGo('main');

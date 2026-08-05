@@ -1032,8 +1032,11 @@ textarea { background: var(--panel); border: 1px solid var(--border2); color: va
   border-radius: 2px;
   pointer-events: none;
 }
+/* Квадрат, а не вытянутый прямоугольник: портрет и хранится квадратом
+   256×256, так что в квадратной рамке показывается целиком, без второй
+   обрезки. Заодно рамка перестала занимать лишнюю высоту карточки. */
 .sv4-portrait {
-  width: 80px; height: 100px;
+  width: 84px; height: 84px;
   background:
     linear-gradient(180deg, #1a130a, #0d0a06);
   border: 1px solid var(--gold-dim);
@@ -1050,7 +1053,10 @@ textarea { background: var(--panel); border: 1px solid var(--border2); color: va
   border-radius: 3px;
   pointer-events: none;
 }
-.sv4-portrait svg { width: 32px; height: 32px; opacity: 0.55; stroke: currentColor; fill: none; stroke-width: 1.2; margin-bottom: 4px; }
+/* Значок-заглушка занимал треть рамки и терялся в ней. Больше 38px вместе
+   с подписью в квадрат уже не влезает — упирается в восковую печать. */
+.sv4-portrait svg { width: 38px; height: 38px; opacity: 0.55; stroke: currentColor; fill: none; stroke-width: 1.2; margin-bottom: 2px; }
+.sv4-portrait > span { line-height: 1.1; }
 .sv4-hero-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .sv4-hero-name {
   font-family: 'Cinzel', serif;
@@ -1689,8 +1695,8 @@ table input.sv4-mini { width: 100%; min-width: 38px; }
 
 /* === Узкие экраны: разгружаем плотные сетки === */
 @media (max-width: 560px) {
-  .sv4-hero { grid-template-columns: 88px 1fr; gap: 12px; padding: 10px; }
-  .sv4-portrait { width: 76px; height: 96px; }
+  .sv4-hero { grid-template-columns: 80px 1fr; gap: 12px; padding: 10px; }
+  .sv4-portrait { width: 76px; height: 76px; }
   .sv4-hero-fields { grid-template-columns: 1fr; gap: 3px 8px; }
   .sv4-hero-name { font-size: 18px; }
   .sv4-az-row-6 { grid-template-columns: repeat(2, 1fr); }
@@ -2145,9 +2151,12 @@ body.theme-light .enc-chip{ background: rgba(125,95,36,.10); }
 /* ════════════════════════════════════════════════════
    ПОРТРЕТ ПЕРСОНАЖА
 ════════════════════════════════════════════════════ */
-.sv4-portrait { cursor: pointer; overflow: hidden; flex: 0 0 auto; }
+/* Обрезаем само фото, а не рамку: восковая печать нарочно свисает за её
+   край, и overflow:hidden на рамке срезал бы половину печати. */
+.sv4-portrait { cursor: pointer; flex: 0 0 auto; }
 .sv4-portrait img {
   width: 100%; height: 100%; object-fit: cover; display: block;
+  border-radius: inherit;
   /* карточка досье тёмная — портрет не должен из неё выпрыгивать */
   filter: saturate(.85) contrast(1.05);
 }

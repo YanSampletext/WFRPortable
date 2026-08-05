@@ -101,8 +101,9 @@
              ' title="Сменить или убрать портрет">' +
              '<img src="' + escAttr(src) + '" alt="Портрет персонажа"></div>';
     }
+    // Подпись в одну строку: в квадратной рамке две уже не помещаются
     return '<div class="sv4-portrait" data-portrait="pick" role="button" title="Добавить портрет">' +
-           ICONS.user + '<span>добавить<br>портрет</span></div>';
+           ICONS.user + '<span>портрет</span></div>';
   };
 
   window.portraitPick = function () { input().click(); };
