@@ -1081,9 +1081,19 @@ textarea { background: var(--panel); border: 1px solid var(--border2); color: va
   margin-top: 6px;
   font-size: 12px;
 }
-.sv4-hf { display: flex; gap: 4px; align-items: center; min-width: 0; }
-.sv4-hf label { color: var(--text3); font-size: 11px; flex-shrink: 0; }
-.sv4-hf input { background: transparent; border: none; color: var(--text); border-bottom: 1px dotted var(--border2); padding: 0 2px; font: inherit; flex: 1; min-width: 0; }
+/* Строка целиком — <label>, поэтому палец попадает по ней всей, а не только
+   по полю ввода. Благодаря этому само поле может быть по высоте текста:
+   раньше оно тянулось на 44px ради зоны нажатия, и пунктирная линия висела
+   в двадцати пикселях под значением, оторванная от него. */
+/* 32px, а не 44: строка — <label> во всю ширину карточки, тап по любой её
+   точке ставит курсор в поле. Цель выходит ~250×32 — это и по меньшей
+   стороне выше порога WCAG 2.5.8 (24px), и по площади вчетверо больше
+   квадрата 44×44. Пять полей по 44px растягивали шапку на 240px. */
+.sv4-hf { display: flex; gap: 4px; align-items: center; min-width: 0;
+  min-height: 32px; cursor: text; }
+.sv4-hf > span { color: var(--text3); font-size: 11px; flex-shrink: 0; }
+.sv4-hf input { background: transparent; border: none; color: var(--text); border-bottom: 1px dotted var(--border2); padding: 0 2px; font: inherit; flex: 1; min-width: 0;
+  min-height: 0; height: 1.7em; }
 .sv4-hf input:focus { outline: none; border-color: var(--gold); }
 
 /* === Текущая ступень === */
@@ -1697,7 +1707,12 @@ table input.sv4-mini { width: 100%; min-width: 38px; }
 @media (max-width: 560px) {
   .sv4-hero { grid-template-columns: 80px 1fr; gap: 12px; padding: 10px; }
   .sv4-portrait { width: 76px; height: 76px; }
-  .sv4-hero-fields { grid-template-columns: 1fr; gap: 3px 8px; }
+  /* Колонка одна: в две «тёмно-каштановые» и «голубые» не помещаются и
+     обрезаются на середине слова. Высоту забирает не эта сетка, а
+     44-пиксельная зона нажатия — её держит строка-<label>, поэтому само
+     поле прижато к своему подчёркиванию. */
+  .sv4-hero-fields { grid-template-columns: 1fr; gap: 0 8px; }
+  .sv4-hf > span { font-size: 10px; min-width: 58px; }
   .sv4-hero-name { font-size: 18px; }
   .sv4-az-row-6 { grid-template-columns: repeat(2, 1fr); }
   .sv4-vitals { grid-template-columns: 1fr 1fr; }
@@ -2160,8 +2175,19 @@ body.theme-light .enc-chip{ background: rgba(125,95,36,.10); }
   /* карточка досье тёмная — портрет не должен из неё выпрыгивать */
   filter: saturate(.85) contrast(1.05);
 }
-/* с фотографией рамка-обводка внутри мешает: она резала бы лицо */
-.sv4-portrait.has-photo::after { border-color: rgba(122,92,30,.55); }
+
+/* С фотографией рамка перестаёт быть аркой: полукруглый верх съедал верхние
+   углы снимка вместе с частью лица. Квадрат — фотография видна целиком, а
+   украшение ложится поверх неё тонкой обводкой, ничего не закрывая. */
+.sv4-portrait.has-photo { border-radius: 4px; }
+.sv4-portrait.has-photo::after {
+  border-radius: 2px;
+  border-color: rgba(212,175,55,.5);
+  /* вторая, внешняя нить — та самая рамка поверх снимка */
+  box-shadow: 0 0 0 1px rgba(0,0,0,.55);
+}
+/* Печать сургуча уводим за угол целиком, чтобы не садилась на снимок */
+.sv4-portrait.has-photo::before { right: -12px; bottom: -12px; }
 .sv4-portrait:active { border-color: var(--gold2); }
 /* Бросок защиты во встречной проверке — рядом с броском атаки, но тише */
 .atk-opp{ font-size: var(--fs-xs); color: var(--text3); margin-top: var(--sp-1); }

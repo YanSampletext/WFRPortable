@@ -2538,11 +2538,11 @@ function renderTabPersona(){
       <input class="sv4-hero-name" value="${escAttr(state.name||'')}" placeholder="Имя персонажа" onchange="state.name=this.value;autosave();" />
       <div class="sv4-hero-sub">${escHtml(r.name)} <span class="dot">●</span> ${escHtml(state.career)}</div>
       <div class="sv4-hero-fields">
-        <div class="sv4-hf"><label>Возраст:</label><input value="${escAttr(state.age||'')}" onchange="state.age=this.value;autosave();" /></div>
-        <div class="sv4-hf"><label>Рост:</label><input value="${escAttr(state.height||'')}" onchange="state.height=this.value;autosave();" /></div>
-        <div class="sv4-hf"><label>Вес:</label><input value="${escAttr(state.weight||'')}" placeholder="—" onchange="state.weight=this.value;autosave();" /></div>
-        <div class="sv4-hf"><label>Глаза:</label><input value="${escAttr(state.eyes||'')}" onchange="state.eyes=this.value;autosave();" /></div>
-        <div class="sv4-hf"><label>Волосы:</label><input value="${escAttr(state.hair||'')}" onchange="state.hair=this.value;autosave();" /></div>
+        <label class="sv4-hf"><span>Возраст:</span><input value="${escAttr(state.age||'')}" onchange="state.age=this.value;autosave();" /></label>
+        <label class="sv4-hf"><span>Рост:</span><input value="${escAttr(state.height||'')}" onchange="state.height=this.value;autosave();" /></label>
+        <label class="sv4-hf"><span>Вес:</span><input value="${escAttr(state.weight||'')}" placeholder="—" onchange="state.weight=this.value;autosave();" /></label>
+        <label class="sv4-hf"><span>Глаза:</span><input value="${escAttr(state.eyes||'')}" onchange="state.eyes=this.value;autosave();" /></label>
+        <label class="sv4-hf"><span>Волосы:</span><input value="${escAttr(state.hair||'')}" onchange="state.hair=this.value;autosave();" /></label>
       </div>
       <div class="arch-serial" style="margin-top:6px;">ДОСЬЕ № ${dossierSerial()} · АРХИВ РЕЙКЛАНДА</div>
     </div>

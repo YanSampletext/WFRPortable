@@ -155,15 +155,25 @@ for (const t of tabs) {
 await p.evaluate(() => document.body.classList.remove('theme-light'));
 
 // ── зоны нажатия ────────────────────────────────────────────────────────────
-console.log('\n── зоны нажатия меньше 44px ──');
+console.log('\n── зоны нажатия: меньшая сторона <24px или площадь < 44×44 ──');
 for (const t of ['persona', 'health', 'skills', 'gear', 'more']) {
   const small = await p.evaluate(tab => {
     sv4NavGo(tab);
     const out = [];
+    // Мерить надо не сам элемент, а то, по чему на самом деле попадает палец:
+    // поле внутри <label> ловит тап по всей строке, и его собственная высота
+    // ничего не говорит о том, легко ли в него попасть.
+    const targetOf = el => el.closest('label, button, [role=button]') || el;
+    // Порог: меньшая сторона не ниже 24px (WCAG 2.5.8) и площадь не меньше
+    // квадрата 44×44 — узкая, но длинная строка проходит, мелкая кнопка нет.
+    const AREA = 44 * 44;
     document.querySelectorAll('.sv4-page button, .sv4-page [onclick], .sv4-page input:not([type=checkbox]), .sv4-page select').forEach(el => {
-      const r = el.getBoundingClientRect();
+      const r = targetOf(el).getBoundingClientRect();
       if (!r.width || !r.height) return;
-      if (r.height < 44) out.push(`${(el.className || el.tagName).toString().slice(0, 22)} ${Math.round(r.width)}×${Math.round(r.height)}`);
+      const side = Math.min(r.width, r.height);
+      if (side < 24 || r.width * r.height < AREA) {
+        out.push(`${(el.className || el.tagName).toString().slice(0, 22)} ${Math.round(r.width)}×${Math.round(r.height)}`);
+      }
     });
     return [...new Set(out)].slice(0, 4);
   }, t);

@@ -878,6 +878,30 @@ const makePhoto = () => ev(async () => {
   return true;
 });
 
+await check('шапка досье не растянута', () => ev(() => {
+  sv4NavGo('main');
+  const box = document.querySelector('.sv4-hero-fields');
+  if (!box) return 'полей шапки нет';
+  // Пять полей по 44px давали 240px; строка-<label> держит зону нажатия при 32
+  return box.getBoundingClientRect().height < 200;
+}));
+
+await check('строка поля — label и ловит тап целиком', () => ev(() => {
+  const rows = [...document.querySelectorAll('.sv4-hf')];
+  return rows.length === 5 && rows.every(r => {
+    const rc = r.getBoundingClientRect();
+    return r.tagName === 'LABEL' && r.contains(r.querySelector('input'))
+        && Math.min(rc.width, rc.height) >= 24 && rc.width * rc.height >= 44 * 44;
+  });
+}));
+
+await check('значения полей не обрезаются', () => ev(() => {
+  state.eyes = 'тёмно-карие'; state.hair = 'тёмно-каштановые';
+  renderSheet(); sv4NavGo('main');
+  return [...document.querySelectorAll('.sv4-hf input')]
+    .every(i => i.scrollWidth <= i.clientWidth + 1);
+}));
+
 await check('рамка портрета квадратная', () => ev(() => {
   sv4NavGo('main');
   const el = document.querySelector('.sv4-portrait');

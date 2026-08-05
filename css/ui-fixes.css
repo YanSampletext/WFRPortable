@@ -438,6 +438,11 @@ body.theme-light .ordo-tile-s{ color:#5b4a2c; }
 .sv4-page input:not([type="checkbox"]):not([type="radio"]),
 .sv4-page select,
 .sv4-page textarea{ min-height:44px; }
+/* Исключение: поля шапки досье. Зону нажатия там держит вся строка — она
+   <label>, и тап по любой её точке ставит курсор в поле. Растягивать само
+   поле до 44px значило бы отодвинуть пунктирную линию на два десятка
+   пикселей от значения и вытянуть шапку впятеро. */
+.sv4-page .sv4-hf input:not([type="checkbox"]){ min-height:0; height:1.7em; }
 .sv4-hp-input, .sv4-mini, .sv4-m-input, .sv4-text, .sv4-select{ min-height:44px !important; }
 .sv4-cond-btn, .stp{ min-width:44px !important; min-height:44px !important; }
 .sv4-hero-name{ min-height:44px; }
