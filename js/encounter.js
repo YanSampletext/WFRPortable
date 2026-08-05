@@ -26,6 +26,7 @@
     enc.list.forEach(function (p) {
       if (typeof p.tb !== 'number') p.tb = 0;
       if (typeof p.ap !== 'number') p.ap = 0;
+      if (typeof p.def !== 'number') p.def = 0;
       if (!p.conds || typeof p.conds !== 'object') p.conds = {};
     });
     return enc;
@@ -63,13 +64,14 @@
   var uid = function () { return 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); };
 
   // ── действия ────────────────────────────────────────────────────────────────
-  window.encAdd = function (name, init, hp, foe, tb, ap) {
+  window.encAdd = function (name, init, hp, foe, tb, ap, def) {
     var p = {
       id: uid(), name: name || 'Без имени',
       init: parseInt(init, 10) || 0,
       hp: parseInt(hp, 10) || 0, maxHp: parseInt(hp, 10) || 0,
       adv: 0, foe: !!foe,
       tb: parseInt(tb, 10) || 0, ap: parseInt(ap, 10) || 0,
+      def: parseInt(def, 10) || 0,
       conds: {}
     };
     load().list.push(p);
@@ -85,18 +87,89 @@
     var tb = calc ? Math.floor((calc.totals['СВ'] || 0) / 10) : 0;
     var ap = (typeof encSelfAP === 'function') ? encSelfAP() : 0;
     encAdd(state.name, (state.stats && state.stats['И']) || 0,
-           (state.sheet && state.sheet.currentHP) || (calc && calc.maxHP) || 0, false, tb, ap);
+           (state.sheet && state.sheet.currentHP) || (calc && calc.maxHP) || 0, false, tb, ap, defenceOf());
   };
 
   // Средний класс брони по зонам: точная зона известна только при крите,
   // а в обычном ударе сойдёт то, что прикрывает тело.
-  window.encSelfAP = function () {
+  function apOf(sheet) {
     var best = 0;
-    (((typeof state !== 'undefined' && state && state.sheet) || {}).armor || []).forEach(function (a) {
+    ((sheet || {}).armor || []).forEach(function (a) {
       var z = String(a.zones || '').toLowerCase();
       if (z.includes('тел') || z.includes('торс') || z.includes('груд')) best += parseInt(a.ap, 10) || 0;
     });
     return best;
+  }
+
+  window.encSelfAP = function () {
+    return apOf(typeof state !== 'undefined' && state ? state.sheet : null);
+  };
+
+  // ── вся партия уже лежит в архиве ───────────────────────────────────────────
+  // Инициатива, раны, стойкость и броня у сопартийцев записаны — вбивать их
+  // вручную по четыре числа на каждого незачем.
+  //
+  // sheetCalc считает по глобальному state, поэтому чужое досье на время
+  // расчёта подставляется на его место. Всё синхронно: между подстановкой и
+  // возвратом ничего чужого выполниться не может.
+  function statsOf(p) {
+    var saved = state;
+    try {
+      state = p;
+      var calc = sheetCalc();
+      return {
+        init: (calc.totals && calc.totals['И']) || 0,
+        hp: (p.sheet && p.sheet.currentHP != null) ? p.sheet.currentHP : (calc.maxHP || 0),
+        maxHp: calc.maxHP || 0,
+        tb: Math.floor(((calc.totals && calc.totals['СВ']) || 0) / 10),
+        ap: apOf(p.sheet),
+        def: defenceOf()
+      };
+    } catch (e) {
+      // Досье из старой версии может не досчитаться — берём что есть
+      return { init: (p.stats && p.stats['И']) || 0,
+               hp: (p.sheet && p.sheet.currentHP) || 0, maxHp: 0, tb: 0, ap: apOf(p.sheet), def: 0 };
+    } finally {
+      state = saved;
+    }
+  }
+
+  // Чем отбиваются по книге: рукопашным боем или уклонением — берём лучшее.
+  // Считается по тому досье, которое сейчас подставлено в state.
+  function defenceOf() {
+    if (typeof compileSkills !== 'function') return 0;
+    var best = 0;
+    compileSkills().forEach(function (r) {
+      var n = String(r.name || '').toLowerCase();
+      if (n.indexOf('рукопашный бой') === 0 || n.indexOf('уклонение') === 0) {
+        best = Math.max(best, r.value || 0);
+      }
+    });
+    return best;
+  }
+
+  window.encAddFromRoster = function () {
+    var roster = (typeof loadRoster === 'function') ? loadRoster() : [];
+    var inFight = load().list.map(function (x) { return x.name; });
+    var free = roster.filter(function (p) { return inFight.indexOf(p.name) < 0; });
+    if (!roster.length) { notify('В архиве пока нет досье.'); return; }
+    if (!free.length) { notify('Все из архива уже в схватке.'); return; }
+    ordoChoice({
+      title: 'Кого из архива',
+      text: 'Инициатива, раны, стойкость и броня возьмутся из досье.',
+      options: free.map(function (p) {
+        var st = statsOf(p);
+        return {
+          label: (p.name || 'Без имени') + ' · иниц. ' + st.init + ' · ' + st.hp + ' ран',
+          cb: function () {
+            var id = encAdd(p.name, st.init, st.hp, false, st.tb, st.ap, st.def);
+            var row = load().list.find(function (x) { return x.id === id; });
+            if (row && st.maxHp) row.maxHp = st.maxHp;   // раны могли быть неполными
+            save(); refresh();
+          }
+        };
+      })
+    });
   };
 
   // ── состояния участников ────────────────────────────────────────────────────
@@ -169,7 +242,8 @@
 
   window.encList = function () {
     return order().map(function (p) {
-      return { id: p.id, name: p.name, hp: p.hp, maxHp: p.maxHp, foe: p.foe, soak: (p.tb || 0) + (p.ap || 0) };
+      return { id: p.id, name: p.name, hp: p.hp, maxHp: p.maxHp, foe: p.foe,
+               soak: (p.tb || 0) + (p.ap || 0), def: p.def || 0 };
     });
   };
 
@@ -236,7 +310,7 @@
   window.encPrompt = function () {
     ordoPromptRow(function (v) {
       if (!v.name) return;
-      encAdd(v.name, v.init, v.hp, true, v.tb, v.ap);
+      encAdd(v.name, v.init, v.hp, true, v.tb, v.ap, v.def);
     });
   };
 
@@ -254,8 +328,10 @@
       '<div class="enc-form-row">' +
         '<input class="ordo-dlg-input" id="enc-t" type="number" inputmode="numeric" placeholder="бонус СВ">' +
         '<input class="ordo-dlg-input" id="enc-a" type="number" inputmode="numeric" placeholder="броня">' +
+        '<input class="ordo-dlg-input" id="enc-d" type="number" inputmode="numeric" placeholder="защита">' +
       '</div>' +
-      '<div class="ordo-dlg-text enc-form-hint">Стойкость и броня гасят урон при ударе. Можно оставить пустыми.</div>' +
+      '<div class="ordo-dlg-text enc-form-hint">Стойкость и броня гасят урон. Защита — навык, ' +
+        'которым цель отбивается: заполнишь — удар станет встречной проверкой по книге. Всё необязательно.</div>' +
       '<div class="ordo-dlg-btns">' +
         '<button class="ordo-dlg-btn gold" id="enc-ok">Добавить</button>' +
         '<button class="ordo-dlg-btn" onclick="ordoDialogClose()">Отмена</button>' +
@@ -267,7 +343,7 @@
     var val = function (id) { var e = document.getElementById(id); return e ? e.value : ''; };
     document.getElementById('enc-ok').onclick = function () {
       var v = { name: val('enc-n').trim(), init: val('enc-i'), hp: val('enc-h'),
-                tb: val('enc-t'), ap: val('enc-a') };
+                tb: val('enc-t'), ap: val('enc-a'), def: val('enc-d') };
       ordoDialogClose();
       cb(v);
     };
@@ -291,7 +367,8 @@
             (pct === null ? '' : '<div class="enc-hp-bar"><i style="width:' + Math.round(pct * 100) + '%"></i></div>') +
             '<div class="enc-sub">раны ' + p.hp + (p.maxHp ? ' / ' + p.maxHp : '') +
               ' · преим. ' + (p.adv || 0) +
-              ((p.tb || p.ap) ? ' · гасит ' + ((p.tb || 0) + (p.ap || 0)) : '') + '</div>' +
+              ((p.tb || p.ap) ? ' · гасит ' + ((p.tb || 0) + (p.ap || 0)) : '') +
+              (p.def ? ' · защита ' + p.def : '') + '</div>' +
             condChips(p) +
           '</div>' +
           '<div class="enc-btns">' +
@@ -323,6 +400,7 @@
         '<div class="enc-tools">' +
           '<button class="sv4-btn-mini btn-gold enc-next" data-enc="next">Следующий ход →</button>' +
           '<button class="sv4-btn-mini" data-enc="self">+ Я</button>' +
+          '<button class="sv4-btn-mini" data-enc="party">+ Из архива</button>' +
           '<button class="sv4-btn-mini" data-enc="add">+ Участник</button>' +
           '<button class="sv4-btn-mini" data-enc="reset">Закончить</button>' +
         '</div>' +
@@ -344,6 +422,7 @@
       case 'del': encRemove(id); break;
       case 'next': encNext(); break;
       case 'self': encAddSelf(); break;
+      case 'party': encAddFromRoster(); break;
       case 'add': encPrompt(); break;
       case 'reset': encReset(); break;
     }

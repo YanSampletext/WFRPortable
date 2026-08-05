@@ -2533,7 +2533,7 @@ function renderTabPersona(){
   let h = '';
   // Hero card
   h += `<div class="sv4-hero">
-    <div class="sv4-portrait">${ICONS.user}<span>портрет<br>(скоро)</span></div>
+    ${typeof portraitHtml === 'function' ? portraitHtml() : ''}
     <div class="sv4-hero-info">
       <input class="sv4-hero-name" value="${escAttr(state.name||'')}" placeholder="Имя персонажа" onchange="state.name=this.value;autosave();" />
       <div class="sv4-hero-sub">${escHtml(r.name)} <span class="dot">●</span> ${escHtml(state.career)}</div>

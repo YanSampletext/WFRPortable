@@ -61,11 +61,30 @@ jobs:
       # Статический аудит: потерянные обработчики, мёртвые объявления,
       # неиспользуемые селекторы, целостность комментариев в CSS и совпадение
       # подключённого в странице со списком в service worker. Браузера не
-      # требует и идёт секунду, поэтому стоит до сборки: незачем собирать APK
-      # из заведомо сломанного кода. Прогоны в Chromium остаются локальными —
-      # тащить Playwright в каждый запуск дороже, чем он тут стоит.
+      # требует и идёт секунду, поэтому стоит первым: незачем ставить Chromium
+      # и собирать APK из заведомо сломанного кода.
       - name: Audit sources
         run: node scripts/audit.mjs
+
+      # Chromium весит под сотню мегабайт, поэтому кешируем по версии
+      # Playwright из package-lock: пока она не менялась, скачивания нет.
+      - name: Cache Chromium
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      # Прогон по живым функциям всех модулей и обход каждого экрана. Сервер
+      # скрипты поднимают сами, так что запускать рядом нечего.
+      - name: Run checks
+        run: |
+          node scripts/check-features.mjs
+          node scripts/check-app.mjs
 
       - name: Build web bundle and sync Android project
         run: npm run sync

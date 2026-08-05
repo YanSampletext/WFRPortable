@@ -2,13 +2,14 @@
 // Запуск: подними локальный сервер (npx http-server . -p 8099) и выполни
 //   node scripts/store-shots.mjs
 // Готовые файлы появятся в store/screenshots/.
-import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
+import { launchChromium, serve } from './browser.mjs';
 import { mkdirSync } from 'node:fs';
 
 const out = '/home/user/WFRPortable/store/screenshots';
 mkdirSync(out, { recursive: true });
 
-const b = await chromium.launch();
+const srv = await serve(new URL('..', import.meta.url).pathname, 8099);
+const b = await launchChromium();
 const p = await b.newPage({ viewport: { width: 360, height: 800 }, deviceScaleFactor: 3 });
 
 async function boot() {
@@ -68,3 +69,4 @@ await p.evaluate(() => { sv4NavGo('persona'); drawerOpen(); });
 await shot('6-menu');
 
 await b.close();
+srv.close();

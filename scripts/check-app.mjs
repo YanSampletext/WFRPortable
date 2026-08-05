@@ -1,12 +1,12 @@
 // Полный обход приложения: каждый шаг, каждая вкладка, каждый пункт меню.
 // Ищет ошибки JS, повторяющиеся id, переполнение по ширине и пустые экраны.
 //
-// Запуск: подними локальный сервер и выполни
-//   npx http-server . -p 8099 -s &
+// Запуск:
 //   node scripts/check-app.mjs
-import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
+import { launchChromium, serve } from './browser.mjs';
 
-const b = await chromium.launch();
+const srv = await serve(new URL('..', import.meta.url).pathname, 8099);
+const b = await launchChromium();
 const p = await b.newPage({ viewport: { width: 393, height: 850 } });
 const errs = [];
 p.on('pageerror', e => errs.push(e.message.slice(0, 160)));
@@ -174,3 +174,4 @@ for (const t of ['persona', 'health', 'skills', 'gear', 'more']) {
 console.log('\nвсего ошибок JS за прогон:', errs.length);
 if (errs.length) console.log(errs.slice(0, 8).map(e => '  · ' + e).join('\n'));
 await b.close();
+srv.close();

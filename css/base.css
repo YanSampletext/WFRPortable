@@ -2062,8 +2062,9 @@ body.has-ad .sv4-bottom-nav{ bottom: var(--ad-h); }
 /* ════════════════════════════════════════════════════
    СХВАТКА: очередь, раны, преимущество
 ════════════════════════════════════════════════════ */
-/* «Следующий ход» — главное действие, ему целая строка; остальное поровну */
-.enc-tools{ display: grid; grid-template-columns: repeat(3, 1fr);
+/* «Следующий ход» — главное действие, ему целая строка; четыре остальных
+   ложатся ровным квадратом 2×2, а не тремя плюс одна сиротой */
+.enc-tools{ display: grid; grid-template-columns: repeat(2, 1fr);
   gap: var(--sp-2); margin-bottom: var(--sp-3); }
 .enc-tools .sv4-btn-mini{ min-height: 48px; }
 .enc-tools .enc-next{ grid-column: 1 / -1; }
@@ -2140,3 +2141,18 @@ body.theme-light .enc-chip{ background: rgba(125,95,36,.10); }
 ════════════════════════════════════════════════════ */
 .xp-undo-row{ padding: var(--sp-2) var(--sp-3) 0; }
 .xp-undo{ width: 100%; min-height: 44px; text-transform: none; }
+
+/* ════════════════════════════════════════════════════
+   ПОРТРЕТ ПЕРСОНАЖА
+════════════════════════════════════════════════════ */
+.sv4-portrait { cursor: pointer; overflow: hidden; flex: 0 0 auto; }
+.sv4-portrait img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  /* карточка досье тёмная — портрет не должен из неё выпрыгивать */
+  filter: saturate(.85) contrast(1.05);
+}
+/* с фотографией рамка-обводка внутри мешает: она резала бы лицо */
+.sv4-portrait.has-photo::after { border-color: rgba(122,92,30,.55); }
+.sv4-portrait:active { border-color: var(--gold2); }
+/* Бросок защиты во встречной проверке — рядом с броском атаки, но тише */
+.atk-opp{ font-size: var(--fs-xs); color: var(--text3); margin-top: var(--sp-1); }

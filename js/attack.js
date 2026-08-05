@@ -75,24 +75,41 @@
     var sl = Math.trunc(target / 10) - Math.trunc(d / 10);
     var hit = (d <= target && d !== 100) || d === 1;
 
+    // Ближний бой по книге — встречная проверка: защищающийся бросает тоже, и
+    // в дело идёт разница уровней успеха. Так считается, только если у цели
+    // проставлена защита: заставлять вписывать навык каждому болотному гулю
+    // ради простого удара незачем.
+    var opp = null;
+    var targetDef = targetId && typeof encList === 'function'
+      ? (encList().find(function (t) { return t.id === targetId; }) || {}).def || 0
+      : 0;
+    if (targetDef > 0) {
+      var dd = Math.floor(Math.random() * 100) + 1;
+      var dsl = Math.trunc(targetDef / 10) - Math.trunc(dd / 10);
+      opp = { target: targetDef, d: dd, sl: dsl };
+      sl = sl - dsl;                       // разница уровней успеха и решает
+      hit = sl > 0 || (sl === 0 && d < dd); // при равенстве верх берёт меньший бросок
+    }
+
     var dmg = weaponDamage(w);
     // Уровни успеха ниже нуля урона не отнимают: попал — значит попал
     var slPlus = Math.max(0, sl);
     var raw = (dmg.value === null) ? null : dmg.value + slPlus;
 
-    logRoll(w, sk, target, d, hit, sl);
-    showAttack(w, sk, target, d, hit, sl, dmg, raw, targetId);
+    logRoll(w, sk, target, d, hit, sl, opp);
+    showAttack(w, sk, target, d, hit, sl, dmg, raw, targetId, opp);
     if (navigator.vibrate) navigator.vibrate(hit ? [20] : [40, 30, 40]);
   }
 
-  function logRoll(w, sk, target, d, hit, sl) {
+  function logRoll(w, sk, target, d, hit, sl, opp) {
     if (!state || !state.sheet) return;
     if (!Array.isArray(state.sheet.rollLog)) state.sheet.rollLog = [];
     state.sheet.rollLog.unshift({
-      name: 'Удар: ' + (w.name || 'оружие') + ' · ' + sk.name,
+      name: 'Удар: ' + (w.name || 'оружие') + ' · ' + sk.name +
+            (opp ? ' (встречная, защита ' + opp.target + ')' : ''),
       target: target, d: d,
       outcome: hit ? 'Попал' : 'Мимо',
-      sl: (d <= target ? '+' : '') + sl + ' ст.усп.',
+      sl: (sl >= 0 ? '+' : '') + sl + ' ст.усп.',
       t: Date.now()
     });
     if (state.sheet.rollLog.length > 30) state.sheet.rollLog.length = 30;
@@ -101,7 +118,7 @@
     if (body && typeof rollLogRows === 'function') body.innerHTML = rollLogRows();
   }
 
-  function showAttack(w, sk, target, d, hit, sl, dmg, raw, targetId) {
+  function showAttack(w, sk, target, d, hit, sl, dmg, raw, targetId, opp) {
     var soak = (targetId && typeof encSoak === 'function') ? encSoak(targetId) : 0;
     var net = raw === null ? null : Math.max(0, raw - soak);
 
@@ -144,7 +161,12 @@
         '<div class="sv4-roll-target">' + escHtml(sk.name) + ' · цель ≤ ' + target + '</div>' +
         '<div class="sv4-roll-die">' + d + '</div>' +
         '<div class="sv4-roll-outcome">' + (hit ? 'Попал' : 'Мимо') + '</div>' +
-        '<div class="sv4-roll-sl">' + (d <= target ? '+' : '') + sl + ' ст.усп.</div>' +
+        (opp
+          ? '<div class="atk-opp">защита ' + opp.target + ' → бросок ' + opp.d +
+            ' (' + (opp.sl >= 0 ? '+' : '') + opp.sl + ')</div>'
+          : '') +
+        '<div class="sv4-roll-sl">' + (sl >= 0 ? '+' : '') + sl + ' ст.усп.' +
+          (opp ? ' разницы' : '') + '</div>' +
         '<div class="atk-dmg">' + body + '</div>' +
         '<div class="sv4-roll-btns">' +
           '<button class="sv4-roll-close" onclick="document.getElementById(\'roll-modal\').classList.remove(\'show\')">Закрыть</button>' +

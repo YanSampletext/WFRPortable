@@ -1,11 +1,11 @@
 // Прогон по живым функциям всех модулей: не «отрисовалось ли», а «работает ли».
 // Каждая проверка что-то делает и сверяет результат в состоянии, а не на глаз.
 //
-//   npx http-server . -p 8099 -s &
 //   node scripts/check-features.mjs
-import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
+import { launchChromium, serve } from './browser.mjs';
 
-const b = await chromium.launch();
+const srv = await serve(new URL('..', import.meta.url).pathname, 8099);
+const b = await launchChromium();
 const p = await b.newPage({ viewport: { width: 393, height: 850 } });
 const errs = [];
 p.on('pageerror', e => errs.push('PAGEERR: ' + e.message.slice(0, 180)));
@@ -746,6 +746,193 @@ await check('урон оружия считается без динамичес�
   return ok && !/Function\s*\(/.test(String(calcWeaponDamage));
 }));
 
+// ── встречные проверки ──────────────────────────────────────────────────────
+// Без проставленной защиты удар остаётся обычной проверкой; с защитой цель
+// бросает тоже, и решает разница уровней успеха.
+await check('без защиты цели удар — обычная проверка', () => ev(() => {
+  encList().forEach(x => encRemove(x.id));
+  state.sheet.weapons = [{ name: 'Меч', damage: 'РС+4' }];
+  encAdd('Простак', 20, 20, true, 0, 0, 0);
+  const rnd = Math.random; Math.random = () => 0;
+  attackWith(0);
+  document.querySelector('#ordo-dlg .ordo-dlg-btn[data-i="0"]').click();
+  Math.random = rnd;
+  const txt = document.querySelector('.sv4-roll-card').textContent;
+  document.getElementById('roll-modal').classList.remove('show');
+  return !/защита \d+ → бросок/.test(txt) && /Попал/.test(txt);
+}));
+
+await check('с защитой цель бросает тоже', () => ev(() => {
+  encList().forEach(x => encRemove(x.id));
+  encAdd('Мастер клинка', 20, 20, true, 0, 0, 60);
+  const rnd = Math.random; Math.random = () => 0;   // оба выбрасывают 1
+  attackWith(0);
+  document.querySelector('#ordo-dlg .ordo-dlg-btn[data-i="0"]').click();
+  Math.random = rnd;
+  const card = document.querySelector('.sv4-roll-card');
+  const txt = card.textContent;
+  document.getElementById('roll-modal').classList.remove('show');
+  return /защита 60 → бросок 1/.test(txt) && /разницы/.test(txt);
+}));
+
+await check('слабая атака против сильной защиты — мимо', () => ev(() => {
+  encList().forEach(x => encRemove(x.id));
+  encAdd('Мастер клинка', 20, 20, true, 0, 0, 90);
+  // атакующий выбрасывает много (плохо), защитник мало (хорошо)
+  const rnd = Math.random;
+  let call = 0;
+  Math.random = () => (call++ === 0 ? 0.79 : 0);   // 80 у атаки, 1 у защиты
+  attackWith(0);
+  document.querySelector('#ordo-dlg .ordo-dlg-btn[data-i="0"]').click();
+  Math.random = rnd;
+  const txt = document.querySelector('.sv4-roll-card').textContent;
+  document.getElementById('roll-modal').classList.remove('show');
+  return /Мимо/.test(txt) && !/Нанести/.test(txt);
+}));
+
+await check('во встречной урон считает разницу успехов', () => ev(() => {
+  encList().forEach(x => encRemove(x.id));
+  encAdd('Щитоносец', 20, 30, true, 0, 0, 20);
+  const rnd = Math.random;
+  let call = 0;
+  // атака d=1 при высокой цели даёт много СУ, защита d=20 при 20 даёт 0
+  Math.random = () => (call++ === 0 ? 0 : 0.19);
+  attackWith(0);
+  document.querySelector('#ordo-dlg .ordo-dlg-btn[data-i="0"]').click();
+  Math.random = rnd;
+  const txt = document.querySelector('.sv4-roll-card').textContent.replace(/\s+/g, ' ');
+  document.getElementById('roll-modal').classList.remove('show');
+  // «N урон оружия + M ст.усп. = K» — M это уже разница
+  return /урон оружия \+ \d+ ст\.усп\. = \d+/.test(txt);
+}));
+
+await check('встречная попадает в журнал с пометкой', () => ev(() => {
+  const r = (state.sheet.rollLog || [])[0];
+  return !!r && /встречная, защита \d+/.test(r.name);
+}));
+
+// ── партия из архива в схватку ──────────────────────────────────────────────
+await check('«+ Из архива» подтягивает досье с его числами', () => ev(() => {
+  encList().forEach(x => encRemove(x.id));
+  // второй персонаж в архиве, которого нет в схватке
+  const twin = JSON.parse(JSON.stringify(loadRoster().find(x => x.id === state.id)));
+  twin.id = 'twin-1'; twin.name = 'Сопартиец';
+  twin.sheet.currentHP = 7;
+  twin.sheet.armor = [{ name: 'Кираса', zones: 'торс', ap: 2 }];
+  const roster = loadRoster().filter(x => x.id !== 'twin-1');
+  roster.push(twin); saveRoster(roster);
+
+  sv4NavGo('crit');
+  encAddFromRoster();
+  const btn = [...document.querySelectorAll('#ordo-dlg .ordo-dlg-btn[data-i]')]
+    .find(b => /Сопартиец/.test(b.textContent));
+  if (!btn) return 'сопартийца нет в списке выбора';
+  const label = btn.textContent;
+  btn.click();
+  const row = encList().find(x => x.name === 'Сопартиец');
+  return !!row && row.hp === 7 && row.soak >= 2 && /иниц\. \d+/.test(label);
+}));
+
+await check('уже вступивших второй раз не предлагают', () => ev(() => {
+  encAddFromRoster();
+  const dlg = document.querySelector('#ordo-dlg.show');
+  const names = dlg ? [...dlg.querySelectorAll('.ordo-dlg-btn[data-i]')].map(b => b.textContent) : [];
+  if (dlg) ordoDialogClose();
+  return !names.some(t => /Сопартиец/.test(t));
+}));
+
+await check('расчёт чужого досье не портит открытое', () => ev(() => {
+  const was = { name: state.name, id: state.id, hp: state.sheet.currentHP };
+  encList().forEach(x => encRemove(x.id));
+  encAddFromRoster();
+  const dlg = document.querySelector('#ordo-dlg.show');
+  if (dlg) ordoDialogClose();
+  return state.name === was.name && state.id === was.id && state.sheet.currentHP === was.hp;
+}));
+
+await check('пустой архив не роняет трекер', () => ev(() => {
+  const saved = loadRoster();
+  saveRoster([]);
+  encAddFromRoster();
+  const opened = !!document.querySelector('#ordo-dlg.show');
+  saveRoster(saved);
+  return !opened;
+}));
+
+// ── портрет (portrait.js) ───────────────────────────────────────────────────
+const makePhoto = () => ev(async () => {
+  // Похоже на снимок с телефона: 12 Мп в портретной ориентации
+  const c = document.createElement('canvas');
+  c.width = 3000; c.height = 4000;
+  const g = c.getContext('2d');
+  g.fillStyle = '#8b1a1a'; g.fillRect(0, 0, 3000, 4000);
+  g.fillStyle = '#d4af37'; g.fillRect(1000, 1200, 1000, 1600);
+  const blob = await new Promise(ok => c.toBlob(ok, 'image/jpeg', 0.9));
+  const dt = new DataTransfer();
+  dt.items.add(new File([blob], 'photo.jpg', { type: 'image/jpeg' }));
+  portraitPick();
+  const inp = document.getElementById('portrait-file');
+  inp.files = dt.files;
+  inp.dispatchEvent(new Event('change'));
+  await new Promise(r => setTimeout(r, 700));
+  return true;
+});
+
+await check('пустое место зовёт добавить портрет', () => ev(() => {
+  state.sheet.portrait = null;
+  sv4NavGo('main'); renderSheet(); sv4NavGo('main');
+  const el = document.querySelector('.sv4-portrait');
+  return !!el && el.dataset.portrait === 'pick' && /портрет/.test(el.textContent);
+}));
+
+await makePhoto();
+await check('снимок ужимается до квадрата 256', () => ev(() => new Promise(ok => {
+  const src = state.sheet.portrait || '';
+  if (!src) return ok('портрет не сохранился');
+  const i = new Image();
+  i.onload = () => ok(i.width === 256 && i.height === 256);
+  i.onerror = () => ok('картинка не читается');
+  i.src = src;
+})));
+
+await check('портрет весит меньше 60 КБ', () => ev(() => {
+  const bytes = (state.sheet.portrait || '').length * 0.75;
+  return bytes > 0 && bytes < 60 * 1024;
+}));
+
+await check('портрет виден на карточке', () => ev(() => {
+  sv4NavGo('main');
+  const el = document.querySelector('.sv4-portrait');
+  return !!el && el.classList.contains('has-photo') && !!el.querySelector('img');
+}));
+
+await check('портрет доехал до хранилища', () => ev(() => {
+  const me = JSON.parse(localStorage.getItem('wfrp4_roster_v1') || '[]')
+    .find(x => x.id === state.id);
+  return !!me && typeof me.sheet.portrait === 'string'
+      && me.sheet.portrait.indexOf('data:image/jpeg') === 0;
+}));
+
+await check('портрет убирается', () => ev(() => {
+  portraitRemove();
+  sv4NavGo('main');
+  const me = JSON.parse(localStorage.getItem('wfrp4_roster_v1') || '[]')
+    .find(x => x.id === state.id);
+  return !state.sheet.portrait && !!me && !me.sheet.portrait
+      && !document.querySelector('.sv4-portrait.has-photo');
+}));
+
+await check('не-картинка отклоняется', () => ev(() => {
+  const before = state.sheet.portrait || null;
+  const dt = new DataTransfer();
+  dt.items.add(new File(['не картинка'], 'a.txt', { type: 'text/plain' }));
+  portraitPick();
+  const inp = document.getElementById('portrait-file');
+  inp.files = dt.files;
+  inp.dispatchEvent(new Event('change'));
+  return (state.sheet.portrait || null) === before;
+}));
+
 // ── ярлыки с иконки (shortcuts.js) ──────────────────────────────────────────
 await check('ярлык «кубы» открывает журнал бросков', () => ev(() => {
   appMode = 'character';
@@ -813,4 +1000,5 @@ console.log('\nпрошло ' + pass + ', не прошло ' + fail);
 console.log('ошибок JS за прогон: ' + errs.length);
 if (errs.length) errs.slice(0, 12).forEach(e => console.log('  ' + e));
 await b.close();
+srv.close();
 process.exit(fail ? 1 : 0);
