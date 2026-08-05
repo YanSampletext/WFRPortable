@@ -7,7 +7,7 @@
     "type": "git",
     "url": "https://github.com/YanSampletext/WFRPortable.git"
   },
-  "license": "PolyForm-Noncommercial-1.0.0",
+  "license": "CC-BY-NC-ND-4.0",
   "scripts": {
     "build": "node scripts/build-www.mjs",
     "audit": "node scripts/audit.mjs",
