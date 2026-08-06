@@ -87,7 +87,7 @@ function ordoInput(opts){
     <div class="ordo-dlg-seal">✠</div>
     <div class="ordo-dlg-title">${o.title || 'Ввод'}</div>
     <div class="ordo-dlg-text">${o.text || ''}</div>
-    <input id="ordo-dlg-input" class="ordo-dlg-input" value="${(o.value||'').replace(/"/g,'&quot;')}" />
+    <input id="ordo-dlg-input" class="ordo-dlg-input" value="${escAttr(o.value||'')}" />
     <div class="ordo-dlg-btns">
       <button class="ordo-dlg-btn gold" id="ordo-dlg-ok">Готово</button>
       <button class="ordo-dlg-btn" onclick="ordoDialogClose()">Отмена</button>

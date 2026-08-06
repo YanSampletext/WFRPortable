@@ -705,6 +705,69 @@ await check('переполнение памяти не выдаётся за с
   return ok === false && /переполнена/.test(told);
 }));
 
+// ── импорт как недоверенный ввод ────────────────────────────────────────────
+// Обмен досье файлами — штатный сценарий, значит присланный JSON может
+// содержать что угодно. Собираем персонажа заново по схеме.
+await check('импорт ничего не теряет у полного персонажа', () => ev(() => {
+  Object.assign(state.sheet, {
+    currentHP: 7, portrait: 'data:image/jpeg;base64,AAAA',
+    conditions: { 'Кровоточащий': 2 }, injuries: ['перелом'],
+    advantage: 3, spells: [{ name: 'Свет' }], rollLog: [{ name: 'Восприятие', d: 42, target: 50 }],
+    critLog: [{ zone: 'Голова' }], weapons: [{ name: 'Меч', damage: 'РС+4' }],
+    money: { gc: 1, ss: 2, bp: 3 }, notes: 'заметка', sin: 1
+  });
+  const before = JSON.parse(JSON.stringify(state));
+  const after = sanitizeCharacter(before);
+  const lost = [];
+  for (const k in before.sheet) {
+    // Ключи с подчёркиванием — рабочие (корзина магазина, снимок для отмены);
+    // им в выгруженном файле делать нечего, и отбрасываются они намеренно.
+    if (k.charAt(0) === '_') continue;
+    if (JSON.stringify(before.sheet[k]) !== JSON.stringify(after.sheet[k])) lost.push(k);
+  }
+  for (const k in before) {
+    if (k === 'sheet' || k === '_updated') continue;
+    if (JSON.stringify(before[k]) !== JSON.stringify(after[k])) lost.push(k);
+  }
+  return lost.length === 0 || 'потеряно: ' + lost.join(', ');
+}));
+
+await check('импорт выбрасывает посторонние ключи', () => ev(() => {
+  const c = sanitizeCharacter({
+    race: 'human', stats: { 'ББ': 30 }, evilKey: 'мусор',
+    sheet: { notes: 'ok', чужое: 'поле' }
+  });
+  return !('evilKey' in c) && !('чужое' in c.sheet) && c.sheet.notes === 'ok';
+}));
+
+await check('импорт не пускает строку в числовое поле', () => ev(() => {
+  const c = sanitizeCharacter({ race: 'human', stats: { 'ББ': 30, плохо: 'много' },
+                                sheet: { currentHP: 'не число' } });
+  return c.sheet.currentHP === null && !('плохо' in c.stats) && c.stats['ББ'] === 30;
+}));
+
+await check('импорт отвергает не-досье', () => ev(() => {
+  const bad = [null, 'строка', [1, 2], {}, { sheet: {} }];
+  return bad.every(x => { try { sanitizeCharacter(x); return false; } catch (e) { return true; } });
+}));
+
+await check('имя с инъекцией отрисовывается текстом', () => ev(() => {
+  window.__pwned = 0;
+  const evil = '"><img src=x onerror="window.__pwned=1">';
+  state.name = evil;
+  goStep(7);
+  const inp = document.querySelector('.page.active input');
+  const ok = inp && inp.value === evil
+          && window.__pwned === 0
+          && document.querySelectorAll('img[src="x"]').length === 0;
+  state.name = 'Гюнтер Фогель'; goStep(8);
+  return !!ok;
+}));
+
+await check('escHtml и escAttr экранируют кавычки', () => ev(() =>
+  escAttr('a"b\'c<d') === 'a&quot;b&#39;c&lt;d' &&
+  escHtml('a"b\'c<d') === 'a&quot;b&#39;c&lt;d'));
+
 // ── враждебные имена в разметке ─────────────────────────────────────────────
 // Импорт может принести имя с переносом строки, апострофом или слэшем. Пока
 // имена вклеивались прямо в onclick, перенос рвал обработчик целиком.

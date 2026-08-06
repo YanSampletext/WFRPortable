@@ -1290,19 +1290,19 @@ function renderFinishing(){
     <div class="row">
       <div class="col">
         <label>Имя персонажа</label>
-        <input type="text" value="${state.name}" oninput="state.name=this.value;autosave()" />
+        <input type="text" value="${escAttr(state.name||'')}" oninput="state.name=this.value;autosave()" />
       </div>
       <div class="col">
         <label>Возраст (${ageF})</label>
         <div style="display:flex;gap:6px;align-items:center;">
-          <input type="text" value="${state.age}" oninput="state.age=this.value;autosave()" />
+          <input type="text" value="${escAttr(state.age||'')}" oninput="state.age=this.value;autosave()" />
           <button class="btn btn-sm" onclick="rollAge()"><span class="ic">${ICONS.dice}</span></button>
         </div>
       </div>
       <div class="col">
         <label>Рост (${heightF})</label>
         <div style="display:flex;gap:6px;align-items:center;">
-          <input type="text" value="${state.height}" oninput="state.height=this.value;autosave()" />
+          <input type="text" value="${escAttr(state.height||'')}" oninput="state.height=this.value;autosave()" />
           <button class="btn btn-sm" onclick="rollHeight()"><span class="ic">${ICONS.dice}</span></button>
         </div>
       </div>
@@ -1311,14 +1311,14 @@ function renderFinishing(){
       <div class="col">
         <label>Цвет волос</label>
         <div style="display:flex;gap:6px;align-items:center;">
-          <input type="text" value="${state.hair}" oninput="state.hair=this.value;autosave()" />
+          <input type="text" value="${escAttr(state.hair||'')}" oninput="state.hair=this.value;autosave()" />
           <button class="btn btn-sm" onclick="rollHair()"><span class="ic">${ICONS.dice}</span></button>
         </div>
       </div>
       <div class="col">
         <label>Цвет глаз</label>
         <div style="display:flex;gap:6px;align-items:center;">
-          <input type="text" value="${state.eyes}" oninput="state.eyes=this.value;autosave()" />
+          <input type="text" value="${escAttr(state.eyes||'')}" oninput="state.eyes=this.value;autosave()" />
           <button class="btn btn-sm" onclick="rollEyes()"><span class="ic">${ICONS.dice}</span></button>
         </div>
       </div>
@@ -1343,14 +1343,14 @@ function renderFinishing(){
   html += `<div class="panel">
     <div class="panel-title">Мотивация и амбиции</div>
     <label>Мотивация (слово/фраза, которая описывает суть героя)</label>
-    <input type="text" value="${state.motivation}" oninput="state.motivation=this.value;autosave()" placeholder="например: милосердие, перфекционизм, балагурство…" />
+    <input type="text" value="${escAttr(state.motivation||'')}" oninput="state.motivation=this.value;autosave()" placeholder="например: милосердие, перфекционизм, балагурство…" />
     <div style="margin-top:8px;">
       <label>Краткосрочная амбиция</label>
-      <input type="text" value="${state.ambitionShort}" oninput="state.ambitionShort=this.value;autosave()" />
+      <input type="text" value="${escAttr(state.ambitionShort||'')}" oninput="state.ambitionShort=this.value;autosave()" />
     </div>
     <div style="margin-top:8px;">
       <label>Долгосрочная амбиция</label>
-      <input type="text" value="${state.ambitionLong}" oninput="state.ambitionLong=this.value;autosave()" />
+      <input type="text" value="${escAttr(state.ambitionLong||'')}" oninput="state.ambitionLong=this.value;autosave()" />
     </div>
   </div>`;
   el.innerHTML = html;
@@ -3703,8 +3703,16 @@ function _tierJustSwitch(nt, ot){
   renderSheet();
 }
 
-function escAttr(s){ return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
-function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+// Экранирование. escAttr — для значения атрибута, escHtml — для текста между
+// тегами. Кавычки экранируют оба: escHtml задуман для текста, но если его
+// однажды по ошибке поставят в атрибут, дыры из этого не выйдет. Пусть
+// правильность держится на самой функции, а не на внимательности.
+function escAttr(s){ return String(s == null ? '' : s)
+  .replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
+  .replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escHtml(s){ return String(s == null ? '' : s)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  .replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
 // ===================== АККОРДЕОН =====================
 function accordion(titleHtml, metaText, bodyHtml, openByDefault){
@@ -4542,19 +4550,76 @@ function finishAndSaveCharacter(){
 // Выгрузка одного досье живёт в archive.js (exportOne) — там же, где карточки
 // и меню «⋯», из которого её и вызывают.
 
+// Импортированный файл — недоверенные данные: обмен досье между игроками это
+// штатный сценарий, и присланный JSON может содержать что угодно. Собираем
+// персонажа заново по схеме: незнакомые ключи не переносятся, а знакомые
+// берутся только если тип совпал с ожидаемым.
+//
+// Значения при этом не «чистятся» — имя со скобками остаётся именем со
+// скобками. Безопасность обеспечивает экранирование при выводе; здесь задача
+// другая: не пустить в состояние приложения посторонние поля и не дать
+// строке оказаться там, где код ждёт число.
+// null в схеме значит «ещё не заполнено», и стоит он у полей разного рода:
+// race и career — строки, currentHP и currentLuck — числа. Поэтому по типу
+// образца их не различить, и числовые перечислены поимённо ниже.
+const NUMERIC_OR_EMPTY = ['currentHP', 'currentLuck', 'resolveCurrent'];
+
+function fitsShape(value, sample, key){
+  if(value === undefined) return false;
+  if(sample === null){
+    if(value === null) return true;
+    return NUMERIC_OR_EMPTY.indexOf(key) >= 0
+      ? typeof value === 'number'
+      : (typeof value === 'string' || typeof value === 'number');
+  }
+  if(Array.isArray(sample)) return Array.isArray(value);
+  if(typeof sample === 'object') return !!value && typeof value === 'object' && !Array.isArray(value);
+  return typeof value === typeof sample;
+}
+
+function sanitizeCharacter(raw){
+  if(!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('это не досье');
+  const clean = freshState();
+  for(const k in clean){
+    if(k === 'sheet') continue;
+    if(fitsShape(raw[k], clean[k], k)) clean[k] = raw[k];
+  }
+  const rawSheet = (raw.sheet && typeof raw.sheet === 'object') ? raw.sheet : {};
+  clean.sheet = {};
+  for(const k in SHEET_DEFAULTS){
+    clean.sheet[k] = fitsShape(rawSheet[k], SHEET_DEFAULTS[k], k)
+      ? rawSheet[k]
+      : (Array.isArray(SHEET_DEFAULTS[k]) ? SHEET_DEFAULTS[k].slice()
+        : (SHEET_DEFAULTS[k] && typeof SHEET_DEFAULTS[k] === 'object'
+           ? JSON.parse(JSON.stringify(SHEET_DEFAULTS[k])) : SHEET_DEFAULTS[k]));
+  }
+  // Характеристики проходят проверку формы как объект, но значения внутри
+  // идут прямо в арифметику — строка там превращает весь бланк в NaN.
+  for(const key of ['stats', 'rolls', 'careerStatAdv']){
+    const src = clean[key];
+    if(src && typeof src === 'object'){
+      const num = {};
+      for(const k in src){ const v = parseInt(src[k], 10); if(!isNaN(v)) num[k] = v; }
+      clean[key] = num;
+    }
+  }
+  if(!clean.race || !clean.stats) throw new Error('в файле нет ни народа, ни характеристик');
+  return clean;
+}
+
 function importToRoster(input){
   const file = input.files[0];
   if(!file) return;
   const reader = new FileReader();
   reader.onload = e => {
     try{
-      const data = JSON.parse(e.target.result);
+      const data = sanitizeCharacter(JSON.parse(e.target.result));
       // Дадим новый id если нет / дублируется
       const roster = loadRoster();
       if(!data.id || roster.find(p => p.id === data.id)) data.id = genCharId();
       data._updated = Date.now();
       roster.push(data);
-      saveRoster(roster);
+      if(!saveRoster(roster)) return;
       notify('Импортировано в галерею.');
       renderRoster();
     } catch(err){ notify('Ошибка импорта: '+err.message); }
@@ -4598,10 +4663,11 @@ function importSheet(input){
   importToRoster(input);
 }
 
-function migrateState(){
-  // Гарантируем, что вся структура state.sheet существует (для старых сохранений)
-  if(!state.sheet) state.sheet = {};
-  const defaults = {
+// Полная схема бланка — единственный источник правды и для дозаполнения
+// старых сохранений, и для белого списка при импорте. Разъедься эти два
+// списка — импорт начал бы молча выбрасывать поля, которые приложение
+// считает своими.
+const SHEET_DEFAULTS = {
     tier: 1, currentHP: null, spentXP: 0, currentLuck: null, resolveCurrent: null,
     weapons: [], armor: [], trappings: [],
     extraSkills: [], skillAdv: {}, extraTalents: [],
@@ -4624,7 +4690,16 @@ function migrateState(){
     langMagick: 0, channelSkill: 0, channelled: 0, nearCorruption: false, miscastLog: [],
     praySkill: 0, sin: 0, wrathLog: [],
     endeavoursUsed: 0, downtimeLog: [],
-  };
+    portrait: '',
+    // Эти двое живут на бланке с самого начала, но в схеме их не было:
+    // без них импорт молча терял потраченную судьбу и отметку о смерти.
+    fateSpent: 0, gmDead: false,
+};
+
+function migrateState(){
+  // Гарантируем, что вся структура state.sheet существует (для старых сохранений)
+  if(!state.sheet) state.sheet = {};
+  const defaults = SHEET_DEFAULTS;
   for(const k in defaults){
     if(state.sheet[k] === undefined) state.sheet[k] = defaults[k];
   }
