@@ -27,7 +27,10 @@ async function check(name, fn) {
     (ok ? '' : (verdict === true ? '' : String(verdict)) + (newErrs.length ? ' | ' + newErrs.join('; ') : '')));
 }
 
-const ev = fn => p.evaluate(fn);
+// Аргумент обязан доезжать до страницы: без второго параметра p.evaluate
+// получал функцию, ждущую значение, и молча звал её с undefined — проверка
+// сравнивала с NaN и падала, будто сломан код, а не она сама.
+const ev = (fn, arg) => p.evaluate(fn, arg);
 
 // Схватка держит копию в памяти модуля, и localStorage.removeItem её не
 // трогает — очищаем тем же способом, что и пользователь.
@@ -1306,6 +1309,99 @@ await check('подделка в файле не доезжает до архи�
     // имя сохраняется как текст, лишние поля отсеиваются, скрипт не выполнялся
     return c.name.indexOf('<img') > 0 && c.вредное === undefined && window.__pwn === undefined;
   });
+});
+
+// ── dice.js: лоток в одно нажатие из шапки ─────────────────────────────────
+// Журнал обрезается на 30 записях, а к этому месту он уже полон от прошлых
+// проверок — считать прирост можно только с чистого.
+const clearLog = () => ev(() => { state.sheet.rollLog = []; return true; });
+
+await check('кубик есть в шапке на любой вкладке', async () => {
+  const missing = [];
+  for (const t of ['persona', 'skills', 'health', 'gear', 'magic', 'more']) {
+    await ev(tab => sv4NavGo(tab), t);
+    await p.waitForTimeout(120);
+    if (!await ev(() => !!document.querySelector('.ordo-bar .ordo-die'))) missing.push(t);
+  }
+  return missing.length ? 'нет на вкладках: ' + missing.join(', ') : true;
+});
+
+await check('нажатие на кубик открывает лоток', async () => {
+  await ev(() => sv4NavGo('persona'));
+  await p.waitForTimeout(150);
+  await ev(() => document.querySelector('.ordo-die').click());
+  await p.waitForTimeout(200);
+  return ev(() => {
+    const dlg = document.getElementById('ordo-dlg');
+    return !!dlg && dlg.classList.contains('show') &&
+           dlg.querySelectorAll('[data-dice]').length >= 6 &&
+           !!dlg.querySelector('#dice-input-modal');
+  });
+});
+
+await check('бросок из лотка попадает в журнал', async () => {
+  await clearLog();
+  const before = await ev(() => state.sheet.rollLog.length);
+  await ev(() => document.querySelector('#ordo-dlg [data-dice="2d10"]').click());
+  await p.waitForTimeout(250);
+  return ev(n => {
+    const log = state.sheet.rollLog || [];
+    const top = log[0];
+    return log.length === n + 1 && top.name === '2d10' && top.d >= 2 && top.d <= 20;
+  }, before);
+});
+
+await check('после броска лоток закрыт, результат виден', () => ev(() => {
+  const dlg = document.getElementById('ordo-dlg');
+  const res = document.getElementById('roll-modal');
+  return !(dlg && dlg.classList.contains('show')) && !!res && res.classList.contains('show');
+}));
+
+await check('со страницы никуда не увело', () => ev(() => _sheetTab === 'persona'));
+
+await check('непонятная запись лоток не закрывает', async () => {
+  await ev(() => { document.getElementById('roll-modal').classList.remove('show'); diceOpen(); });
+  await p.waitForTimeout(200);
+  await ev(() => {
+    document.getElementById('dice-input-modal').value = 'бросить что-нибудь';
+    document.querySelector('#ordo-dlg [data-dice-go]').click();
+  });
+  await p.waitForTimeout(200);
+  return ev(() => {
+    const dlg = document.getElementById('ordo-dlg');
+    return !!dlg && dlg.classList.contains('show') && !!document.getElementById('dice-input-modal');
+  });
+});
+
+await check('свободная запись бросается из лотка', async () => {
+  await clearLog();
+  const before = await ev(() => state.sheet.rollLog.length);
+  await ev(() => {
+    document.getElementById('dice-input-modal').value = '3d6+2';
+    document.querySelector('#ordo-dlg [data-dice-go]').click();
+  });
+  await p.waitForTimeout(250);
+  return ev(n => {
+    const top = state.sheet.rollLog[0];
+    return state.sheet.rollLog.length === n + 1 && top.name === '3d6+2' && top.d >= 5 && top.d <= 20;
+  }, before);
+});
+
+await check('журнал не растёт дальше тридцати записей', async () => {
+  await clearLog();
+  for (let i = 0; i < 33; i++) await ev(() => diceRoll('1d6'));
+  return ev(() => state.sheet.rollLog.length === 30);
+});
+
+await check('лоток на вкладке журнала по-прежнему работает', async () => {
+  await ev(() => { const m = document.getElementById('roll-modal'); if (m) m.classList.remove('show'); });
+  await ev(() => sv4NavGo('rolllog'));
+  await p.waitForTimeout(200);
+  await clearLog();
+  const before = await ev(() => state.sheet.rollLog.length);
+  await ev(() => document.querySelector('.dice-tray [data-dice="1d6"]').click());
+  await p.waitForTimeout(250);
+  return ev(n => state.sheet.rollLog.length === n + 1 && state.sheet.rollLog[0].name === '1d6', before);
 });
 
 console.log(results.join('\n'));

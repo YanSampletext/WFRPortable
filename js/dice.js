@@ -101,9 +101,59 @@
       '</div>';
   };
 
+  // ── лоток поверх страницы ───────────────────────────────────────────────────
+  // Лоток жил только на вкладке «Кубы и журнал»: от бланка это «Ещё» → плитка →
+  // кнопка, три нажатия за каждый бросок. За игрой кидают постоянно, так что
+  // печать-кубик висит в шапке дела и открывает лоток здесь же, не уводя со
+  // страницы: вернуться потом на то же место в длинном бланке — отдельная
+  // морока.
+  window.diceOpen = function () {
+    _ordoDialogShell(
+      '<div class="ordo-dlg-seal">⚄</div>' +
+      '<div class="ordo-dlg-title">Бросок</div>' +
+      '<div class="dice-quick-row">' +
+        QUICK.map(function (q) {
+          return '<button class="sv4-btn-mini dice-quick" data-dice="' + q + '">' + q + '</button>';
+        }).join('') +
+      '</div>' +
+      '<div class="dice-free">' +
+        '<input id="dice-input-modal" class="sv4-mini" inputmode="text" placeholder="напр. 2d10+4"' +
+          ' value="' + escAttr(lastSpec()) + '" aria-label="Запись броска">' +
+        '<button class="sv4-btn-mini btn-gold" data-dice-go>Бросить</button>' +
+      '</div>' +
+      '<p class="muted dice-hint">Понимает 1d10, 2d10+4, d6−1. Русская «к» тоже подойдёт.</p>' +
+      '<div class="ordo-dlg-btns"><button class="ordo-dlg-btn ghost" onclick="ordoDialogClose()">Закрыть</button></div>'
+    );
+    var inp = document.getElementById('dice-input-modal');
+    if (inp) inp.onkeydown = function (e) { if (e.key === 'Enter') rollFromModal(); };
+  };
+
+  function lastSpec() {
+    try { return localStorage.getItem(LAST_KEY) || ''; } catch (e) { return ''; }
+  }
+
+  // Карточка результата всплывает выше лотка, но оставлять его открытым под
+  // ней незачем: бросок сделан, а «Ещё раз» есть на самой карточке. Закрываем
+  // только на удачном броске — на «не понял запись» лоток нужен на месте,
+  // чтобы было что исправлять.
+  function rollAndClose(text) {
+    var out = diceRoll(text);
+    if (out !== null) ordoDialogClose();
+    return out;
+  }
+
+  function rollFromModal() {
+    var inp = document.getElementById('dice-input-modal');
+    rollAndClose(inp ? inp.value : '');
+  }
+
   // быстрые кнопки — через делегирование, без обработчиков в разметке
   document.addEventListener('click', function (e) {
+    if (e.target.closest('[data-dice-go]')) { rollFromModal(); return; }
     var el = e.target.closest('[data-dice]');
-    if (el) diceRoll(el.dataset.dice);
+    if (!el) return;
+    // Тот же обработчик обслуживает и лоток на вкладке, и лоток поверх страницы
+    if (e.target.closest('#ordo-dlg')) rollAndClose(el.dataset.dice);
+    else diceRoll(el.dataset.dice);
   });
 })();

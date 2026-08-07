@@ -179,6 +179,18 @@ body.theme-light .ordo-seal{ background:radial-gradient(circle at 35% 30%, #f4ea
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 body.theme-light .ordo-name{ color:#2a1c0c; }
+/* Кубик в шапке: тот же круг, что и печать меню, но тише — меню и опыт
+   важнее по месту в иерархии, а кубик просто должен быть под рукой. */
+.ordo-die{
+  flex:0 0 auto; width:44px; height:44px; min-width:44px; min-height:44px;
+  aspect-ratio:1 / 1; padding:0; border-radius:50%;
+  border:1px solid var(--gold-dk, #7d5f24);
+  background:rgba(201,162,39,.07);
+  color:var(--gold2, #e0c14e); font-size:20px; line-height:1;
+  display:grid; place-items:center; cursor:pointer;
+}
+.ordo-die:active{ transform:scale(.94); }
+body.theme-light .ordo-die{ background:rgba(125,95,36,.08); color:#7d5f24; }
 .ordo-xp{
   flex:0 0 auto; text-align:center; cursor:pointer;
   padding:5px 12px; border:1px solid var(--gold-dk, #7d5f24); border-radius:4px;

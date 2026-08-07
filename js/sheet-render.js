@@ -500,6 +500,7 @@ function renderSheet(){
       <div class="ordo-no">Дело · ${escHtml(r.name)} · ${escHtml(state.career||'—')}</div>
       <div class="ordo-name">${escHtml(state.name||'Без имени')}</div>
     </div>
+    <button class="ordo-die" onclick="diceOpen()" title="Бросить кубы" aria-label="Бросить кубы">⚄</button>
     <button class="ordo-xp" onclick="goStep(9)" title="Магазин обучения (трата XP)">
       <b>${xpAvail}</b><span>XP · лавка</span>
     </button>
