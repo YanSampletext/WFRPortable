@@ -66,6 +66,17 @@ jobs:
       - name: Audit sources
         run: node scripts/audit.mjs
 
+      # Описание релиза берётся из CHANGELOG.md, а не пишется в этом файле
+      # одной строкой на все версии. Заодно сверяется versionName в сборке:
+      # тег без записи или с чужой версией дальше не пройдёт. Стоит до
+      # установки Chromium — незачем ждать сборку, чтобы узнать про забытый
+      # раздел в журнале.
+      - name: Check the changelog entry
+        if: startsWith(github.ref, 'refs/tags/') || inputs.tag != ''
+        env:
+          TAG: ${{ inputs.tag != '' && inputs.tag || github.ref_name }}
+        run: node scripts/release-notes.mjs "$TAG" --check
+
       # Chromium весит под сотню мегабайт, поэтому кешируем по версии
       # Playwright из package-lock: пока она не менялась, скачивания нет.
       - name: Cache Chromium
@@ -137,7 +148,14 @@ jobs:
           APK: ${{ steps.apk.outputs.path }}
           TAG: ${{ inputs.tag != '' && inputs.tag || github.ref_name }}
         run: |
-          gh release create "$TAG" "$APK" \
-            --title "Досье Ордо $TAG" \
-            --notes "Самодостаточное приложение: весь сайт внутри APK, без адресной строки и без интернета. Android 11 и новее." \
-          || gh release upload "$TAG" "$APK" --clobber
+          node scripts/release-notes.mjs "$TAG" > notes.md
+          printf '\n---\n\nСамодостаточное приложение: весь сайт внутри APK, без адресной строки и без интернета. Android 11 и новее.\n' >> notes.md
+          # Релиз мог быть создан заранее руками — тогда создание падает,
+          # и остаётся обновить описание и подложить APK.
+          if gh release create "$TAG" "$APK" --title "Досье Ордо $TAG" --notes-file notes.md; then
+            echo "Релиз $TAG создан."
+          else
+            gh release edit "$TAG" --notes-file notes.md
+            gh release upload "$TAG" "$APK" --clobber
+            echo "Релиз $TAG обновлён."
+          fi

@@ -1102,6 +1102,212 @@ await check('ярлык «архив» уводит в архив', () => ev(() 
   return state.step === 8;
 }));
 
+// ── collapse.js: свёрнутое переживает перерисовку ───────────────────────────
+// Ширина страницы 393 — мобильная ветка, сворачивание включено.
+const firstTitle = () => ev(() => {
+  const t = document.querySelector('.sv4-section-title');
+  return t ? t.textContent.replace(/\s+/g, ' ').trim() : null;
+});
+
+await check('секция сворачивается по тапу', async () => {
+  await ev(() => { sv4NavGo('persona'); });
+  await p.waitForTimeout(200);
+  return ev(() => {
+    const t = document.querySelector('.sv4-section-title');
+    t.click();
+    return t.classList.contains('sv4-collapsed') && t.nextElementSibling.style.display === 'none';
+  });
+});
+
+await check('свёрнутое переживает перерисовку', async () => {
+  await ev(() => renderSheet());
+  await p.waitForTimeout(200);
+  return ev(() => {
+    const t = document.querySelector('.sv4-section-title');
+    return t.classList.contains('sv4-collapsed') && t.nextElementSibling.style.display === 'none';
+  });
+});
+
+await check('свёрнутое переживает уход на вкладку и назад', async () => {
+  await ev(() => sv4NavGo('health'));
+  await p.waitForTimeout(150);
+  await ev(() => sv4NavGo('persona'));
+  await p.waitForTimeout(200);
+  return ev(() => document.querySelector('.sv4-section-title').classList.contains('sv4-collapsed'));
+});
+
+await check('счётчик в заголовке не сбивает память', async () => {
+  // Ключ строится без «(12)»: покупка навыка меняет счётчик, но не секцию
+  return ev(() => {
+    const raw = JSON.parse(localStorage.getItem('wfrp4_collapsed_v1') || '[]');
+    return raw.length > 0 && raw.every(k => !/\(\s*\d+\s*\)/.test(k));
+  });
+});
+
+await check('свёрнутое доезжает до хранилища', () => ev(() => {
+  const raw = JSON.parse(localStorage.getItem('wfrp4_collapsed_v1') || '[]');
+  return raw.some(k => k.indexOf('persona|') === 0);
+}));
+
+await check('повторный тап разворачивает', async () => {
+  return ev(() => {
+    const t = document.querySelector('.sv4-section-title');
+    t.click();
+    const raw = JSON.parse(localStorage.getItem('wfrp4_collapsed_v1') || '[]');
+    return !t.classList.contains('sv4-collapsed') &&
+           t.nextElementSibling.style.display === '' &&
+           !raw.some(k => k.indexOf('persona|') === 0);
+  });
+});
+
+await check('битая память сворачивания не роняет бланк', async () => {
+  await ev(() => localStorage.setItem('wfrp4_collapsed_v1', '{не json'));
+  await p.reload();
+  await p.waitForTimeout(700);
+  return ev(() => {
+    document.getElementById('view-landing').style.display = 'none';
+    document.getElementById('view-app').style.display = 'block';
+    const r = loadRoster();
+    openCharacter(r[0].id);
+    return !!document.querySelector('.sv4-section-title');
+  });
+});
+
+// ── backup.js: резервная копия всего архива ────────────────────────────────
+// Импорт идёт через настоящий <input type=file> и FileReader, а не через
+// подсунутый объект: путь, по которому пойдёт человек, и есть тот, что надо
+// проверять.
+const feedFile = async (text, name = 'ordo-arhiv.json') => {
+  await p.setInputFiles('#import-roster', { name, mimeType: 'application/json', buffer: Buffer.from(text, 'utf8') });
+  await p.waitForTimeout(250);
+};
+// Диалог «Добавить / Заменить» — нажимаем то, что нажал бы человек
+const dlgClick = async label => {
+  await p.waitForTimeout(150);
+  const hit = await p.evaluate(t => {
+    const b = [...document.querySelectorAll('#ordo-dlg .ordo-dlg-btn')].find(x => x.textContent.trim() === t);
+    if (!b) return false;
+    b.click(); return true;
+  }, label);
+  await p.waitForTimeout(250);
+  return hit;
+};
+
+await check('в конверте лежит весь архив', () => ev(() => {
+  const env = JSON.parse(archiveJson());
+  return env.ordo === 'archive' && env.v === 1 &&
+         env.chars.length === loadRoster().length && env.chars.length > 0;
+}));
+
+let backupText = null;
+await check('копия снимается, пока архив цел', async () => {
+  backupText = await ev(() => {
+    // два досье, чтобы проверять именно архив, а не единственную запись
+    saveCharacterToRoster();
+    const r = loadRoster();
+    const twin = JSON.parse(JSON.stringify(r[0]));
+    twin.id = genCharId(); twin.name = 'Ханна Кёниг'; twin._updated = Date.now();
+    twin.sheet.fateSpent = 2; twin.sheet.gmDead = true;
+    r.push(twin); saveRoster(r);
+    return archiveJson();
+  });
+  const env = JSON.parse(backupText);
+  return env.chars.length >= 2 && env.chars.some(c => c.name === 'Ханна Кёниг');
+});
+
+await check('архив восстанавливается после полной потери', async () => {
+  await ev(() => { saveRoster([]); return true; });
+  await feedFile(backupText);
+  // архив пуст — вопрос не задаётся, кладём сразу
+  return ev(() => {
+    const r = loadRoster();
+    const h = r.find(x => x.name === 'Ханна Кёниг');
+    return r.length >= 2 && !!h && h.sheet.fateSpent === 2 && h.sheet.gmDead === true;
+  });
+});
+
+await check('повторное восстановление не плодит двойников', async () => {
+  const before = await ev(() => loadRoster().length);
+  await feedFile(backupText);
+  if (!await dlgClick('Добавить к архиву')) return 'диалог не показан';
+  const after = await ev(() => loadRoster().length);
+  return after === before ? true : `было ${before}, стало ${after}`;
+});
+
+await check('свежее в архиве не затирается старым из файла', async () => {
+  await ev(() => {
+    const r = loadRoster();
+    const i = r.findIndex(x => x.name === 'Ханна Кёниг');
+    r[i].name = 'Ханна Кёниг-Штерн'; r[i]._updated = Date.now() + 100000;
+    saveRoster(r);
+  });
+  await feedFile(backupText);
+  if (!await dlgClick('Добавить к архиву')) return 'диалог не показан';
+  return ev(() => !!loadRoster().find(x => x.name === 'Ханна Кёниг-Штерн'));
+});
+
+await check('замена архива требует второго подтверждения', async () => {
+  await feedFile(backupText);
+  if (!await dlgClick('Заменить архив')) return 'первый диалог не показан';
+  const asked = await ev(() => {
+    const t = document.querySelector('#ordo-dlg .ordo-dlg-title');
+    return !!t && /Заменить весь архив/.test(t.textContent);
+  });
+  await dlgClick('Оставить как есть');
+  // отказались — правка на месте
+  return asked && await ev(() => !!loadRoster().find(x => x.name === 'Ханна Кёниг-Штерн'));
+});
+
+await check('замена архива стирает нынешний', async () => {
+  await feedFile(backupText);
+  if (!await dlgClick('Заменить архив')) return 'первый диалог не показан';
+  if (!await dlgClick('Заменить')) return 'подтверждение не показано';
+  return ev(() => {
+    const r = loadRoster();
+    return !r.find(x => x.name === 'Ханна Кёниг-Штерн') && !!r.find(x => x.name === 'Ханна Кёниг');
+  });
+});
+
+await check('одиночное досье идёт тем же путём', async () => {
+  const one = await ev(() => JSON.stringify(loadRoster()[0]));
+  const n = await ev(() => loadRoster().length);
+  await feedFile(one, 'один.json');
+  if (!await dlgClick('Добавить к архиву')) return 'диалог не показан';
+  return await ev(() => loadRoster().length) === n;   // тот же id — не двойник
+});
+
+await check('мусорный файл не трогает архив', async () => {
+  const before = await ev(() => JSON.stringify(loadRoster().map(x => x.id)));
+  await feedFile('{это не json', 'мусор.json');
+  await p.waitForTimeout(200);
+  return await ev(() => JSON.stringify(loadRoster().map(x => x.id))) === before;
+});
+
+await check('битое досье пропускается, целые доезжают', async () => {
+  await ev(() => saveRoster([]));
+  const env = JSON.parse(backupText);
+  const whole = env.chars.length;
+  env.chars.push({ name: 'Пустышка' });              // ни народа, ни характеристик
+  await feedFile(JSON.stringify(env));
+  const got = await ev(() => ({ n: loadRoster().length, empty: !!loadRoster().find(x => x.name === 'Пустышка') }));
+  return (got.n === whole && !got.empty) ? true : `целых ждали ${whole}, легло ${got.n}${got.empty ? ', пустышка прошла' : ''}`;
+});
+
+await check('подделка в файле не доезжает до архива', async () => {
+  await ev(() => saveRoster([]));
+  const env = JSON.parse(backupText);
+  env.chars[0].name = '"><img src=x onerror=window.__pwn=1>';
+  env.chars[0].__proto__x = 'мимо';
+  env.chars[0].вредное = 'поле не из схемы';
+  await feedFile(JSON.stringify(env));
+  await p.waitForTimeout(200);
+  return ev(() => {
+    const c = loadRoster()[0];
+    // имя сохраняется как текст, лишние поля отсеиваются, скрипт не выполнялся
+    return c.name.indexOf('<img') > 0 && c.вредное === undefined && window.__pwn === undefined;
+  });
+});
+
 console.log(results.join('\n'));
 console.log('\nпрошло ' + pass + ', не прошло ' + fail);
 console.log('ошибок JS за прогон: ' + errs.length);

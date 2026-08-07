@@ -181,6 +181,49 @@ for (const t of ['persona', 'health', 'skills', 'gear', 'more']) {
   console.log(`  ${t.padEnd(10)} ${small.length ? '⚠ ' + small.join(' | ') : 'все зоны достаточные'}`);
 }
 
+// ── видимость из разметки ───────────────────────────────────────────────────
+// Инлайновый обработчик ищет функцию только в глобальной области. Статический
+// аудит проверяет, что функция объявлена, — но объявленная внутри модуля или
+// внутри IIFE в глобалку не попадает, и разметка сломается на первом клике.
+// Проверить это можно лишь в живой странице: спрашиваем window по имени.
+console.log('\n── функции, которые зовёт разметка, видны глобально ──');
+{
+  const tabs = await p.evaluate(() => SHEET_TABS.map(t => t.id));
+  const missing = new Set();
+  let seen = 0;
+  for (const t of tabs) {
+    const found = await p.evaluate(tab => {
+      sv4NavGo(tab);
+      const names = new Set();
+      const ATTRS = ['onclick','onchange','oninput','onkeydown','onkeyup','onsubmit','onfocus','onblur'];
+      document.querySelectorAll('*').forEach(el => {
+        for (const a of ATTRS) {
+          const code = el.getAttribute(a);
+          if (!code) continue;
+          for (const m of code.matchAll(/(^|[^.\w$])([A-Za-z_$][\w$]*)\s*\(/g)) names.add(m[2]);
+        }
+      });
+      const builtin = new Set(['if','for','while','return','typeof','new','event','this','function',
+        'alert','confirm','prompt','print','open','close','focus','blur','parseInt','parseFloat',
+        'String','Number','Boolean','Array','Object','JSON','Math','Date','setTimeout','isNaN']);
+      const out = { seen: 0, missing: [] };
+      names.forEach(n => {
+        if (builtin.has(n)) return;
+        out.seen++;
+        if (typeof window[n] !== 'function') out.missing.push(n);
+      });
+      return out;
+    }, t);
+    seen += found.seen;
+    found.missing.forEach(n => missing.add(n));
+  }
+  console.log('  проверено имён: ' + seen);
+  console.log(missing.size
+    ? '  ⚠ НЕ ВИДНЫ ИЗ РАЗМЕТКИ: ' + [...missing].join(', ')
+    : '  все видны в window');
+  if (missing.size) errs.push('невидимые из разметки функции: ' + [...missing].join(', '));
+}
+
 console.log('\nвсего ошибок JS за прогон:', errs.length);
 if (errs.length) console.log(errs.slice(0, 8).map(e => '  · ' + e).join('\n'));
 await b.close();
