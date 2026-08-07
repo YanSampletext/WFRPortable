@@ -1102,6 +1102,77 @@ await check('ярлык «архив» уводит в архив', () => ev(() 
   return state.step === 8;
 }));
 
+// ── collapse.js: свёрнутое переживает перерисовку ───────────────────────────
+// Ширина страницы 393 — мобильная ветка, сворачивание включено.
+const firstTitle = () => ev(() => {
+  const t = document.querySelector('.sv4-section-title');
+  return t ? t.textContent.replace(/\s+/g, ' ').trim() : null;
+});
+
+await check('секция сворачивается по тапу', async () => {
+  await ev(() => { sv4NavGo('persona'); });
+  await p.waitForTimeout(200);
+  return ev(() => {
+    const t = document.querySelector('.sv4-section-title');
+    t.click();
+    return t.classList.contains('sv4-collapsed') && t.nextElementSibling.style.display === 'none';
+  });
+});
+
+await check('свёрнутое переживает перерисовку', async () => {
+  await ev(() => renderSheet());
+  await p.waitForTimeout(200);
+  return ev(() => {
+    const t = document.querySelector('.sv4-section-title');
+    return t.classList.contains('sv4-collapsed') && t.nextElementSibling.style.display === 'none';
+  });
+});
+
+await check('свёрнутое переживает уход на вкладку и назад', async () => {
+  await ev(() => sv4NavGo('health'));
+  await p.waitForTimeout(150);
+  await ev(() => sv4NavGo('persona'));
+  await p.waitForTimeout(200);
+  return ev(() => document.querySelector('.sv4-section-title').classList.contains('sv4-collapsed'));
+});
+
+await check('счётчик в заголовке не сбивает память', async () => {
+  // Ключ строится без «(12)»: покупка навыка меняет счётчик, но не секцию
+  return ev(() => {
+    const raw = JSON.parse(localStorage.getItem('wfrp4_collapsed_v1') || '[]');
+    return raw.length > 0 && raw.every(k => !/\(\s*\d+\s*\)/.test(k));
+  });
+});
+
+await check('свёрнутое доезжает до хранилища', () => ev(() => {
+  const raw = JSON.parse(localStorage.getItem('wfrp4_collapsed_v1') || '[]');
+  return raw.some(k => k.indexOf('persona|') === 0);
+}));
+
+await check('повторный тап разворачивает', async () => {
+  return ev(() => {
+    const t = document.querySelector('.sv4-section-title');
+    t.click();
+    const raw = JSON.parse(localStorage.getItem('wfrp4_collapsed_v1') || '[]');
+    return !t.classList.contains('sv4-collapsed') &&
+           t.nextElementSibling.style.display === '' &&
+           !raw.some(k => k.indexOf('persona|') === 0);
+  });
+});
+
+await check('битая память сворачивания не роняет бланк', async () => {
+  await ev(() => localStorage.setItem('wfrp4_collapsed_v1', '{не json'));
+  await p.reload();
+  await p.waitForTimeout(700);
+  return ev(() => {
+    document.getElementById('view-landing').style.display = 'none';
+    document.getElementById('view-app').style.display = 'block';
+    const r = loadRoster();
+    openCharacter(r[0].id);
+    return !!document.querySelector('.sv4-section-title');
+  });
+});
+
 console.log(results.join('\n'));
 console.log('\nпрошло ' + pass + ', не прошло ' + fail);
 console.log('ошибок JS за прогон: ' + errs.length);
