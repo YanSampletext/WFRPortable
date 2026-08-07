@@ -564,20 +564,26 @@ function renderTabMore(){
       <span class="ordo-tile-l">${label}</span>
       ${sub?`<span class="ordo-tile-s">${sub}</span>`:''}
     </button>`;
-  let h = `<div class="sv4-block"><div class="sv4-block-title">Разделы дела</div>
+  // Плитки разделены по тому, как часто за ними лезут: за игрой — каждую
+  // сессию, в досье — один раз при создании и потом изредка. В одной сетке
+  // «Имущество» стояло рядом с «Народом», и нужное уходило за прокрутку.
+  let h = `<div class="sv4-block"><div class="sv4-block-title">За игрой</div>
     <div class="ordo-grid">
       ${tile("sv4NavGo('gear')",ICONS.pack,'Имущество','оружие · броня · кошель')}
       ${tile("sv4NavGo('magic')",ICONS.sparkle,'Магия / Вера','заклинания · молитвы')}
+      ${tile("sv4NavGo('rolllog')",ICONS.book,'Кубы и журнал','броски')}
+      ${tile("sv4NavGo('downtime')",ICONS.moon,'Отдых','между приключениями')}
+      ${tile("goStep(9)",ICONS.shop,'Магазин XP','трата опыта')}
+      ${tile("typeof gmOpen==='function'&&gmOpen()",ICONS.emblem,'Печати ГМ','отметки на деле')}
+    </div></div>`;
+  h += `<div class="sv4-block"><div class="sv4-block-title">Досье</div>
+    <div class="ordo-grid ref">
       ${tile("sv4NavGo('stats')",ICONS.dice,'Статы','характеристики')}
       ${tile("sv4NavGo('fate')",ICONS.compass,'Судьба','удача · решимость')}
       ${tile("sv4NavGo('race')",ICONS.flag,'Народ','')}
       ${tile("sv4NavGo('career')",ICONS.scroll,'Карьера','ступени · смена')}
-      ${tile("sv4NavGo('downtime')",ICONS.moon,'Отдых','между приключениями')}
-      ${tile("sv4NavGo('notes')",ICONS.feather,'Штрихи','имя · внешность · XP')}
-      ${tile("sv4NavGo('rolllog')",ICONS.book,'Журнал','история бросков')}
+      ${tile("sv4NavGo('notes')",ICONS.feather,'Штрихи','имя · внешность')}
       ${tile("sv4NavGo('print')",ICONS.sheet,'Бланк','печатный вид')}
-      ${tile("typeof gmOpen==='function'&&gmOpen()",ICONS.emblem,'Печати ГМ','отметки на деле')}
-      ${tile("goStep(9)",ICONS.shop,'Магазин XP','трата опыта')}
     </div></div>`;
   h += `<div class="sv4-block"><div class="sv4-block-title">Архив и файлы</div>
     <div class="ordo-grid sys">
