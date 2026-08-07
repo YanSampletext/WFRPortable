@@ -136,7 +136,7 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
       <!-- название экрана держит верхняя панель, импорт уехал в меню -->
       <div class="ark-head">
         <button class="btn btn-gold" data-act="startNewCharacter">+ Завести досье</button>
-        <input type="file" id="import-roster" accept=".json" style="display:none" onchange="importToRoster(this)" />
+        <input type="file" id="import-roster" accept=".json" style="display:none" onchange="importArchive(this)" />
       </div>
       <div id="roster-area"></div>
     </section>
@@ -313,6 +313,7 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
 <script src="js/shortcuts.js"></script>
 <script src="js/ad-slot.js"></script>
 <script src="js/fab-scroll.js"></script>
+<script src="js/backup.js"></script>
 <script src="js/back-nav.js"></script>
 <!-- Запуск — последним: init.js опирается на всё, что объявлено выше -->
 <script src="js/init.js"></script>
