@@ -574,6 +574,7 @@ function renderTabMore(){
       ${tile("sv4NavGo('magic')",ICONS.sparkle,'Магия / Вера','заклинания · молитвы')}
       ${tile("sv4NavGo('rolllog')",ICONS.book,'Кубы и журнал','броски')}
       ${tile("sv4NavGo('downtime')",ICONS.moon,'Отдых','между приключениями')}
+      ${tile("refOpen()",ICONS.book,'Справочник','искать по правилам')}
       ${tile("goStep(9)",ICONS.shop,'Магазин XP','трата опыта')}
       ${tile("typeof gmOpen==='function'&&gmOpen()",ICONS.emblem,'Печати ГМ','отметки на деле')}
     </div></div>`;

@@ -1404,6 +1404,128 @@ await check('лоток на вкладке журнала по-прежнему
   return ev(n => state.sheet.rollLog.length === n + 1 && state.sheet.rollLog[0].name === '1d6', before);
 });
 
+// ── reference.js: поиск по справочнику ─────────────────────────────────────
+await check('в справочник попали все каталоги', () => ev(() => {
+  const kinds = {};
+  refSearch('').forEach(e => kinds[e.kind] = (kinds[e.kind] || 0) + 1);
+  const need = ['оружие', 'броня', 'качество', 'состояние', 'талант', 'навык',
+                'карьера', 'заклинание', 'болезнь'];
+  const miss = need.filter(k => !kinds[k]);
+  return miss.length ? 'не хватает: ' + miss.join(', ') : refCount() > 400;
+}));
+
+await check('точное название находится первым', () => ev(() => {
+  const pairs = [['щит', 'щит'], ['горящий', 'горящий'], ['бугай', 'бугай']];
+  return pairs.every(([q, want]) => {
+    const top = refSearch(q)[0];
+    return top && top.name.toLowerCase().indexOf(want) === 0;
+  });
+}));
+
+await check('поиск не различает регистр и «ё»', () => ev(() => {
+  const a = refSearch('ГОРЯЩИЙ').length, b = refSearch('горящий').length;
+  const c = refSearch('щадящее').length, d = refSearch('щадящее').length;
+  return a > 0 && a === b && c > 0 && c === d;
+}));
+
+await check('ищется и по описанию, не только по названию', () => ev(() => {
+  // «хладнокровие» — название навыка, но встречается и в описаниях талантов
+  const hits = refSearch('хладнокровие');
+  return hits.length > 1 && hits.some(e => e.kind === 'талант');
+}));
+
+await check('название важнее описания в выдаче', () => ev(() => {
+  const hits = refSearch('пронзающее');
+  return hits.length > 0 && hits[0].kind === 'качество' && hits[0].name === 'пронзающее';
+}));
+
+await check('раздел сужает выдачу', () => ev(() => {
+  const all = refSearch('').length;
+  const only = refSearch('', 'качество');
+  return only.length > 0 && only.length < all && only.every(e => e.kind === 'качество');
+}));
+
+await check('пустой запрос отдаёт весь справочник', () => ev(() => refSearch('').length === refCount()));
+
+await check('бессмыслица ничего не находит', () => ev(() => refSearch('ъыфждлор').length === 0));
+
+await check('окно открывается и рисует список', async () => {
+  await ev(() => sv4NavGo('persona'));
+  await p.waitForTimeout(150);
+  await ev(() => refOpen());
+  await p.waitForTimeout(250);
+  return ev(() => {
+    const m = document.getElementById('ref-modal');
+    return !!m && m.classList.contains('show') &&
+           document.querySelectorAll('#ref-list .spick-row').length > 0 &&
+           !!document.getElementById('ref-q');
+  });
+});
+
+await check('набор в поле сужает список', async () => {
+  await ev(() => {
+    const q = document.getElementById('ref-q');
+    q.value = 'щит';
+    q.dispatchEvent(new Event('input'));
+  });
+  await p.waitForTimeout(200);
+  return ev(() => {
+    const rows = [...document.querySelectorAll('#ref-list .spick-row')];
+    return rows.length > 0 && rows.length < 60 &&
+           /щит/i.test(rows[0].querySelector('b').textContent);
+  });
+});
+
+await check('кнопка раздела переключает выдачу', async () => {
+  await ev(() => {
+    document.getElementById('ref-q').value = '';
+    document.getElementById('ref-q').dispatchEvent(new Event('input'));
+    document.querySelector('[data-ref-kind="талант"]').click();
+  });
+  await p.waitForTimeout(200);
+  return ev(() => {
+    const rows = [...document.querySelectorAll('#ref-list .spick-row')];
+    const marks = rows.map(r => r.querySelector('.spick-cn').textContent);
+    return rows.length > 0 && marks.every(m => m === 'талант') &&
+           document.querySelector('[data-ref-kind="талант"]').classList.contains('on');
+  });
+});
+
+await check('длинная выдача обрезается с честной подписью', async () => {
+  await ev(() => document.querySelector('[data-ref-kind="всё"]').click());
+  await p.waitForTimeout(200);
+  return ev(() => {
+    const rows = document.querySelectorAll('#ref-list .spick-row').length;
+    const tail = document.querySelector('#ref-list .muted');
+    return rows === 60 && !!tail && /Показано 60 из \d+/.test(tail.textContent);
+  });
+});
+
+await check('справочник закрывается и не уводит со страницы', async () => {
+  await ev(() => refClose());
+  await p.waitForTimeout(150);
+  return ev(() => {
+    const m = document.getElementById('ref-modal');
+    return !m.classList.contains('show') && _sheetTab === 'persona';
+  });
+});
+
+await check('плитка «Справочник» открывает окно', async () => {
+  await ev(() => sv4NavGo('more'));
+  await p.waitForTimeout(200);
+  const found = await ev(() => {
+    const t = [...document.querySelectorAll('.ordo-tile')]
+      .find(x => /Справочник/.test(x.textContent));
+    if (!t) return false;
+    t.click(); return true;
+  });
+  if (!found) return 'плитки нет на вкладке «Ещё»';
+  await p.waitForTimeout(250);
+  const ok = await ev(() => document.getElementById('ref-modal').classList.contains('show'));
+  await ev(() => refClose());
+  return ok;
+});
+
 console.log(results.join('\n'));
 console.log('\nпрошло ' + pass + ', не прошло ' + fail);
 console.log('ошибок JS за прогон: ' + errs.length);

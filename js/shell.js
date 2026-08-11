@@ -8,6 +8,7 @@
     { label: 'Создать досье',    sub: 'новый персонаж',        act: function () { startNewCharacter(); } },
     { label: 'Бланк персонажа',  sub: 'текущее дело',          act: function () { goStep(8); }, needChar: true },
     { label: 'Магазин опыта',    sub: 'трата XP',              act: function () { goStep(9); }, needChar: true },
+    { label: 'Справочник',       sub: 'оружие · таланты · правила', act: function () { refOpen(); } },
     { label: 'Сохранить архив',  sub: 'все досье в один файл', act: function () { exportArchive(); } },
     { label: 'Восстановить',     sub: 'из файла архива',       act: function () { var i = document.getElementById('import-roster'); if (i) i.click(); } },
     { label: 'Тема',             sub: 'светлая или тёмная',    act: function () { toggleTheme(); }, keepOpen: true },
@@ -172,9 +173,13 @@ document.addEventListener('click', function (e) {
     if (m) { sv4DoAction(m[1]); return; }
     m = /^goStep\((\d+)\)$/.exec(call);
     if (m) { goStep(parseInt(m[1], 10)); return; }
-    if (call === 'toggleTheme()') { toggleTheme(); return; }
-    if (call === 'openSupport()') { openSupport(); return; }
     if (call.indexOf('gmOpen') >= 0) { if (typeof gmOpen === 'function') gmOpen(); return; }
+    // Вызов без аргументов — общим случаем, а не отдельной строкой на каждый:
+    // раньше сюда дописывали toggleTheme и openSupport поимённо, и следующая
+    // плитка молча не работала бы. Имя обязано быть функцией в window — то же
+    // условие, что и у data-act.
+    m = /^([A-Za-z][A-Za-z0-9_]*)\(\)$/.exec(call);
+    if (m && typeof window[m[1]] === 'function') { window[m[1]](); return; }
   } catch (err) {
     notify('Не вышло: ' + err.message);
   }
