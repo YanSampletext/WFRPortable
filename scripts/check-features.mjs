@@ -1526,6 +1526,85 @@ await check('плитка «Справочник» открывает окно',
   return ok;
 });
 
+// ── talent-hints.js: какие таланты касаются броска ─────────────────────────
+const giveTalents = names => ev(list => {
+  state.sheet.extraTalents = list.map(n => ({ name: n, level: 1 }));
+  return true;
+}, names);
+
+await check('талант находится по своей проверке', async () => {
+  await giveTalents(['Верный выстрел', 'Батман', 'Аура величия']);
+  return ev(() => {
+    const pairs = [
+      ['стрельба (луки)', 'Верный выстрел'],
+      ['рукопашный бой (основное)', 'Батман'],
+      ['лидерство', 'Аура величия']
+    ];
+    return pairs.every(([roll, want]) =>
+      talentsForCheck(roll).some(t => t.name === want));
+  });
+});
+
+await check('условие срабатывания показывается', () => ev(() => {
+  const t = talentsForCheck('стрельба (луки)').find(x => x.name === 'Верный выстрел');
+  return !!t && /прицеливании/.test(t.when);
+}));
+
+await check('к чужой проверке таланты не липнут', () => ev(() =>
+  talentsForCheck('плавание').length === 0));
+
+await check('чужие таланты не показываются', async () => {
+  await giveTalents(['Бдительность']);
+  return ev(() => talentsForCheck('лидерство').length === 0);
+});
+
+await check('запятая в скобках не рвёт проверку надвое', () => ev(() => {
+  // «рукопашный бой (кулачное, при попытках коснуться противника)» — одна проверка
+  const t = DATA.all_talents.find(x => x.name === 'Быстрые руки');
+  return /кулачное, при/.test(t.checks);
+}));
+
+await check('талант с двумя проверками ловится по обеим', async () => {
+  await giveTalents(['Грамотность']);   // «книжные изыскания, язык (письменный)»
+  return ev(() =>
+    talentsForCheck('книжные изыскания').length === 1 &&
+    talentsForCheck('язык (рейкшпиль)').length === 1);
+});
+
+await check('таланты попадают на карточку броска', async () => {
+  await giveTalents(['Верный выстрел']);
+  await ev(() => rollCheck('стрельба (луки)', 50));
+  await p.waitForTimeout(200);
+  return ev(() => {
+    const box = document.querySelector('#roll-modal .roll-talents');
+    return !!box && /Верный выстрел/.test(box.textContent) && /прицеливании/.test(box.textContent);
+  });
+});
+
+await check('без подходящих талантов блока нет вовсе', async () => {
+  await ev(() => rollCheck('плавание', 50));
+  await p.waitForTimeout(200);
+  return ev(() => !document.querySelector('#roll-modal .roll-talents'));
+});
+
+await check('бросок ничего не прибавляет сам', async () => {
+  // Напоминание — не расчёт: цель остаётся ровно той, что передали
+  await giveTalents(['Верный выстрел']);
+  await ev(() => { state.sheet.advantage = 0; rollCheck('стрельба (луки)', 47); });
+  await p.waitForTimeout(200);
+  return ev(() => {
+    const t = document.querySelector('#roll-modal .sv4-roll-target').textContent;
+    return /≤\s*47/.test(t) && state.sheet.rollLog[0].target === 47;
+  });
+});
+
+await check('подсказка не мешает броску характеристики', async () => {
+  await ev(() => { const m = document.getElementById('roll-modal'); if (m) m.classList.remove('show'); });
+  await ev(() => rollCheck('ББ', 45));
+  await p.waitForTimeout(200);
+  return ev(() => document.getElementById('roll-modal').classList.contains('show'));
+});
+
 console.log(results.join('\n'));
 console.log('\nпрошло ' + pass + ', не прошло ' + fail);
 console.log('ошибок JS за прогон: ' + errs.length);

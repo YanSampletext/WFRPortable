@@ -299,6 +299,7 @@ function showRollResult(name, target, d, outcome, cls, slText){
     <div class="sv4-roll-die">${d}</div>
     <div class="sv4-roll-outcome">${outcome}</div>
     <div class="sv4-roll-sl">${slText}</div>
+    ${typeof talentHintHtml === 'function' ? talentHintHtml(name) : ''}
     <div class="sv4-roll-btns">
       <button class="sv4-roll-close" onclick="document.getElementById('roll-modal').classList.remove('show')">Закрыть</button>
       <button class="sv4-roll-again" data-call="roll" data-v="${escAttr(name)}" data-n="${target}"><span class="ic">${ICONS.dice}</span> Ещё раз</button>

@@ -309,6 +309,23 @@ body.theme-light #saved-tick{ background:rgba(245,238,220,.95); color:#7d5f24; }
 .spick-row .btn{ margin-top:6px; min-height:34px; }
 body.theme-light .spell-pick-card{ background:#f2e9d4; }
 
+/* ═══ Напоминание о талантах на карточке броска ═══ */
+.roll-talents{
+  margin:10px 0 2px; padding:9px 10px; text-align:left;
+  border:1px solid var(--border,rgba(201,162,39,.22)); border-radius:6px;
+  background:rgba(0,0,0,.22);
+}
+body.theme-light .roll-talents{ background:rgba(125,95,36,.06); }
+.roll-talents-h{
+  font-family:Cinzel,serif; font-size:9px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--gold-dk,#7d5f24); margin-bottom:5px;
+}
+.roll-talent{ font-size:11.5px; line-height:1.35; color:var(--text2,#c9bda0); margin-top:4px; }
+.roll-talent b{ color:var(--gold2,#e0c14e); }
+.roll-talent-lvl{ font-family:Cinzel,serif; font-size:10px; color:var(--gold2,#e0c14e); margin-left:4px; }
+/* Условие — самое важное здесь: талант работает не всегда */
+.roll-talent-when{ display:block; font-size:10.5px; color:var(--text3,#8a7a5c); }
+
 /* ═══ Справочник ═══ */
 .ref-card{
   background:var(--panel,#1a1208); border:1px solid var(--gold-dk,#7d5f24); border-radius:10px;
