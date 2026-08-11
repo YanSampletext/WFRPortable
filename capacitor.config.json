@@ -1,6 +1,6 @@
 {
   "appId": "ru.yansampletext.ordo",
-  "appName": "Досье Ордо",
+  "appName": "Имперский архив",
   "webDir": "www",
   "android": {
     "allowMixedContent": false,

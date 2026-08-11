@@ -1,6 +1,6 @@
 {
-  "name": "Досье Ордо",
-  "short_name": "Досье Ордо",
+  "name": "Имперский архив",
+  "short_name": "Имперский архив",
   "description": "Создание и ведение персонажа Warhammer Fantasy Roleplay 4 (рус.)",
   "start_url": "./index.html",
   "scope": "./",

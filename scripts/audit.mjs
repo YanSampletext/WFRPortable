@@ -96,6 +96,38 @@ const ids = {};
 for (const m of html.matchAll(/\sid="([^"]+)"/g)) ids[m[1]] = (ids[m[1]] || 0) + 1;
 for (const [id, n] of Object.entries(ids)) if (n > 1) problems.push(`ПОВТОР ID   ${id} × ${n} в index.html`);
 
+// ── 9. чужой сеттинг в собственном оформлении ───────────────────────────────
+// «Ордо» (Ordo Malleus, Ordo Hereticus) и «Imperium» — это Инквизиция и
+// Империя Человечества из Warhammer 40 000. В Империи Warhammer Fantasy их
+// нет: там Рейкланд, Альтдорф, ордена Зигмара и Колледжи Магии. Уровни допуска
+// и грифы секретности — тоже не отсюда, имперская канцелярия обходится
+// печатями и грамотами.
+//
+// Проверяем только собственные тексты приложения. js/data.js не трогаем: там
+// книжные данные, и карьера «Инквизитор» в WFRP4 совершенно законна — это
+// ступень охотника на ведьм.
+const OWN_TEXT = ['index.html', 'manifest.json', 'privacy.html', 'README.md',
+                  ...cssFiles, ...jsFiles.filter(f => f !== 'js/data.js')];
+const ALIEN = [
+  [/\bOrdo\s+[A-ZА-Я]/g,      'Ordo — это Инквизиция WH40k, не Империя Фэнтези'],
+  [/«?\bОрдо\b/g,             '«Ордо» — из WH40k; в Империи Фэнтези таких структур нет'],
+  [/\bImperi(um|vm)\b/gi,     'Imperium — Империя Человечества из WH40k; здесь Империя (das Reich)'],
+  [/Допуск\s+[IVX\d]+/g,      'уровни допуска — современная секретность, не имперская канцелярия'],
+  [/'СЕКРЕТНО'|«СЕКРЕТНО»/g,  'гриф «СЕКРЕТНО» — не из Старого Света; там сургуч и печать'],
+];
+// Технические строки, которые изменить уже нельзя: appId зафиксирован
+// публикацией, адрес поддержки принадлежит автору.
+const ALLOW = /ru\.yansampletext\.ordo|boosty\.to\/ordodos/g;
+for (const f of OWN_TEXT) {
+  let src;
+  try { src = readFileSync(f, 'utf8'); } catch { continue; }
+  const clean = src.replace(ALLOW, '');
+  for (const [re, why] of ALIEN) {
+    const hits = clean.match(re);
+    if (hits) problems.push(`ЧУЖОЙ ЛОР  ${f}: «${hits[0]}» — ${why}`);
+  }
+}
+
 // ── отчёт ───────────────────────────────────────────────────────────────────
 console.log('── ошибки ──');
 console.log(problems.length ? problems.map(p => '  ' + p).join('\n') : '  нет');

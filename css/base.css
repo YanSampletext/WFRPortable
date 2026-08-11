@@ -145,12 +145,6 @@ p { line-height: 1.55; margin-bottom: 6px; }
   margin: 0 auto 18px;
   opacity: 0.75; filter: none;
 }
-.title-eyebrow {
-  font-family: 'Cinzel', serif;
-  font-size: 10px; letter-spacing: 5px;
-  color: var(--gold-dim); text-transform: uppercase;
-  margin-bottom: 10px;
-}
 .title-main {
   font-family: 'Cinzel', serif;
   font-size: clamp(38px, 6vw, 68px);
@@ -174,11 +168,6 @@ p { line-height: 1.55; margin-bottom: 6px; }
   background: linear-gradient(to right, transparent, var(--border2), transparent);
 }
 .divider-ornament { color: var(--gold3); font-size: 12px; opacity: 0.7; }
-.subtitle {
-  font-family: 'EB Garamond', serif; font-style: italic;
-  font-size: 15px; color: var(--text3);
-  letter-spacing: 0.5px; margin-top: 14px;
-}
 .landing-epigraph {
   font-family: 'EB Garamond', serif; font-style: italic;
   font-size: 13px; color: var(--blood2);
@@ -194,6 +183,8 @@ p { line-height: 1.55; margin-bottom: 6px; }
   gap: 24px; width: 100%; margin-bottom: 52px;
   animation: fadeUp 1s ease 0.2s both;
 }
+/* Класс ставит renderLandingChars, когда в архиве кто-то есть */
+.actions-grid.has-chars .continue-card { order: -1; }
 .create-card {
   background: linear-gradient(160deg, #1e1508 0%, #110d06 60%, #0d0a05 100%);
   border: 1px solid var(--border); border-radius: 4px;

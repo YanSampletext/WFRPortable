@@ -836,4 +836,8 @@ function deleteCharacter(id, ev, skipConfirm){
 // ===================== LANDING CHARS =====================
 function renderLandingChars(){
   renderArchiveInto(document.getElementById('landing-char-list'), { tools: false });
+  // Пустой архив — предлагаем завести досье, оно и первое. Есть свои — человек
+  // пришёл к своему персонажу, а не заводить ещё одного: архив выше.
+  const grid = document.querySelector('.actions-grid');
+  if(grid) grid.classList.toggle('has-chars', loadRoster().length > 0);
 }
