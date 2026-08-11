@@ -1605,6 +1605,32 @@ await check('подсказка не мешает броску характер�
   return ev(() => document.getElementById('roll-modal').classList.contains('show'));
 });
 
+await check('карточка удара тоже напоминает о талантах', async () => {
+  await clearEnc();                       // без цели удар бьёт сразу, без выбора
+  const ready = await ev(() => {
+    state.sheet.extraTalents = [{ name: 'Батман', level: 1 }];
+    state.sheet.weapons = [{ name: 'Ручное оружие', group: 'Основное', damage: '+РС+4' }];
+    attackWith(0);
+    return true;
+  });
+  await p.waitForTimeout(300);
+  if (!ready) return 'удар не состоялся';
+  return ev(() => {
+    const box = document.querySelector('#roll-modal .roll-talents');
+    return !!box && /Батман/.test(box.textContent) && /батмана/.test(box.textContent);
+  });
+});
+
+await check('на удар из лука боевой талант рукопашной не липнет', async () => {
+  await ev(() => {
+    state.sheet.extraTalents = [{ name: 'Батман', level: 1 }];
+    state.sheet.weapons = [{ name: 'Лук', group: 'Лук', damage: '+РС+3' }];
+    attackWith(0);
+  });
+  await p.waitForTimeout(300);
+  return ev(() => !document.querySelector('#roll-modal .roll-talents'));
+});
+
 console.log(results.join('\n'));
 console.log('\nпрошло ' + pass + ', не прошло ' + fail);
 console.log('ошибок JS за прогон: ' + errs.length);

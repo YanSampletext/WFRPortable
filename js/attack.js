@@ -168,6 +168,10 @@
         '<div class="sv4-roll-sl">' + (sl >= 0 ? '+' : '') + sl + ' ст.усп.' +
           (opp ? ' разницы' : '') + '</div>' +
         '<div class="atk-dmg">' + body + '</div>' +
+        // Атака — самый частый бросок в бою, и боевых талантов с условиями
+        // больше всего. Карточка у удара своя, так что напоминание надо
+        // позвать отдельно: по названию навыка, а не оружия.
+        (typeof talentHintHtml === 'function' ? talentHintHtml(sk.name) : '') +
         '<div class="sv4-roll-btns">' +
           '<button class="sv4-roll-close" onclick="document.getElementById(\'roll-modal\').classList.remove(\'show\')">Закрыть</button>' +
           advBtn + apply +
