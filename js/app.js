@@ -838,6 +838,10 @@ function renderLandingChars(){
   renderArchiveInto(document.getElementById('landing-char-list'), { tools: false });
   // Пустой архив — предлагаем завести досье, оно и первое. Есть свои — человек
   // пришёл к своему персонажу, а не заводить ещё одного: архив выше.
+  const has = loadRoster().length > 0;
   const grid = document.querySelector('.actions-grid');
-  if(grid) grid.classList.toggle('has-chars', loadRoster().length > 0);
+  if(grid) grid.classList.toggle('has-chars', has);
+  // Тем же классом на body ужимается и заглавие: парадная шапка нужна тому,
+  // кто пришёл впервые, а вернувшемуся нужен его персонаж, а не вывеска.
+  document.body.classList.toggle('has-chars', has);
 }
