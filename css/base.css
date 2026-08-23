@@ -145,12 +145,6 @@ p { line-height: 1.55; margin-bottom: 6px; }
   margin: 0 auto 18px;
   opacity: 0.75; filter: none;
 }
-.title-eyebrow {
-  font-family: 'Cinzel', serif;
-  font-size: 10px; letter-spacing: 5px;
-  color: var(--gold-dim); text-transform: uppercase;
-  margin-bottom: 10px;
-}
 .title-main {
   font-family: 'Cinzel', serif;
   font-size: clamp(38px, 6vw, 68px);
@@ -174,11 +168,6 @@ p { line-height: 1.55; margin-bottom: 6px; }
   background: linear-gradient(to right, transparent, var(--border2), transparent);
 }
 .divider-ornament { color: var(--gold3); font-size: 12px; opacity: 0.7; }
-.subtitle {
-  font-family: 'EB Garamond', serif; font-style: italic;
-  font-size: 15px; color: var(--text3);
-  letter-spacing: 0.5px; margin-top: 14px;
-}
 .landing-epigraph {
   font-family: 'EB Garamond', serif; font-style: italic;
   font-size: 13px; color: var(--blood2);
@@ -194,6 +183,47 @@ p { line-height: 1.55; margin-bottom: 6px; }
   gap: 24px; width: 100%; margin-bottom: 52px;
   animation: fadeUp 1s ease 0.2s both;
 }
+/* Светлая тема на обложке: карточки красятся градиентом, и при переключении
+   темы фон у них оставался ночным, а текст становился тёмным — имя персонажа
+   уходило в чёрное на чёрном. Проверка этого не видела, потому что читала
+   только background-color, а градиент пропускала. */
+body.theme-light .create-card,
+body.theme-light .continue-card {
+  background: linear-gradient(160deg, #e8dab6 0%, #ddcaa2 100%);
+  box-shadow: inset 0 1px 0 rgba(255,246,224,.5), 0 4px 20px rgba(90,70,30,.16);
+}
+body.theme-light .ark-card {
+  background: linear-gradient(160deg, #e2caa8 0%, #d4b892 100%);
+  border-color: rgba(124,29,18,.34);
+}
+body.theme-light .ark-sort select { background: rgba(255,248,230,.6); }
+
+/* Вернувшемуся нужен его персонаж, а не вывеска: заглавие ужимается, чтобы
+   первое досье попадало на первый экран, а не за прокрутку. Строку про
+   редакцию и разделитель убираем совсем — они прочитаны один раз при первом
+   запуске. Эпиграф остаётся: он и есть настроение, ради которого всё это. */
+body.has-chars .hammer-seal { width: 44px; height: 44px; margin-bottom: 10px; }
+body.has-chars .title-main { font-size: clamp(22px, 5.5vw, 32px); letter-spacing: 5px; }
+body.has-chars .masthead-goth { font-size: clamp(16px, 3.4vw, 22px); }
+body.has-chars .title-version,
+body.has-chars .header-divider { display: none; }
+body.has-chars .landing-epigraph { margin-top: 14px; }
+
+/* Класс ставит renderLandingChars, когда в архиве кто-то есть.
+   Пустой архив — карточка создания единственное, что на экране, и остаётся
+   большой и зовущей. Есть свои досье — она превращается в одну строку под
+   списком: человек пришёл к своему персонажу, а карточка в полэкрана только
+   отодвигает его за прокрутку. */
+.actions-grid.has-chars .continue-card { order: -1; }
+.actions-grid.has-chars .create-card {
+  min-height: 0; padding: 14px 18px;
+  flex-direction: row; justify-content: center; gap: 12px;
+}
+/* Кнопка остаётся — она единственная подсказка, что сюда жмут */
+.actions-grid.has-chars .card-icon-wrap,
+.actions-grid.has-chars .create-desc,
+.actions-grid.has-chars .create-label,
+.actions-grid.has-chars .card-corner { display: none; }
 .create-card {
   background: linear-gradient(160deg, #1e1508 0%, #110d06 60%, #0d0a05 100%);
   border: 1px solid var(--border); border-radius: 4px;

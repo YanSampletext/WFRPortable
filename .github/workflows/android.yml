@@ -152,7 +152,7 @@ jobs:
           printf '\n---\n\nСамодостаточное приложение: весь сайт внутри APK, без адресной строки и без интернета. Android 11 и новее.\n' >> notes.md
           # Релиз мог быть создан заранее руками — тогда создание падает,
           # и остаётся обновить описание и подложить APK.
-          if gh release create "$TAG" "$APK" --title "Досье Ордо $TAG" --notes-file notes.md; then
+          if gh release create "$TAG" "$APK" --title "Имперский архив $TAG" --notes-file notes.md; then
             echo "Релиз $TAG создан."
           else
             gh release edit "$TAG" --notes-file notes.md

@@ -745,7 +745,7 @@ function renderTabPersona(){
         <label class="sv4-hf"><span>Глаза:</span><input value="${escAttr(state.eyes||'')}" onchange="state.eyes=this.value;autosave();" /></label>
         <label class="sv4-hf"><span>Волосы:</span><input value="${escAttr(state.hair||'')}" onchange="state.hair=this.value;autosave();" /></label>
       </div>
-      <div class="arch-serial" style="margin-top:6px;">ДОСЬЕ № ${dossierSerial()} · АРХИВ РЕЙКЛАНДА</div>
+      <div class="arch-serial" style="margin-top:6px;">ДОСЬЕ № ${dossierSerial()} · ИМПЕРСКИЙ АРХИВ · РЕЙКЛАНД</div>
     </div>
     <div class="sv4-hero-emblem">${ICONS.emblem}</div>
   </div>`;

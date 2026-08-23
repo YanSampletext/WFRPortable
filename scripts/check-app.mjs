@@ -5,14 +5,16 @@
 //   node scripts/check-app.mjs
 import { launchChromium, serve } from './browser.mjs';
 
-const srv = await serve(new URL('..', import.meta.url).pathname, 8099);
+// Порт свой: check-features.mjs держит 8099, и в сборке они идут подряд —
+// не успевший освободиться сокет ронял бы выпуск на пустом месте.
+const srv = await serve(new URL('..', import.meta.url).pathname, 8098);
 const b = await launchChromium();
 const p = await b.newPage({ viewport: { width: 393, height: 850 } });
 const errs = [];
 p.on('pageerror', e => errs.push(e.message.slice(0, 160)));
 p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 120)); });
 
-await p.goto('http://127.0.0.1:8099/index.html');
+await p.goto('http://127.0.0.1:8098/index.html');
 await p.waitForTimeout(700);
 
 // полноценный персонаж штатным генератором
@@ -129,13 +131,35 @@ for (const t of tabs) {
       b: top.b * top.a + bottom.b * (1 - top.a), a: 1
     });
     const lum = c => (0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b) / 255;
+    // Градиент — тоже фон. Пока здесь читался только background-color,
+    // элемент на градиентной карточке мерился против сплошного цвета
+    // где-то выше по дереву: светлая тема проходила проверку, выглядя
+    // тёмной кашей. Стопы усредняем — площадь карточки читается как
+    // средний тон, а не как один её угол.
+    const gradientOf = cs => {
+      const img = cs.backgroundImage || '';
+      if (img === 'none' || img.indexOf('gradient') < 0) return null;
+      const stops = img.match(/rgba?\([^)]+\)/g);
+      if (!stops) return null;
+      const cs2 = stops.map(parse).filter(Boolean).filter(c => c.a > 0);
+      if (!cs2.length) return null;
+      const n = cs2.length;
+      return {
+        r: cs2.reduce((s, c) => s + c.r, 0) / n,
+        g: cs2.reduce((s, c) => s + c.g, 0) / n,
+        b: cs2.reduce((s, c) => s + c.b, 0) / n,
+        a: cs2.reduce((s, c) => s + c.a, 0) / n
+      };
+    };
     const bgOf = el => {
       let acc = null;
       for (let n = el; n; n = n.parentElement) {
-        const c = parse(getComputedStyle(n).backgroundColor);
-        if (!c || c.a === 0) continue;
-        acc = acc ? over(acc, c) : c;
-        if (acc.a >= 1) break;
+        const cs = getComputedStyle(n);
+        for (const c of [gradientOf(cs), parse(cs.backgroundColor)]) {
+          if (!c || c.a === 0) continue;
+          acc = acc ? over(acc, c) : c;
+        }
+        if (acc && acc.a >= 1) break;
       }
       return acc;
     };
@@ -151,6 +175,54 @@ for (const t of tabs) {
   }, t);
   await p.waitForTimeout(160);
   console.log(`  ${t.padEnd(10)} ${bad.length ? '⚠ сливается: ' + bad.join(' | ') : 'читается'}`);
+}
+// Обложка светлую тему не проверялась вовсе, а это первый экран при каждом
+// запуске. Проверяем её отдельно: она живёт вне .sv4-page и в цикл по
+// вкладкам не попадала.
+{
+  const bad = await p.evaluate(() => {
+    goHome();
+    document.body.classList.add('theme-light');
+    const parse = c => {
+      const m = (c || '').match(/[\d.]+/g);
+      if (!m) return null;
+      return { r: +m[0], g: +m[1], b: +m[2], a: m[3] === undefined ? 1 : +m[3] };
+    };
+    const over = (t, b) => ({ r: t.r*t.a + b.r*(1-t.a), g: t.g*t.a + b.g*(1-t.a), b: t.b*t.a + b.b*(1-t.a), a: 1 });
+    const lum = c => (0.2126*c.r + 0.7152*c.g + 0.0722*c.b) / 255;
+    const gradientOf = cs => {
+      const img = cs.backgroundImage || '';
+      if (img === 'none' || img.indexOf('gradient') < 0) return null;
+      const st = (img.match(/rgba?\([^)]+\)/g) || []).map(parse).filter(c => c && c.a > 0);
+      if (!st.length) return null;
+      const n = st.length;
+      return { r: st.reduce((s,c)=>s+c.r,0)/n, g: st.reduce((s,c)=>s+c.g,0)/n,
+               b: st.reduce((s,c)=>s+c.b,0)/n, a: st.reduce((s,c)=>s+c.a,0)/n };
+    };
+    const bgOf = el => {
+      let acc = null;
+      for (let n = el; n; n = n.parentElement) {
+        const cs = getComputedStyle(n);
+        for (const c of [gradientOf(cs), parse(cs.backgroundColor)]) {
+          if (!c || c.a === 0) continue;
+          acc = acc ? over(acc, c) : c;
+        }
+        if (acc && acc.a >= 1) break;
+      }
+      return acc;
+    };
+    const out = [];
+    document.querySelectorAll('#view-landing *').forEach(el => {
+      if (!el.textContent.trim() || el.children.length) return;
+      if (!el.getBoundingClientRect().width) return;
+      const fg = parse(getComputedStyle(el).color), bg = bgOf(el);
+      if (!fg || !bg) return;
+      if (Math.abs(lum(over(fg, bg)) - lum(bg)) < 0.13)
+        out.push((el.className || el.tagName).toString().slice(0, 26));
+    });
+    return [...new Set(out)].slice(0, 4);
+  });
+  console.log(`  ${'обложка'.padEnd(10)} ${bad.length ? '⚠ сливается: ' + bad.join(' | ') : 'читается'}`);
 }
 await p.evaluate(() => document.body.classList.remove('theme-light'));
 

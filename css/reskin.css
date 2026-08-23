@@ -69,7 +69,7 @@ body.theme-light::before{ opacity:.22 !important; }
 /* ─── 4. ТИПОГРАФИКА: три семейства — лапидарный Cinzel для заголовков и
         печатей, EB Garamond для текста, узкий Barlow Condensed
         для канцелярских меток, интерфейса и цифр ──────────────────── */
-.title-eyebrow, .arch-serial, .sv4-tier-l, .sv4-c-l, .sv4-v-l, .sv4-stat-l, .sv4-i-l, .sv4-az-l, .sv4-m-l, .sv4-hp-l, .stat-full, .card-sub, .sv4-nav-item small, .sv4-tal-src, .classif-stamp, .masthead-classif, th, .sv4-tbl th, .step {
+.arch-serial, .sv4-tier-l, .sv4-c-l, .sv4-v-l, .sv4-stat-l, .sv4-i-l, .sv4-az-l, .sv4-m-l, .sv4-hp-l, .stat-full, .card-sub, .sv4-nav-item small, .sv4-tal-src, th, .sv4-tbl th, .step {
   font-family:'Barlow Condensed', 'Courier New', monospace !important;
   letter-spacing:.08em;
 }
@@ -97,7 +97,6 @@ p, li{ color:var(--text); }
 /* ─── 5. ЛЕНДИНГ ─────────────────────────────────────────────────── */
 .header{ margin-bottom:46px; }
 .hammer-seal{ opacity:.9; filter:drop-shadow(0 0 12px rgba(226,164,66,.25)); }
-.title-eyebrow{ color:var(--gold-dim); letter-spacing:.34em; font-size:10px; }
 .title-main{
   color:var(--gold2); letter-spacing:.14em;
   text-shadow:0 0 48px rgba(226,164,66,.42), 0 0 110px rgba(226,164,66,.16), 0 2px 2px #000;
@@ -108,16 +107,6 @@ p, li{ color:var(--text); }
   font-size:clamp(26px,5vw,42px); color:var(--gold2); line-height:1;
   margin:6px 0 2px; letter-spacing:.02em;
 }
-.masthead-classif{ margin-top:14px; }
-.classif-stamp{
-  display:inline-block; color:var(--blood2);
-  border:1.5px solid var(--blood); border-radius:2px; padding:3px 12px;
-  font-size:9px; letter-spacing:.22em; text-transform:uppercase;
-  transform:rotate(-1.5deg); opacity:.82;
-  -webkit-mask-image:var(--inkmask); mask-image:var(--inkmask);
-  -webkit-mask-size:cover; mask-size:cover;
-}
-.subtitle{ color:var(--text3); }
 .header-divider::before, .header-divider::after{ background:linear-gradient(90deg,transparent,var(--gold-dk),transparent); }
 .divider-ornament{ color:var(--gold); opacity:.85; }
 .landing-epigraph{ color:var(--blood2); opacity:.6; }
@@ -287,7 +276,7 @@ label{ color:var(--text3); font-family:'Barlow Condensed', monospace !important;
 .sv4-nav-item.danger{ color:var(--blood2); }
 .sv4-nav-divider{ background:var(--gold-dk); }
 
-/* HERO — плита кровавого дерева в латуни, с грифом «СЕКРЕТНО» */
+/* HERO — плита кровавого дерева в латуни, с надписью «не для чужих глаз» */
 .sv4-hero{
   border:1px solid var(--gold-dk);
   background:
@@ -301,7 +290,7 @@ label{ color:var(--text3); font-family:'Barlow Condensed', monospace !important;
 }
 .sv4-hero::after{ inset:6px; border:1px solid rgba(194,161,76,.2); border-radius:2px; }
 .sv4-hero::before{
-  content:'СЕКРЕТНО'; position:absolute; z-index:3; top:9px; right:14px;
+  content:'НЕ ДЛЯ ЧУЖИХ ГЛАЗ'; position:absolute; z-index:3; top:9px; right:14px;
   color:var(--blood2); border:2.5px solid var(--blood2); border-radius:2px;
   padding:3px 9px; font-family:'Barlow Condensed', monospace; font-size:11px; letter-spacing:.18em;
   transform:rotate(7deg); opacity:.5; mix-blend-mode:screen; pointer-events:none;
@@ -505,7 +494,7 @@ body.theme-light .sv4-hero::before{ mix-blend-mode:multiply; opacity:.4; }
 /* ─── 10. ТОЧЕЧНЫЕ ПРАВКИ СВЕТЛОЙ ТЕМЫ ───────────────────────────── */
 body.theme-light .sv4-hp-input{ text-shadow:none; }
 body.theme-light .title-main{ text-shadow:0 1px 0 rgba(255,240,200,.5); }
-body.theme-light .classif-stamp, body.theme-light .sv4-hero::before { opacity:.7; }
+body.theme-light .sv4-hero::before { opacity:.7; }
 
 /* ─── 11. ДОВОДКА: запас прочности типографики на узких экранах ──── */
 @media (max-width:560px){

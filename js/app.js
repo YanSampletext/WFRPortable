@@ -716,7 +716,7 @@ const LANDING_EPIGRAPHS = [
   '«Мутанты в лесах, крысы под городом, измена при дворе. Выбирай, где умереть».',
   '«Здесь не бывает героев — только те, кто ещё не пал».',
   '«Дороги Империи вымощены костями тех, кто шёл первым».',
-  '«Зима близко, кошель пуст, а на тракте — разбойники. Обычный вторник».',
+  '«Кошель пуст, на тракте разбойники, а зима уже на пороге. Обычная неделя».',
 ];
 function showRandomEpigraph(){
   const el = document.getElementById('landing-epigraph');
@@ -836,4 +836,12 @@ function deleteCharacter(id, ev, skipConfirm){
 // ===================== LANDING CHARS =====================
 function renderLandingChars(){
   renderArchiveInto(document.getElementById('landing-char-list'), { tools: false });
+  // Пустой архив — предлагаем завести досье, оно и первое. Есть свои — человек
+  // пришёл к своему персонажу, а не заводить ещё одного: архив выше.
+  const has = loadRoster().length > 0;
+  const grid = document.querySelector('.actions-grid');
+  if(grid) grid.classList.toggle('has-chars', has);
+  // Тем же классом на body ужимается и заглавие: парадная шапка нужна тому,
+  // кто пришёл впервые, а вернувшемуся нужен его персонаж, а не вывеска.
+  document.body.classList.toggle('has-chars', has);
 }

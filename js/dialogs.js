@@ -1,4 +1,4 @@
-/* ═══ Диалоги в стиле дела Ордо вместо нативных confirm/prompt ═══ */
+/* ═══ Диалоги в стиле имперского дела вместо нативных confirm/prompt ═══ */
 function ordoDialogClose(){
   const d = document.getElementById('ordo-dlg');
   if(d){ d.classList.remove('show'); d.innerHTML = ''; }
