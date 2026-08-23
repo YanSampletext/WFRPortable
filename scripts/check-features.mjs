@@ -1670,6 +1670,45 @@ await check('карьерный шаг вдвое дороже вне карье
   return inC === 25 && inC * 2 === 50;
 }));
 
+// ── карьеры: строение по книге ─────────────────────────────────────────────
+await check('у каждой карьеры четыре ступени', () => ev(() => {
+  const bad = Object.entries(DATA.careers)
+    .filter(([, c]) => !c.tiers || c.tiers.length !== 4)
+    .map(([k, c]) => k + '(' + (c.tiers ? c.tiers.length : 0) + ')');
+  return bad.length ? bad.join(', ') : true;
+}));
+
+await check('положение растёт по ступеням, кроме отрёкшихся', () => ev(() => {
+  // Убийцы дали обет смерти, флагелланты отреклись от мирского — у них
+  // положение намеренно не растёт. Это книга, а не ошибка данных.
+  const FLAT = ['Убийца чудовищ', 'Флагеллант'];
+  const rank = { 'медный': 1, 'серебряный': 2, 'золотой': 3 };
+  const val = s => {
+    const m = /^(медный|серебряный|золотой)\s+(\d+)/.exec(s || '');
+    return m ? rank[m[1]] * 10 + (+m[2]) : null;
+  };
+  const bad = [];
+  for (const [name, c] of Object.entries(DATA.careers)) {
+    let prev = 0, flat = FLAT.indexOf(name) >= 0;
+    for (const t of c.tiers) {
+      const v = val(t.status);
+      if (v === null) { bad.push(name + ': не разобрано «' + t.status + '»'); break; }
+      if (!flat && v <= prev) { bad.push(name + ': ' + t.name + ' не выше предыдущей'); break; }
+      prev = v;
+    }
+  }
+  return bad.length ? bad.slice(0, 4).join(' | ') : true;
+}));
+
+await check('отрёкшиеся остаются при своём положении', () => ev(() => {
+  // Обратная сторона исключения: если у них вдруг начнёт расти — это тоже
+  // расхождение с книгой, просто в другую сторону
+  return ['Убийца чудовищ', 'Флагеллант'].every(n => {
+    const st = DATA.careers[n].tiers.map(t => t.status);
+    return st.every(s => s === st[0]);
+  });
+}));
+
 console.log(results.join('\n'));
 console.log('\nпрошло ' + pass + ', не прошло ' + fail);
 console.log('ошибок JS за прогон: ' + errs.length);
