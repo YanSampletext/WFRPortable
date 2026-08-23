@@ -348,7 +348,7 @@ body.theme-light .ref-kind{ background:rgba(125,95,36,.06); }
 .ref-kind.on{ border-color:var(--gold-dk,#7d5f24); color:var(--gold2,#e0c14e); background:rgba(201,162,39,.1); }
 .ref-text{ font-size:11.5px; line-height:1.45; color:var(--text2,#c9bda0); margin-top:3px; }
 
-/* ═══ Диалоги «дело Ордо» ═══ */
+/* ═══ Диалоги «имперское дело» ═══ */
 .ordo-dlg-back{
   position:fixed; inset:0; z-index:120; display:none;
   align-items:center; justify-content:center; padding:22px;
