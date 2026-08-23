@@ -5,14 +5,16 @@
 //   node scripts/check-app.mjs
 import { launchChromium, serve } from './browser.mjs';
 
-const srv = await serve(new URL('..', import.meta.url).pathname, 8099);
+// Порт свой: check-features.mjs держит 8099, и в сборке они идут подряд —
+// не успевший освободиться сокет ронял бы выпуск на пустом месте.
+const srv = await serve(new URL('..', import.meta.url).pathname, 8098);
 const b = await launchChromium();
 const p = await b.newPage({ viewport: { width: 393, height: 850 } });
 const errs = [];
 p.on('pageerror', e => errs.push(e.message.slice(0, 160)));
 p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 120)); });
 
-await p.goto('http://127.0.0.1:8099/index.html');
+await p.goto('http://127.0.0.1:8098/index.html');
 await p.waitForTimeout(700);
 
 // полноценный персонаж штатным генератором

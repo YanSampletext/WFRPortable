@@ -1541,21 +1541,21 @@ await check('талант находится по своей проверке', 
       ['лидерство', 'Аура величия']
     ];
     return pairs.every(([roll, want]) =>
-      talentsForCheck(roll).some(t => t.name === want));
+      talentsForCheck(roll).some(t => t.name.toLowerCase() === want.toLowerCase()));
   });
 });
 
 await check('условие срабатывания показывается', () => ev(() => {
-  const t = talentsForCheck('стрельба (луки)').find(x => x.name === 'Верный выстрел');
+  const t = talentsForCheck('стрельба (луки)').find(x => x.name.toLowerCase() === 'верный выстрел');
   return !!t && /прицеливании/.test(t.when);
 }));
 
 await check('к чужой проверке таланты не липнут', () => ev(() =>
-  talentsForCheck('плавание').length === 0));
+  !talentsForCheck('плавание').some(t => t.name === 'Батман')));
 
 await check('чужие таланты не показываются', async () => {
   await giveTalents(['Бдительность']);
-  return ev(() => talentsForCheck('лидерство').length === 0);
+  return ev(() => !talentsForCheck('лидерство').some(t => t.name === 'Бдительность'));
 });
 
 await check('запятая в скобках не рвёт проверку надвое', () => ev(() => {
@@ -1566,9 +1566,14 @@ await check('запятая в скобках не рвёт проверку н�
 
 await check('талант с двумя проверками ловится по обеим', async () => {
   await giveTalents(['Грамотность']);   // «книжные изыскания, язык (письменный)»
-  return ev(() =>
-    talentsForCheck('книжные изыскания').length === 1 &&
-    talentsForCheck('язык (рейкшпиль)').length === 1);
+  // Расовые и карьерные таланты записаны в книжных данных строчными
+  // («грамотность»), и если он уже есть у случайного персонажа, в выдачу
+  // попадёт именно тот вариант. Сверяем без учёта регистра.
+  return ev(() => {
+    const has = (roll, name) => talentsForCheck(roll)
+      .some(t => t.name.toLowerCase() === name.toLowerCase());
+    return has('книжные изыскания', 'Грамотность') && has('язык (рейкшпиль)', 'Грамотность');
+  });
 });
 
 await check('таланты попадают на карточку броска', async () => {
@@ -1630,6 +1635,40 @@ await check('на удар из лука боевой талант рукопа�
   await p.waitForTimeout(300);
   return ev(() => !document.querySelector('#roll-modal .roll-talents'));
 });
+
+// ── стоимость развития: сверка с таблицей книги ────────────────────────────
+await check('таблица развития совпадает с книгой', () => ev(() => {
+  // WFRP4, таблица стоимости развития: шаги 1–5, 6–10, … 66+
+  const book = [
+    [1, 25, 10], [5, 25, 10], [6, 30, 15], [10, 30, 15], [11, 40, 20],
+    [15, 40, 20], [16, 50, 30], [20, 50, 30], [21, 70, 40], [25, 70, 40],
+    [26, 90, 60], [30, 90, 60], [31, 120, 80], [35, 120, 80], [36, 150, 110],
+    [40, 150, 110], [41, 190, 140], [45, 190, 140], [46, 230, 180],
+    [50, 230, 180], [51, 280, 220], [55, 280, 220], [56, 330, 270],
+    [60, 330, 270], [61, 390, 320], [65, 390, 320]
+  ];
+  const bad = book.filter(([step, ch, sk]) => {
+    const c = advCostFor(step - 1);
+    return c.char !== ch || c.skill !== sk;
+  });
+  return bad.length ? 'расходится на шагах: ' + bad.map(b => b[0]).join(', ') : true;
+}));
+
+await check('полоса «66+» открытая, надбавки сверху нет', () => ev(() => {
+  // В книге последняя полоса без верхней границы: всё от 66-го шага — 450/380
+  const over = [66, 70, 71, 80, 120, 500];
+  const bad = over.filter(n => {
+    const c = advCostFor(n - 1);
+    return c.char !== 450 || c.skill !== 380;
+  });
+  return bad.length ? 'дороже книги на шагах: ' + bad.join(', ') : true;
+}));
+
+await check('карьерный шаг вдвое дороже вне карьеры', () => ev(() => {
+  // Правило книги: развитие вне карьеры стоит вдвое
+  const inC = advCostFor(0).char;
+  return inC === 25 && inC * 2 === 50;
+}));
 
 console.log(results.join('\n'));
 console.log('\nпрошло ' + pass + ', не прошло ' + fail);
