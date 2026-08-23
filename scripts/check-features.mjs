@@ -1709,6 +1709,33 @@ await check('отрёкшиеся остаются при своём полож�
   });
 }));
 
+// ── деньги: 1 крона = 20 шиллингов = 240 пенни ─────────────────────────────
+await check('соотношение монет книжное', () => ev(() =>
+  moneyToBP({ gc: 1, ss: 0, bp: 0 }) === 240 &&
+  moneyToBP({ gc: 0, ss: 20, bp: 0 }) === 240 &&
+  moneyToBP({ gc: 0, ss: 1, bp: 0 }) === 12));
+
+await check('размен монет ничего не теряет', () => ev(() => {
+  // Туда-обратно: сумма в пенни обязана совпасть до монеты
+  for (const t of [1, 11, 12, 239, 240, 241, 1000, 5237]) {
+    const m = bpToMoney(t);
+    if (moneyToBP(m) !== t) return 'потеряно на ' + t + ' бп';
+    if (m.ss > 19 || m.bp > 11) return 'не свёрнуто в старшую монету на ' + t + ' бп';
+  }
+  return true;
+}));
+
+await check('отдых считает деньги так же, как бланк', () => ev(() => {
+  // Две независимые пары функций — расхождение между ними означало бы, что
+  // трата в отдыхе и трата на бланке дают разный кошелёк
+  for (const t of [1, 12, 240, 999, 4321]) {
+    const a = JSON.stringify(bpToMoney(t)), b = JSON.stringify(dtBpToMoney(t));
+    if (a !== b) return 'расходятся на ' + t + ' бп: ' + a + ' против ' + b;
+    if (dtMoneyToBp(bpToMoney(t)) !== t) return 'обратный счёт разошёлся на ' + t;
+  }
+  return true;
+}));
+
 console.log(results.join('\n'));
 console.log('\nпрошло ' + pass + ', не прошло ' + fail);
 console.log('ошибок JS за прогон: ' + errs.length);
