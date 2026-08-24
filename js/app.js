@@ -357,7 +357,7 @@ function compileSkills(){
   const calc = sheetCalc();
   const skMap = {};
 
-  // Все 25 общих навыков сразу — всегда видны
+  // Все 26 базовых навыков сразу — они есть у каждого, всегда видны
   DATA.common_skills.forEach(cs => {
     skMap[cs.name.toLowerCase()] = {
       name: cs.name,

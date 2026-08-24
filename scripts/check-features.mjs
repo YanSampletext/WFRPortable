@@ -1736,6 +1736,53 @@ await check('отдых считает деньги так же, как блан
   return true;
 }));
 
+// ── навыки: базовые против профессиональных ────────────────────────────────
+await check('базовых навыков двадцать шесть', () => ev(() =>
+  DATA.common_skills.length === 26 && DATA.prof_skills.length === 19));
+
+await check('плавание базовое, как гребля', () => ev(() => {
+  // Обоими правит сила, оба базовые по книге. Плавание лежало в
+  // профессиональных — значит начиналось с нуля вместо значения силы.
+  const c = n => DATA.common_skills.find(s => s.name === n);
+  const sw = c('Плавание'), row = c('Гребля');
+  return !!sw && !!row && sw.stat === 'С' && row.stat === 'С' &&
+         !DATA.prof_skills.some(s => s.name === 'Плавание');
+}));
+
+await check('плавание есть на бланке без покупки', async () => {
+  await ev(() => sv4NavGo('skills'));
+  await p.waitForTimeout(150);
+  return ev(() => {
+    // Случайному персонажу плавание могло достаться от народа или карьеры,
+    // поэтому сверяем не абсолют, а правило: итог = сила + шаги.
+    const sk = compileSkills().find(s => s.name === 'Плавание');
+    const strength = sheetCalc().totals['С'] || 0;
+    if (!sk) return 'плавания нет на бланке';
+    if (!sk.isCommon) return 'плавание не помечено базовым';
+    return sk.value === strength + (sk.adv || 0)
+      ? true
+      : `итог ${sk.value}, а сила ${strength} плюс шаги ${sk.adv}`;
+  });
+});
+
+await check('купленное плавание не пропало у старых досье', () => ev(() => {
+  // Досье из версии, где плавание было профессиональным: шаги лежат в
+  // extraSkills. migrateState обязан свернуть их в общий навык, а не потерять.
+  // Считаем прирост, а не абсолют: у случайного персонажа плавание уже могло
+  // быть от народа или карьеры, и тогда абсолютное число ничего не докажет.
+  state.sheet.extraSkills = state.sheet.extraSkills || [];
+  const was = (compileSkills().find(s => s.name === 'Плавание') || {}).adv || 0;
+  const wasFolded = state.sheet.skillAdv['плавание'] || 0;
+  state.sheet.extraSkills.push({ name: 'Плавание', stat: 'С', adv: 7 });
+  migrateState();
+  const left = state.sheet.extraSkills.some(s => s.name === 'Плавание');
+  const folded = (state.sheet.skillAdv['плавание'] || 0) - wasFolded;
+  const now = (compileSkills().find(s => s.name === 'Плавание') || {}).adv || 0;
+  return (!left && folded === 7 && now - was === 7)
+    ? true
+    : `осталось в extraSkills: ${left}, свёрнуто +${folded}, на бланке +${now - was} (ждали +7)`;
+}));
+
 console.log(results.join('\n'));
 console.log('\nпрошло ' + pass + ', не прошло ' + fail);
 console.log('ошибок JS за прогон: ' + errs.length);
