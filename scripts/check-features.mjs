@@ -1783,6 +1783,86 @@ await check('купленное плавание не пропало у стар
     : `осталось в extraSkills: ${left}, свёрнуто +${folded}, на бланке +${now - was} (ждали +7)`;
 }));
 
+// ── целостность справочника: ссылки обязаны разрешаться ────────────────────
+// Народ или карьера, ссылающиеся на несуществующий навык или талант, дают
+// пустую строку на бланке — игрок видит название и ничего за ним.
+await check('карьеры и народы ссылаются на живые навыки', () => ev(() => {
+  const known = new Set([...DATA.common_skills, ...DATA.prof_skills]
+    .map(s => s.name.toLowerCase()));
+  const base = n => n.replace(/\s*\([^)]*\)/g, '').trim().toLowerCase();
+  const ok = n => known.has(n.trim().toLowerCase()) || known.has(base(n));
+  const bad = [];
+  for (const r of Object.values(DATA.races))
+    (r.race_skills || []).forEach(s => { if (!ok(s)) bad.push(r.name + ': ' + s); });
+  for (const [k, c] of Object.entries(DATA.careers))
+    (c.tiers || []).forEach(t => String(t.skills || '').split(',').forEach(s => {
+      if (s.trim() && !ok(s)) bad.push(k + '/' + t.name + ': ' + s.trim());
+    }));
+  return bad.length ? bad.slice(0, 4).join(' | ') : true;
+}));
+
+await check('карьеры и народы ссылаются на живые таланты', () => ev(() => {
+  const known = new Set(DATA.all_talents.map(t => t.name.toLowerCase()));
+  const base = n => n.replace(/\s*\([^)]*\)/g, '').trim().toLowerCase();
+  const ok = n => {
+    n = n.trim();
+    if (!n || n === '{случайный талант}') return true;
+    if (known.has(n.toLowerCase()) || known.has(base(n))) return true;
+    return [...known].some(k => base(k) === base(n));
+  };
+  // Разделители — запятая и «или», но только ВНЕ скобок: запись
+  // «обострённое восприятие (вкус или осязание)» — один талант с выбором
+  // уточнения, а не два. На этом спотыкались уже трижды.
+  const parts = s => {
+    const out = []; let depth = 0, cur = '';
+    for (const ch of String(s)) {
+      if (ch === '(') depth++; else if (ch === ')') depth--;
+      if (ch === ',' && depth === 0) { out.push(cur); cur = ''; continue; }
+      cur += ch;
+    }
+    out.push(cur);
+    const flat = [];
+    for (const chunk of out) {
+      let d = 0, buf = '', i = 0;
+      while (i < chunk.length) {
+        const ch = chunk[i];
+        if (ch === '(') d++; else if (ch === ')') d--;
+        if (d === 0 && chunk.slice(i).match(/^\s+или\s+/)) {
+          flat.push(buf); buf = '';
+          i += chunk.slice(i).match(/^\s+или\s+/)[0].length;
+          continue;
+        }
+        buf += ch; i++;
+      }
+      flat.push(buf);
+    }
+    return flat.map(x => x.trim()).filter(Boolean);
+  };
+  const bad = [];
+  for (const r of Object.values(DATA.races))
+    (r.race_talents || []).forEach(t => parts(t).forEach(x => {
+      if (!ok(x)) bad.push(r.name + ': ' + x);
+    }));
+  for (const [k, c] of Object.entries(DATA.careers))
+    (c.tiers || []).forEach(t => parts(t.talents || '').forEach(x => {
+      if (!ok(x)) bad.push(k + '/' + t.name + ': ' + x);
+    }));
+  return bad.length ? bad.slice(0, 4).join(' | ') : true;
+}));
+
+await check('у каждого качества предметов есть описание', () => ev(() => {
+  const known = new Set(Object.keys(QUALITY_INFO).map(k => k.toLowerCase()));
+  const strip = q => q.replace(/\s*\([^)]*\)/g, '').replace(/\s+\d+$/, '').trim();
+  const bad = [];
+  for (const it of [...WEAPONS_CATALOG, ...ARMOR_CATALOG])
+    String(it.qualities || '').split(',').forEach(q => {
+      const v = q.trim().toLowerCase();
+      if (!v || v === '—' || v === '-') return;
+      if (!known.has(strip(v)) && !known.has(v)) bad.push(it.name + ': ' + q.trim());
+    });
+  return bad.length ? bad.slice(0, 4).join(' | ') : true;
+}));
+
 console.log(results.join('\n'));
 console.log('\nпрошло ' + pass + ', не прошло ' + fail);
 console.log('ошибок JS за прогон: ' + errs.length);
