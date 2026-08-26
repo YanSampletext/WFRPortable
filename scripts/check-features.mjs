@@ -470,7 +470,7 @@ await check('удар считает урон: оружие + ст.усп. − �
   const txt = card.textContent;
   const hasApply = /Нанести \d+ ран/.test(txt);
   return txt.includes('Попал') && txt.includes('урон оружия') &&
-         txt.includes('стойкость и броня') && hasApply;
+         txt.includes('выносливость и броня') && hasApply;
 }));
 
 await check('«Нанести раны» списывает с учётом защиты', () => ev(() => {
@@ -1862,6 +1862,64 @@ await check('у каждого качества предметов есть оп
     });
   return bad.length ? bad.slice(0, 4).join(' | ') : true;
 }));
+
+// ── терминология: одно слово — один смысл ──────────────────────────────────
+await check('судьба и упорство названы своими именами', async () => {
+  await ev(() => sv4NavGo('fate'));
+  await p.waitForTimeout(200);
+  return ev(() => {
+    const labels = [...document.querySelectorAll('.sv4-v-l')].map(e => e.textContent.trim());
+    // Судьба и упорство — постоянные запасы; удача и решимость — то, что
+    // восполняется. «Стойкость» здесь не должна встречаться вовсе: так
+    // называется навык выносливости, и одно слово на два смысла путает.
+    const need = ['СУДЬБА', 'УДАЧА', 'УПОРСТВО', 'РЕШИМОСТЬ'];
+    const miss = need.filter(n => !labels.includes(n));
+    if (miss.length) return 'нет ячеек: ' + miss.join(', ') + ' (есть: ' + labels.join(', ') + ')';
+    return labels.includes('СТОЙКОСТЬ') ? '«СТОЙКОСТЬ» осталась на вкладке судьбы' : true;
+  });
+});
+
+await check('восполняется решимость, а не упорство', async () => {
+  return ev(() => {
+    const calc = sheetCalc();
+    state.sheet.resolveCurrent = 0;
+    // Кнопка «Восполнить» у решимости обязана поднимать её до упорства
+    const cells = [...document.querySelectorAll('.sv4-vit')];
+    const cell = cells.find(c => (c.querySelector('.sv4-v-l') || {}).textContent === 'РЕШИМОСТЬ');
+    if (!cell) return 'ячейки решимости нет';
+    const btn = cell.querySelector('.sv4-btn-mini');
+    if (!btn) return 'кнопки «Восполнить» нет';
+    btn.click();
+    return state.sheet.resolveCurrent === calc.upor
+      ? true
+      : `восполнено до ${state.sheet.resolveCurrent}, а упорство ${calc.upor}`;
+  });
+});
+
+// ── рост: книжные футы плюс понятные сантиметры ────────────────────────────
+await check('рост переводится в сантиметры', () => ev(() => {
+  const cases = [["5'9''", 175], ["5'9\"", 175], ["4'3''", 130], ["3'1''", 94],
+                 ["5'11''", 180], ["5 9", 175], ['69"', 175]];
+  const bad = cases.filter(([s, cm]) => heightToCm(s) !== cm)
+    .map(([s, cm]) => `${s}→${heightToCm(s)} (ждали ${cm})`);
+  return bad.length ? bad.join(', ') : true;
+}));
+
+await check('непонятный рост не выдумывает сантиметры', () => ev(() => {
+  // Поле свободное: человек мог вписать что угодно, и врать про рост нельзя
+  const junk = ['', '—', 'высокий', 'ок. двух метров', '999', "40'0''", 'abc'];
+  const bad = junk.filter(s => heightToCm(s) !== null).map(s => `«${s}»→${heightToCm(s)}`);
+  return bad.length ? bad.join(', ') : true;
+}));
+
+await check('сантиметры видны на бланке', async () => {
+  await ev(() => { state.height = "5'9''"; sv4NavGo('persona'); });
+  await p.waitForTimeout(200);
+  return ev(() => {
+    const el = document.querySelector('.sv4-hf-cm');
+    return !!el && /175\s*см/.test(el.textContent);
+  });
+});
 
 console.log(results.join('\n'));
 console.log('\nпрошло ' + pass + ', не прошло ' + fail);

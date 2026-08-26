@@ -1263,7 +1263,7 @@ function _rollFullRandomCharacterDo(){
     }
   });
 
-  // 8) Судьба/Стойкость: случайно делим расовые extra-очки
+  // 8) Судьба/Упорство: случайно делим расовые extra-очки
   const _extra = DATA.races[raceKey].extra || 0;
   const _ef = Math.floor(Math.random()*(_extra+1));
   state.extraFate = _ef; state.extraRes = _extra - _ef;

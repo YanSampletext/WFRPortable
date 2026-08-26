@@ -521,3 +521,9 @@ body.theme-light .ordo-tile-s{ color:#3d3018; }
 .ordo-xp b{ display:block; }
 .ordo-xp span{ display:block; }
 .sv4-roll-btns .sv4-roll-again{ display:inline-flex; align-items:center; justify-content:center; gap:8px; }
+
+/* Сантиметры рядом с ростом: книга даёт футы и дюймы, а игрок думает в метрах */
+.sv4-hf-cm{
+  flex:0 0 auto; margin-left:8px; font-size:10.5px;
+  color:var(--text3,#8a7a5c); white-space:nowrap;
+}

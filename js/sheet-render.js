@@ -112,6 +112,31 @@ const WFRP_CONDITIONS = [
 
 // Краткие пояснения для новичков: что делает состояние и как снимается.
 // Своими словами по WFRP4 (гл. V). stack=true — можно накопить несколько.
+// Рост в досье пишется по книге — в футах и дюймах («5'9''»), потому что
+// таблицы роста в WFRP4 такие. Русскому игроку это ничего не говорит, поэтому
+// рядом показываем сантиметры. Разбираем терпимо: сойдут и «5'9"», и «5 9»,
+// и просто «69"». Не разобрали — молчим, поле свободное, человек мог вписать
+// что угодно.
+function heightToCm(str){
+  const t = String(str || '').trim();
+  if(!t) return null;
+  let ft = 0, inch = 0;
+  let m = t.match(/^(\d+)\s*['′]\s*(\d+)?\s*(?:''|"|″)?$/);
+  if(m){ ft = +m[1]; inch = +(m[2] || 0); }
+  else {
+    m = t.match(/^(\d+)\s*(?:''|"|″)$/);          // только дюймы
+    if(m) inch = +m[1];
+    else {
+      m = t.match(/^(\d+)\s+(\d+)$/);             // «5 9»
+      if(m){ ft = +m[1]; inch = +m[2]; }
+      else return null;
+    }
+  }
+  const total = ft * 12 + inch;
+  if(!total || total > 120) return null;            // явная бессмыслица
+  return Math.round(total * 2.54);
+}
+
 function _qualBaseKey(token){
   // 'перезарядка (1)' → 'перезарядка'; убираем число и скобки, нижний регистр
   return token.replace(/\(.*?\)/g,'').replace(/[0-9]+/g,'').trim().toLowerCase();
@@ -740,7 +765,7 @@ function renderTabPersona(){
       <div class="sv4-hero-sub">${escHtml(r.name)} <span class="dot">●</span> ${escHtml(state.career)}</div>
       <div class="sv4-hero-fields">
         <label class="sv4-hf"><span>Возраст:</span><input value="${escAttr(state.age||'')}" onchange="state.age=this.value;autosave();" /></label>
-        <label class="sv4-hf"><span>Рост:</span><input value="${escAttr(state.height||'')}" onchange="state.height=this.value;autosave();" /></label>
+        <label class="sv4-hf"><span>Рост:</span><input value="${escAttr(state.height||'')}" onchange="state.height=this.value;autosave();" />${(()=>{const cm=heightToCm(state.height); return cm?`<span class="sv4-hf-cm">${cm} см</span>`:'';})()}</label>
         <label class="sv4-hf"><span>Вес:</span><input value="${escAttr(state.weight||'')}" placeholder="—" onchange="state.weight=this.value;autosave();" /></label>
         <label class="sv4-hf"><span>Глаза:</span><input value="${escAttr(state.eyes||'')}" onchange="state.eyes=this.value;autosave();" /></label>
         <label class="sv4-hf"><span>Волосы:</span><input value="${escAttr(state.hair||'')}" onchange="state.hair=this.value;autosave();" /></label>
@@ -839,7 +864,7 @@ function renderTabPersona(){
   h += `<p class="sv4-roll-tip muted">Нажми на характеристику или навык, чтобы бросить проверку d100.</p>`;
 
   // Виталки: Судьба / Удача / Упорство / Решимость / Скверна
-  h += `<div class="sv4-section-title">${ICONS.compass} Судьба и стойкость</div>`;
+  h += `<div class="sv4-section-title">${ICONS.compass} Судьба и упорство</div>`;
   h += `<div class="sv4-vitals">
     <div class="sv4-vit" onclick="sv4NavGo('fate')">
       <div class="sv4-v-l">Судьба</div>
@@ -1039,13 +1064,13 @@ function renderTabFate(){
       <button class="sv4-btn-mini" onclick="state.sheet.currentLuck=${calc.fate};renderSheet();">↑ Восполнить</button>
     </div>
     <div class="sv4-vit">
-      <div class="sv4-v-l">СТОЙКОСТЬ</div>
+      <div class="sv4-v-l">УПОРСТВО</div>
       <div class="sv4-v-ico">${ICONS.skull}</div>
       <div class="sv4-v-v">${resBase}</div>
-      <div class="sv4-v-sub">очков стойкости</div>
+      <div class="sv4-v-sub">очков упорства</div>
     </div>
     <div class="sv4-vit">
-      <div class="sv4-v-l">УПОРСТВО</div>
+      <div class="sv4-v-l">РЕШИМОСТЬ</div>
       <div class="sv4-v-ico">${ICONS.star}</div>
       <div class="sv4-v-v"><input type="number" min="0" value="${state.sheet.resolveCurrent||0}" class="sv4-inline" onchange="state.sheet.resolveCurrent=Math.max(0,parseInt(this.value)||0);autosave();" /><span class="max">/${calc.upor}</span></div>
       <button class="sv4-btn-mini" onclick="state.sheet.resolveCurrent=${calc.upor};renderSheet();">↑ Восполнить</button>
@@ -1649,7 +1674,7 @@ function renderTabPrint(){
       </div>
       <div class="sv4-print-meta">
         <div>Возраст: <b>${escHtml(state.age||'—')}</b></div>
-        <div>Рост: <b>${escHtml(state.height||'—')}</b></div>
+        <div>Рост: <b>${escHtml(state.height||'—')}</b>${(()=>{const cm=heightToCm(state.height); return cm?` <span class="muted">(${cm} см)</span>`:'';})()}</div>
         <div>Глаза: <b>${escHtml(state.eyes||'—')}</b></div>
         <div>Волосы: <b>${escHtml(state.hair||'—')}</b></div>
       </div>

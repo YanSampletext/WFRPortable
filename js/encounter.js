@@ -5,7 +5,7 @@
 
   var KEY = 'wfrp4_encounter_v1';
   // { round, turnId, list:[{id,name,init,hp,maxHp,adv,foe,tb,ap,conds:{}}] }
-  // tb — бонус стойкости, ap — класс брони: вместе они гасят урон по книге.
+  // tb — бонус выносливости, ap — класс брони: вместе они гасят урон по книге.
   var enc = null;
 
   // Состояния, которые срабатывают в конце раунда, — только они и нужны
@@ -22,7 +22,7 @@
     try { enc = JSON.parse(localStorage.getItem(KEY)) || fresh(); }
     catch (e) { enc = fresh(); }
     if (!Array.isArray(enc.list)) enc = fresh();
-    // Схватки, начатые до появления стойкости, брони и состояний
+    // Схватки, начатые до появления выносливости, брони и состояний
     enc.list.forEach(function (p) {
       if (typeof p.tb !== 'number') p.tb = 0;
       if (typeof p.ap !== 'number') p.ap = 0;
@@ -83,7 +83,7 @@
     if (typeof state === 'undefined' || !state || !state.name) { notify('Сначала открой персонажа.'); return; }
     if (load().list.some(function (p) { return p.name === state.name; })) { notify('Уже в схватке.'); return; }
     var calc = (typeof sheetCalc === 'function') ? sheetCalc() : null;
-    // Стойкость и броню берём с бланка: считать их руками незачем
+    // Выносливость и броню берём с бланка: считать их руками незачем
     var tb = calc ? Math.floor((calc.totals['СВ'] || 0) / 10) : 0;
     var ap = (typeof encSelfAP === 'function') ? encSelfAP() : 0;
     encAdd(state.name, (state.stats && state.stats['И']) || 0,
@@ -106,7 +106,7 @@
   };
 
   // ── вся партия уже лежит в архиве ───────────────────────────────────────────
-  // Инициатива, раны, стойкость и броня у сопартийцев записаны — вбивать их
+  // Инициатива, раны, выносливость и броня у сопартийцев записаны — вбивать их
   // вручную по четыре числа на каждого незачем.
   //
   // sheetCalc считает по глобальному state, поэтому чужое досье на время
@@ -156,7 +156,7 @@
     if (!free.length) { notify('Все из архива уже в схватке.'); return; }
     ordoChoice({
       title: 'Кого из архива',
-      text: 'Инициатива, раны, стойкость и броня возьмутся из досье.',
+      text: 'Инициатива, раны, выносливость и броня возьмутся из досье.',
       options: free.map(function (p) {
         var st = statsOf(p);
         return {
@@ -225,7 +225,7 @@
     if (lines.length) notify('Конец раунда: ' + lines.join(', '));
   };
 
-  // Урон по книге: из него вычитаются бонус стойкости и класс брони.
+  // Урон по книге: из него вычитаются бонус выносливости и класс брони.
   // Возвращает, сколько ран сняли на самом деле.
   window.encDamage = function (id, raw) {
     var p = byId(id); if (!p) return 0;
@@ -314,7 +314,7 @@
     });
   };
 
-  // Небольшая форма прямо в диалоге. Стойкость и броню можно не заполнять —
+  // Небольшая форма прямо в диалоге. Выносливость и броню можно не заполнять —
   // тогда урон списывается целиком, как и раньше.
   function ordoPromptRow(cb) {
     var html =
@@ -330,7 +330,7 @@
         '<input class="ordo-dlg-input" id="enc-a" type="number" inputmode="numeric" placeholder="броня">' +
         '<input class="ordo-dlg-input" id="enc-d" type="number" inputmode="numeric" placeholder="защита">' +
       '</div>' +
-      '<div class="ordo-dlg-text enc-form-hint">Стойкость и броня гасят урон. Защита — навык, ' +
+      '<div class="ordo-dlg-text enc-form-hint">Выносливость и броня гасят урон. Защита — навык, ' +
         'которым цель отбивается: заполнишь — удар станет встречной проверкой по книге. Всё необязательно.</div>' +
       '<div class="ordo-dlg-btns">' +
         '<button class="ordo-dlg-btn gold" id="enc-ok">Добавить</button>' +
