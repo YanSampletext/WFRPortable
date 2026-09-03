@@ -1408,10 +1408,22 @@ await check('лоток на вкладке журнала по-прежнему
 await check('в справочник попали все каталоги', () => ev(() => {
   const kinds = {};
   refSearch('').forEach(e => kinds[e.kind] = (kinds[e.kind] || 0) + 1);
-  const need = ['оружие', 'броня', 'качество', 'состояние', 'талант', 'навык',
-                'карьера', 'заклинание', 'болезнь'];
+  const need = ['оружие', 'броня', 'качество', 'состояние', 'сложность', 'талант',
+                'навык', 'карьера', 'заклинание', 'болезнь'];
   const miss = need.filter(k => !kinds[k]);
-  return miss.length ? 'не хватает: ' + miss.join(', ') : refCount() > 400;
+  if (miss.length) return 'не хватает: ' + miss.join(', ');
+  if (kinds['сложность'] !== 7) return 'ступеней сложности в справочнике ' + kinds['сложность'];
+  return refCount() > 400;
+}));
+
+await check('шкалу сложностей можно найти поиском', () => ev(() => {
+  // За столом спрашивают словами: «а трудная это сколько».
+  const bad = [['трудная', 'Трудная'], ['очень лёгкая', 'Очень лёгкая'], ['серьёзная', 'Серьёзная']]
+    .filter(([q, want]) => (refSearch(q, 'сложность')[0] || {}).name !== want)
+    .map(([q]) => q);
+  if (bad.length) return 'не находится: ' + bad.join(', ');
+  const t = (refSearch('трудная', 'сложность')[0] || {});
+  return /−20/.test(t.sub + ' ' + t.text) ? true : 'в записи нет модификатора: ' + t.sub;
 }));
 
 await check('точное название находится первым', () => ev(() => {
@@ -1587,7 +1599,16 @@ await check('таланты попадают на карточку броска'
 });
 
 await check('без подходящих талантов блока нет вовсе', async () => {
-  await ev(() => rollCheck('плавание', 50));
+  // Персонаж создаётся случайно, и «плавание» время от времени оказывалось в
+  // чьих-то проверках — проверка падала не из-за кода, а из-за везения при
+  // генерации. Спрашиваем у самого персонажа, к какой проверке у него таланты
+  // не липнут, и уже её и бросаем.
+  const name = await ev(() => {
+    const probes = ['плавание', 'гребля', 'азартные игры', 'дрессировка', 'лицедейство'];
+    return probes.find(n => !talentsForCheck(n).length) || null;
+  });
+  if (!name) return 'у персонажа таланты нашлись на все пробные проверки';
+  await ev(n => rollCheck(n, 50), name);
   await p.waitForTimeout(200);
   return ev(() => !document.querySelector('#roll-modal .roll-talents'));
 });
@@ -1598,8 +1619,11 @@ await check('бросок ничего не прибавляет сам', async 
   await ev(() => { state.sheet.advantage = 0; rollCheck('стрельба (луки)', 47); });
   await p.waitForTimeout(200);
   return ev(() => {
-    const t = document.querySelector('#roll-modal .sv4-roll-target').textContent;
-    return /≤\s*47/.test(t) && state.sheet.rollLog[0].target === 47;
+    // Строка про цель у обычной проверки — кнопка сложности, у проверок сна и
+    // болезней — простой текст; спрашиваем ту, что есть.
+    const el = document.querySelector('#roll-modal .sv4-roll-dif, #roll-modal .sv4-roll-target');
+    const t = el ? el.textContent : '';
+    return /≤\s*47/.test(t) && /Серьёзная\s*\+0/.test(t) && state.sheet.rollLog[0].target === 47;
   });
 });
 
@@ -1919,6 +1943,182 @@ await check('сантиметры видны на бланке', async () => {
     const el = document.querySelector('.sv4-hf-cm');
     return !!el && /175\s*см/.test(el.textContent);
   });
+});
+
+// ── сложность проверки: +60 … −30 ──────────────────────────────────────────
+await check('шкала сложностей совпадает с книгой', () => ev(() => {
+  const want = [['Очень лёгкая', 60], ['Лёгкая', 40], ['Средняя', 20], ['Серьёзная', 0],
+                ['Сложная', -10], ['Трудная', -20], ['Очень трудная', -30]];
+  if (DIFFICULTY.length !== want.length) return 'ступеней ' + DIFFICULTY.length + ', а в книге ' + want.length;
+  const bad = want.filter((w, i) => DIFFICULTY[i].name !== w[0] || DIFFICULTY[i].mod !== w[1])
+                  .map((w, i) => w[0] + ' ' + w[1]);
+  return bad.length ? bad.join(', ') : true;
+}));
+
+await check('в книжных данных сложности названы так же', () => ev(async (files) => {
+  // Крит-таблицы, болезни, ошибки сотворения ссылаются на сложность словами.
+  // Если шкала здесь разойдётся с ними, приложение начнёт спорить само с собой.
+  const tiers = DIFFICULTY.map(d => {
+    const w = d.name.toLowerCase().split(' ');
+    return { very: w.length > 1, stem: w[w.length - 1].replace(/ая$/, ''), mod: d.mod };
+  });
+  const re = new RegExp('(очень\\s+)?(' + tiers.map(t => t.stem).join('|') + ')[а-яё]{0,3}\\s*\\(([+−-]?\\d{1,2})\\)', 'gi');
+  const bad = [];
+  for (const f of files) {
+    const src = await (await fetch(f)).text();
+    let m;
+    re.lastIndex = 0;
+    while ((m = re.exec(src))) {
+      const very = !!m[1], stem = m[2].toLowerCase();
+      const t = tiers.find(x => x.stem === stem && x.very === very);
+      if (!t) continue;
+      const n = parseInt(m[3].replace('−', '-'), 10);
+      if (t.mod !== n) bad.push(f + ': «' + m[0].trim() + '» вместо ' + t.mod);
+    }
+  }
+  return bad.length ? bad.slice(0, 4).join('; ') : true;
+}, ['js/crit.js', 'js/diseases.js', 'js/psych.js', 'js/magic.js', 'js/data.js', 'js/health.js']));
+
+await check('сложность сдвигает цель ровно на свой модификатор', () => ev(() => {
+  const bad = [];
+  for (const d of DIFFICULTY) {
+    state.sheet.advantage = 0;
+    rollCheck('плавание', 50, d.mod);
+    const got = state.sheet.rollLog[0].target;
+    if (got !== 50 + d.mod) bad.push(d.name + ': ' + got + ' вместо ' + (50 + d.mod));
+  }
+  return bad.length ? bad.join(', ') : true;
+}));
+
+await check('сложность и преимущество складываются, а не спорят', () => ev(() => {
+  state.sheet.advantage = 2;                       // +20 к боевой проверке
+  rollCheck('рукопашный бой (базовый)', 45, -20);  // трудная
+  const r = state.sheet.rollLog[0];
+  state.sheet.advantage = 0;
+  return r.target === 45 ? true : 'цель ' + r.target + ', а ждали 45 (45 +20 −20)';
+}));
+
+await check('«Ещё раз» не прибавляет преимущество второй раз', async () => {
+  // Раньше повтор получал имя с припиской и цель уже с надбавкой — и надбавка
+  // ложилась поверх самой себя.
+  await ev(() => { state.sheet.advantage = 3; rollCheck('рукопашный бой (базовый)', 40); });
+  await p.waitForTimeout(150);
+  const first = await ev(() => state.sheet.rollLog[0].target);
+  await ev(() => document.querySelector('#roll-modal .sv4-roll-again').click());
+  await p.waitForTimeout(150);
+  const again = await ev(() => { const t = state.sheet.rollLog[0].target; state.sheet.advantage = 0; return t; });
+  return (first === 70 && again === 70) ? true : 'первый ' + first + ', повтор ' + again + ', а ждали 70 и 70';
+});
+
+await check('карточка называет сложность и служит кнопкой', async () => {
+  await ev(() => { state.sheet.advantage = 0; rollCheck('скрытность', 47, -20); });
+  await p.waitForTimeout(200);
+  return ev(() => {
+    const b = document.querySelector('#roll-modal .sv4-roll-dif');
+    if (!b) return 'строки сложности нет';
+    const t = b.textContent.replace(/\s+/g, ' ');
+    if (!/Трудная\s*−20/.test(t)) return 'подпись: ' + t;
+    if (!/≤\s*27/.test(t)) return 'цель не показана: ' + t;
+    return b.dataset.call === 'roll-dif' && b.dataset.n === '47' ? true : 'кнопка ведёт не туда';
+  });
+});
+
+await check('выбор сложности открывается и считает цели', async () => {
+  await ev(() => { state.sheet.advantage = 0; difficultyPick('скрытность', 47); });
+  await p.waitForTimeout(200);
+  return ev(() => {
+    const rows = [...document.querySelectorAll('#ordo-dlg .dif-row')];
+    if (rows.length !== 7) return 'строк ' + rows.length;
+    const want = [107, 87, 67, 47, 37, 27, 17];
+    const bad = rows.map((r, i) => {
+      const got = parseInt((r.querySelector('.dif-target').textContent.match(/-?\d+/) || [])[0], 10);
+      return got === want[i] ? null : DIFFICULTY[i].name + ': ' + got + ' вместо ' + want[i];
+    }).filter(Boolean);
+    return bad.length ? bad.join(', ') : true;
+  });
+});
+
+await check('выбор сложности учитывает преимущество', async () => {
+  await ev(() => { ordoDialogClose(); state.sheet.advantage = 2; difficultyPick('рукопашный бой (базовый)', 45); });
+  await p.waitForTimeout(200);
+  return ev(() => {
+    const row = document.querySelectorAll('#ordo-dlg .dif-row')[3];   // серьёзная (+0)
+    const got = parseInt((row.querySelector('.dif-target').textContent.match(/-?\d+/) || [])[0], 10);
+    ordoDialogClose(); state.sheet.advantage = 0;
+    return got === 65 ? true : 'цель ' + got + ', а ждали 65 (45 +20 за преимущество)';
+  });
+});
+
+await check('строка списка бросает выбранную сложность', async () => {
+  await ev(() => { state.sheet.advantage = 0; difficultyPick('плавание', 50); });
+  await p.waitForTimeout(200);
+  await ev(() => document.querySelectorAll('#ordo-dlg .dif-row')[6].click());   // очень трудная
+  await p.waitForTimeout(200);
+  return ev(() => {
+    const r = state.sheet.rollLog[0];
+    const open = (document.getElementById('ordo-dlg') || {}).className || '';
+    if (/show/.test(open)) return 'диалог не закрылся';
+    return (r.target === 20 && r.dif === -30) ? true : 'цель ' + r.target + ', сложность ' + r.dif;
+  });
+});
+
+await check('журнал и копия для мастера помнят сложность', async () => {
+  await ev(() => { state.sheet.advantage = 0; rollCheck('уклонение', 55, -10); sv4NavGo('rolllog'); });
+  await p.waitForTimeout(250);
+  return ev(() => {
+    const row = document.querySelector('.sv4-rolllog-row .sv4-rolllog-main');
+    if (!row || !/Сложная\s*−10/.test(row.textContent.replace(/\s+/g, ' '))) return 'в журнале: ' + (row ? row.textContent : '—');
+    return /Сложная −10/.test(rollLogRows()) ? true : 'разметка журнала без сложности';
+  });
+});
+
+await check('серьёзная проверка ничего лишнего в сохранение не пишет', () => ev(() => {
+  state.sheet.advantage = 0;
+  rollCheck('плавание', 50);
+  const r = state.sheet.rollLog[0];
+  return ('dif' in r || 'adv' in r) ? 'записаны нули: ' + JSON.stringify(r) : true;
+}));
+
+await check('удержание на характеристике открывает выбор', async () => {
+  // Бросают с главной вкладки: на «Статах» те же ячейки нарочно не кликабельны
+  // Карточка предыдущего броска растянута на весь экран и перехватила бы жест
+  await ev(() => {
+    ordoDialogClose();
+    const m = document.getElementById('roll-modal'); if (m) m.classList.remove('show');
+    sv4NavGo('persona');
+  });
+  await p.waitForTimeout(400);
+  // hover сам прокручивает до ячейки и ставит курсор в её середину; голый
+  // p.mouse этого не делает и жмёт по пустому месту вьюпорта
+  const cell = p.locator('.sv4-stat.rollable').first();
+  await cell.hover();
+  const logBefore = await ev(() => (state.sheet.rollLog || []).length);
+  await p.mouse.down();
+  await p.waitForTimeout(650);
+  await p.mouse.up();
+  await p.waitForTimeout(250);
+  return ev(before => {
+    const open = /show/.test((document.getElementById('ordo-dlg') || {}).className || '');
+    const rolled = (state.sheet.rollLog || []).length !== before;
+    ordoDialogClose();
+    if (!open) return 'выбор сложности не открылся';
+    return rolled ? 'удержание всё равно бросило кубик' : true;
+  }, logBefore);
+});
+
+await check('короткий тап по-прежнему просто бросает', async () => {
+  await p.waitForTimeout(300);
+  const before = await ev(() => (state.sheet.rollLog || []).length);
+  await p.locator('.sv4-stat.rollable').first().click();
+  await p.waitForTimeout(300);
+  return ev(b => {
+    const open = /show/.test((document.getElementById('ordo-dlg') || {}).className || '');
+    const rolled = (state.sheet.rollLog || []).length === b + 1;
+    const m = document.getElementById('roll-modal');
+    if (m) m.classList.remove('show');
+    if (open) return 'тап открыл выбор сложности';
+    return rolled ? true : 'бросок не случился';
+  }, before);
 });
 
 console.log(results.join('\n'));

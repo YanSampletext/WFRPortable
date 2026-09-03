@@ -109,7 +109,8 @@
             (opp ? ' (встречная, защита ' + opp.target + ')' : ''),
       target: target, d: d,
       outcome: hit ? 'Попал' : 'Мимо',
-      sl: (sl >= 0 ? '+' : '') + sl + ' ст.усп.',
+      // Минус типографский — как в остальных строках журнала и в книжных таблицах
+      sl: (sl >= 0 ? '+' + sl : String(sl).replace('-', '−')) + ' ст.усп.',
       t: Date.now()
     });
     if (state.sheet.rollLog.length > 30) state.sheet.rollLog.length = 30;

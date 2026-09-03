@@ -233,12 +233,22 @@ function advantageApplies(name){
          n.startsWith('рукопашный бой') || n.startsWith('стрельба');
 }
 
-function rollCheck(name, target){
-  target = parseInt(target)||0;
+// mod — сложность проверки из книги, от +60 до −30. Без неё бросок считается
+// серьёзным (+0): именно так книга велит бросать, когда мастер не сказал
+// иначе, поэтому обычный тап приходит сюда без третьего довода.
+//
+// Имя, значение и надбавки держатся врозь не для красоты. Раньше преимущество
+// вклеивалось прямо в имя («рукопашный бой (+10 за преимущество)»), а в цель —
+// уже прибавленным; кнопка «Ещё раз» брала оба и прибавляла преимущество
+// второй раз, потому что имя всё ещё начиналось с «рукопашный бой». Теперь
+// повтору отдаётся чистое значение, и складывать заново нечего.
+function rollCheck(name, target, mod){
+  const base = parseInt(target)||0;
   // Преимущество: +10 за пункт к боевым проверкам — как и написано на бланке
   const adv = (state.sheet && state.sheet.advantage) || 0;
   const advBonus = (adv > 0 && advantageApplies(name)) ? adv * 10 : 0;
-  target += advBonus;
+  const dif = parseInt(mod) || 0;
+  target = base + advBonus + dif;
   const d = Math.floor(Math.random()*100) + 1; // 1..100
   let outcome, cls, slvl = 0;
   // Уровни успеха/провала: разница десятков
@@ -254,10 +264,11 @@ function rollCheck(name, target){
     outcome = crit ? 'Критический провал!' : 'Провал';
     cls = crit ? 'crit-fail' : 'fail';
   }
-  const slText = (d<=target ? '+' : '') + slvl + ' ст.усп.';
+  // Минус типографский: во всех книжных таблицах приложения он такой, и «−4»
+  // под подписью «Трудная −20» не должно вдруг писаться другим знаком.
+  const slText = (d<=target ? '+' + slvl : String(slvl).replace('-', '−')) + ' ст.усп.';
   if(navigator.vibrate) navigator.vibrate(d<=target?[20]:[40,30,40]);
-  showRollResult(advBonus ? name + ' (+' + advBonus + ' за преимущество)' : name,
-                 target, d, outcome, cls, slText);
+  showRollResult(name, target, d, outcome, cls, slText, { base, adv: advBonus, dif });
 }
 function rollLogRows(){
   const log = (state.sheet && state.sheet.rollLog) || [];
@@ -267,8 +278,13 @@ function rollLogRows(){
     const col = /Крит.*успех/.test(r.outcome) ? 'var(--green2)' : /Крит.*провал/.test(r.outcome) ? 'var(--blood2)' : (ok?'var(--gold2)':'var(--text3)');
     const tm = new Date(r.t||Date.now());
     const hh = String(tm.getHours()).padStart(2,'0')+':'+String(tm.getMinutes()).padStart(2,'0');
+    // Мастеру важно не только «сколько выпало», но и «против чего бросали»:
+    // без сложности строка журнала не восстанавливает проверку.
+    const mods = [];
+    if(r.dif && typeof difficultyNote === 'function') mods.push(difficultyNote(r.dif));
+    if(r.adv) mods.push('преим. +' + r.adv);
     return `<div class="sv4-rolllog-row">
-      <div class="sv4-rolllog-main"><b>${escHtml(r.name||'')}</b> <span class="muted">≤${r.target}</span></div>
+      <div class="sv4-rolllog-main"><b>${escHtml(r.name||'')}</b> <span class="muted">≤${r.target}${mods.length?' · '+escHtml(mods.join(' · ')):''}</span></div>
       <div class="sv4-rolllog-die" style="color:${col}">${r.d}</div>
       <div class="sv4-rolllog-out" style="color:${col}">${escHtml(r.outcome||'')} <span class="muted">${escHtml(r.sl||'')}</span></div>
       <div class="sv4-rolllog-tm muted">${hh}</div>
@@ -278,7 +294,13 @@ function rollLogRows(){
 function rollLogCopy(){
   const log = (state.sheet && state.sheet.rollLog) || [];
   if(!log.length){ notify('Журнал пуст.'); return; }
-  const txt = log.map(r => `${escHtml(r.name)}: d100=${r.d} (≤${r.target}) → ${r.outcome} ${r.sl||''}`).join('\n');
+  // Уходит в буфер как обычный текст, так что escHtml здесь был лишним: он
+  // превращал «&» в «&amp;» прямо в сообщении мастеру.
+  const txt = log.map(r => {
+    const mods = (r.dif && typeof difficultyNote === 'function' ? ', ' + difficultyNote(r.dif) : '')
+               + (r.adv ? ', преим. +' + r.adv : '');
+    return `${r.name}: d100=${r.d} (≤${r.target}${mods}) → ${r.outcome} ${r.sl||''}`;
+  }).join('\n');
   if(navigator.clipboard) navigator.clipboard.writeText(txt).then(()=>notify('Журнал скопирован'),()=>notify('Не удалось скопировать'));
   else notify('Копирование недоступно');
 }
@@ -299,11 +321,22 @@ function renderTabRollLog(){
     <div id="rolllog-body" class="sv4-rolllog">${rollLogRows()}</div>
   </div>`;
 }
-function showRollResult(name, target, d, outcome, cls, slText){
+// meta — откуда взялась цель: { base, adv, dif }. Приходит от rollCheck;
+// проверки сна, болезней и психологии зовут без неё, и тогда карточка ведёт
+// себя как прежде, без строки сложности.
+function showRollResult(name, target, d, outcome, cls, slText, meta){
+  const m = meta || {};
+  const base = (typeof m.base === 'number') ? m.base : target;
+  const dif = m.dif || 0, advB = m.adv || 0;
   try{
     if(state && state.sheet){
       if(!Array.isArray(state.sheet.rollLog)) state.sheet.rollLog = [];
-      state.sheet.rollLog.unshift({ name, target, d, outcome, sl: slText, t: Date.now() });
+      const rec = { name, target, d, outcome, sl: slText, t: Date.now() };
+      // Нули в журнал не пишем: он лежит в сохранении, и лишнее поле в каждой
+      // из тридцати записей — это вес на пустом месте.
+      if(dif) rec.dif = dif;
+      if(advB) rec.adv = advB;
+      state.sheet.rollLog.unshift(rec);
       if(state.sheet.rollLog.length > 30) state.sheet.rollLog.length = 30;
       if(typeof autosave==='function') autosave();
       const lb = document.getElementById('rolllog-body');
@@ -318,16 +351,25 @@ function showRollResult(name, target, d, outcome, cls, slText){
     modal.onclick = () => modal.classList.remove('show');
     document.body.appendChild(modal);
   }
+  // Строка про цель — она же кнопка смены сложности: менять её хочется ровно
+  // тогда, когда на неё смотришь, и отдельная кнопка рядом была бы третьей в
+  // ряду из двух.
+  const note = (typeof difficultyNote === 'function' ? difficultyNote(dif) : '')
+             + (advB ? ' · преим. +' + advB : '');
+  const difLine = meta
+    ? `<button class="sv4-roll-dif" data-call="roll-dif" data-v="${escAttr(name)}" data-n="${base}"
+         title="Выбрать сложность проверки">${note} · цель ≤ ${target} <span class="dif-caret">▾</span></button>`
+    : `<div class="sv4-roll-target">цель ≤ ${target}</div>`;
   modal.innerHTML = `<div class="sv4-roll-card ${cls}" onclick="event.stopPropagation()">
     <div class="sv4-roll-skill">${escHtml(name)}</div>
-    <div class="sv4-roll-target">цель ≤ ${target}</div>
+    ${difLine}
     <div class="sv4-roll-die">${d}</div>
     <div class="sv4-roll-outcome">${outcome}</div>
     <div class="sv4-roll-sl">${slText}</div>
     ${typeof talentHintHtml === 'function' ? talentHintHtml(name) : ''}
     <div class="sv4-roll-btns">
       <button class="sv4-roll-close" onclick="document.getElementById('roll-modal').classList.remove('show')">Закрыть</button>
-      <button class="sv4-roll-again" data-call="roll" data-v="${escAttr(name)}" data-n="${target}"><span class="ic">${ICONS.dice}</span> Ещё раз</button>
+      <button class="sv4-roll-again" data-call="roll" data-v="${escAttr(name)}" data-n="${base}" data-d="${dif}"><span class="ic">${ICONS.dice}</span> Ещё раз</button>
     </div>
   </div>`;
   modal.classList.add('show');
@@ -854,14 +896,14 @@ function renderTabPersona(){
   STAT_NAMES.forEach(s => {
     const total = totals[s] || 0;
     const bonus = Math.floor(total/10);
-    h += `<div class="sv4-stat rollable" onclick="rollCheck('${s}',${total})" title="Бросок проверки d100">
+    h += `<div class="sv4-stat rollable" data-call="roll" data-v="${escAttr(s)}" data-n="${total}" title="Тап — бросок, удержание — сложность">
       <div class="sv4-stat-l">${s}</div>
       <div class="sv4-stat-v">${total}</div>
       <div class="sv4-stat-b">+${bonus} <span class="sv4-roll-hint"><span class="ic">${ICONS.dice}</span></span></div>
     </div>`;
   });
   h += '</div>';
-  h += `<p class="sv4-roll-tip muted">Нажми на характеристику или навык, чтобы бросить проверку d100.</p>`;
+  h += `<p class="sv4-roll-tip muted">Тап — серьёзная проверка (+0). Удержание — сложность от +60 до −30.</p>`;
 
   // Виталки: Судьба / Удача / Упорство / Решимость / Скверна
   h += `<div class="sv4-section-title">${ICONS.compass} Судьба и упорство</div>`;
@@ -919,7 +961,7 @@ function renderTabPersona(){
   } else {
     h += `<div class="sv4-skills">`;
     profLearned.forEach(sk => {
-      h += `<div class="sv4-skill rollable" data-call="roll" data-v="${escAttr(sk.name)}" data-n="${sk.value}" title="Бросок проверки d100">
+      h += `<div class="sv4-skill rollable" data-call="roll" data-v="${escAttr(sk.name)}" data-n="${sk.value}" title="Тап — бросок, удержание — сложность">
         <span class="sv4-sk-name">${escHtml(sk.name)}</span>
         <span class="sv4-sk-stat">${sk.stat}</span>
         <span class="sv4-sk-adv">+${sk.adv}</span>
@@ -1297,7 +1339,7 @@ function renderTabSkills(){
       <td>${escHtml(sk.name)}</td>
       <td><span class="muted">${sk.stat}</span></td>
       <td><span class="sv4-stepper"><button class="stp" onclick="stpAdj(this,-1)" tabindex="-1">−</button><input type="number" min="0" value="${sk.adv||0}" class="sv4-mini gold" data-sk="${escAttr(sk.name)}" onchange="updateSkillAdv(this)" /><button class="stp gold" onclick="stpAdj(this,1)" tabindex="-1">+</button></span></td>
-      <td class="num-gold"><span class="sv4-roll-cell" data-call="roll" data-v="${escAttr(sk.name)}" data-n="${sk.value}" title="Бросок d100">${sk.value} <span class="ic">${ICONS.dice}</span></span></td>
+      <td class="num-gold"><span class="sv4-roll-cell" data-call="roll" data-v="${escAttr(sk.name)}" data-n="${sk.value}" title="Тап — бросок, удержание — сложность">${sk.value} <span class="ic">${ICONS.dice}</span></span></td>
       <td><span class="muted">${sk.sources.length?srcLabel(sk):'—'}</span></td>
     </tr>`;
   });
@@ -1319,7 +1361,7 @@ function renderTabSkills(){
         <td>${escHtml(sk.name)}</td>
         <td><span class="muted">${sk.stat}</span></td>
         <td><span class="sv4-stepper"><button class="stp" onclick="stpAdj(this,-1)" tabindex="-1">−</button><input type="number" min="0" value="${sk.adv||0}" class="sv4-mini gold" data-sk="${escAttr(sk.name)}" onchange="updateSkillAdv(this)" /><button class="stp gold" onclick="stpAdj(this,1)" tabindex="-1">+</button></span></td>
-        <td class="num-gold"><span class="sv4-roll-cell" data-call="roll" data-v="${escAttr(sk.name)}" data-n="${sk.value}" title="Бросок d100">${sk.value} <span class="ic">${ICONS.dice}</span></span></td>
+        <td class="num-gold"><span class="sv4-roll-cell" data-call="roll" data-v="${escAttr(sk.name)}" data-n="${sk.value}" title="Тап — бросок, удержание — сложность">${sk.value} <span class="ic">${ICONS.dice}</span></span></td>
         <td><span class="muted">${srcLabel(sk)}</span></td>
         <td>${isExtra?`<button class="sv4-cond-btn" data-call="skill-remove" data-v="${escAttr(sk.name)}">×</button>`:''}</td>
       </tr>`;

@@ -472,7 +472,10 @@ document.addEventListener('click', function (e) {
   const v = el.dataset.v || '';
   const n = el.dataset.n;
   switch (el.dataset.call) {
-    case 'roll':          rollCheck(v, parseInt(n, 10) || 0); break;
+    // data-d — сложность проверки; её ставит только кнопка «Ещё раз», чтобы
+    // повтор шёл против той же цели, что и первый бросок.
+    case 'roll':          rollCheck(v, parseInt(n, 10) || 0, parseInt(el.dataset.d, 10) || 0); break;
+    case 'roll-dif':      difficultyPick(v, parseInt(n, 10) || 0); break;
     case 'career-pick':   pickCareerFromSearch(el.dataset.cls || '', v); break;
     case 'talent-race':   chooseRaceTalent(parseInt(n, 10) || 0, v); break;
     case 'skill-career':  changeCareerSkill(v, parseInt(n, 10) || 0); break;
