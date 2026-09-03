@@ -521,6 +521,11 @@ function compileTalents(){
 // Фильтр навыков по имени (Mobile patterns: search/filter для длинных списков)
 function skillFilterApply(q){
   q = (q||'').trim().toLowerCase();
+  // Пока в поле что-то набрано, свёрнутые строки участвуют в поиске: иначе
+  // «плавание» не находилось бы именно у того, кто ему не обучен, — а спросить
+  // хотят как раз про такие.
+  const tbl = document.querySelector('#sheet-area .sv4-sk-common');
+  if(tbl) tbl.classList.toggle('sk-fold', !q && !_skillsAll);
   document.querySelectorAll('#sheet-area .sv4-tbl tbody tr').forEach(tr => {
     const name = (tr.cells[0] ? tr.cells[0].textContent : '').toLowerCase();
     tr.style.display = (!q || name.includes(q)) ? '' : 'none';

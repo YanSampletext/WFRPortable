@@ -696,7 +696,7 @@ textarea { background: var(--panel); border: 1px solid var(--border2); color: va
   z-index: 0;
   box-shadow: inset 0 0 120px 20px rgba(0,0,0,0.5);
 }
-.sheet-v4 > .sv4-page, .sheet-v4 > .sv4-back, .sheet-v4 > .sv4-quick-talents, .sheet-v4 > .sv4-bottom-nav { position: relative; z-index: 2; }
+.sheet-v4 > .sv4-page, .sheet-v4 > .sv4-quick-talents, .sheet-v4 > .sv4-bottom-nav { position: relative; z-index: 2; }
 
 /* === Архивные детали (досье охотника на ведьм) === */
 .arch-serial {
@@ -1018,22 +1018,6 @@ textarea { background: var(--panel); border: 1px solid var(--border2); color: va
   cursor: pointer;
 }
 
-
-/* === Кнопка возврата на бланк === */
-.sv4-back {
-  display: block;
-  margin: 10px 14px 0 14px;
-  padding: 8px 14px;
-  background: transparent;
-  border: 1px solid var(--border2);
-  color: var(--gold2);
-  border-radius: 5px;
-  font-family: 'Cinzel', serif;
-  font-size: 12px;
-  letter-spacing: 0.05em;
-  cursor: pointer;
-}
-.sv4-back:hover { border-color: var(--gold); background: rgba(218,165,32,0.06); }
 
 /* === Контент === */
 .sv4-page { padding: 10px 11px 90px 11px; }
@@ -1803,7 +1787,7 @@ table input.sv4-mini { width: 100%; min-width: 38px; }
 
 /* === Печать === */
 @media print {
-  .sv4-nav, .sv4-nav-backdrop, .sv4-back, .sv4-print-controls,
+  .sv4-nav, .sv4-nav-backdrop, .sv4-print-controls,
   .app-bar, .nav-bottom, .sv4-bottom-nav, .sv4-fab-hp,
   /* экранная мелочь, которой на бумаге делать нечего */
   #toast-stack, #ark-undo, #saved-tick, #app-drawer, #ad-slot,

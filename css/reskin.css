@@ -73,7 +73,7 @@ body.theme-light::before{ opacity:.22 !important; }
   font-family:'Barlow Condensed', 'Courier New', monospace !important;
   letter-spacing:.08em;
 }
-h1, h2, h3, .title-main, .title-version, .sec-title, .panel-title, .sv4-section-title, .sv4-block-title, .sv4-tier-name, .sv4-c-v, .sv4-v-v, .sv4-stat-v, .sv4-i-v, .sv4-az b, .sv4-tal-name, .quick-gen-title, .num-gold, .sv4-tbl td.num-gold, .btn, .btn-sm, .btn-gold, .btn-red, .step .num, .sv4-back, .sv4-tier-badge .sv4-tier-name, .sv4-roll-skill, .sv4-roll-outcome {
+h1, h2, h3, .title-main, .title-version, .sec-title, .panel-title, .sv4-section-title, .sv4-block-title, .sv4-tier-name, .sv4-c-v, .sv4-v-v, .sv4-stat-v, .sv4-i-v, .sv4-az b, .sv4-tal-name, .quick-gen-title, .num-gold, .sv4-tbl td.num-gold, .btn, .btn-sm, .btn-gold, .btn-red, .step .num, .sv4-tier-badge .sv4-tier-name, .sv4-roll-skill, .sv4-roll-outcome {
   font-family:'Cinzel', serif !important;
 }
 /* Готический блэклеттер — крупные имена и гербовые надписи */
@@ -263,8 +263,6 @@ label{ color:var(--text3); font-family:'Barlow Condensed', monospace !important;
 
 .sv4-xp{ background:linear-gradient(180deg, rgba(226,164,66,.14), rgba(226,164,66,.04)); border-color:var(--gold-dim); }
 
-.sv4-back{ border-color:var(--gold-dk); color:var(--gold2); }
-.sv4-back:hover{ border-color:var(--gold); background:rgba(226,164,66,.06); }
 
 /* Боковое меню — корешок архива */
 .sv4-nav{ background:linear-gradient(180deg,#1a130a,#080503); border-right:1px solid var(--gold); }

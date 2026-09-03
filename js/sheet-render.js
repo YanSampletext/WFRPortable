@@ -161,6 +161,18 @@ function toggleQualInfo(i){
 
 // Текущая открытая вкладка бланка
 let _sheetTab = 'persona';
+// Развёрнут ли полный список общих навыков. Живёт вне отрисовки: вкладку
+// перерисовывают на каждый шаг, и внутри неё выбор бы не пережил ни одного.
+let _skillsAll = false;
+function skillsToggleAll(){
+  _skillsAll = !_skillsAll;
+  const tbl = document.querySelector('#sheet-area .sv4-sk-common');
+  if(tbl) tbl.classList.toggle('sk-fold', !_skillsAll);
+  const btn = document.getElementById('sk-toggle');
+  if(btn) btn.textContent = _skillsAll
+    ? 'Скрыть навыки без обучения'
+    : 'Показать ещё ' + tbl.querySelectorAll('.sk-untrained').length + ' без обучения';
+}
 
 // Точечное обновление HP (без полной перерисовки)
 function sv2HpDelta(delta, max){
@@ -574,9 +586,10 @@ function renderSheet(){
     </button>
   </div>`;
 
-  if(!isMain){
-    html += `<button class="sv4-back" onclick="sv4NavGo('persona')">← Вернуться на бланк</button>`;
-  }
+  // Широкой кнопки «← Вернуться на бланк» здесь больше нет. Она стояла на
+  // каждой вкладке, кроме главной, и съедала около 80 пикселей из 850 — при
+  // том что внизу постоянно висит панель, где первый же пункт «Дело» и есть
+  // бланк, а системную кнопку «назад» разбирает back-nav.js.
 
   // === КОНТЕНТ СТРАНИЦЫ ===
   html += '<div class="sv4-page" id="sv4-page">';
@@ -588,12 +601,19 @@ function renderSheet(){
   html += '</div>';
 
   // === Плавающая кнопка урона по HP (быстрый доступ в бою) ===
-  const hpNow = state.sheet.currentHP||0;
-  html += `<div class="sv4-fab-hp" title="Быстрый урон/лечение">
-    <button class="sv4-fab-btn heal" onclick="sv2HpDelta(1,${maxHP})">＋</button>
-    <div class="sv4-fab-val" data-hp-val>${hpNow}</div>
-    <button class="sv4-fab-btn dmg" onclick="sv2HpDelta(-1,${maxHP})">－</button>
-  </div>`;
+  // Только там, где за неё и хватаются: на бланке и в бою. Висела она на всех
+  // вкладках сразу и перекрывала то, по чему в этом месте надо нажимать, —
+  // «+ Добавить» и подсказку «?» в имуществе, «Сброс» и «Целебное зелье» в
+  // здоровье, колонку «Итог» в навыках (те самые числа, по которым бросают).
+  // На вкладке здоровья она вдобавок лишняя: там полный редактор ран с −5…+5.
+  if(_sheetTab === 'persona' || _sheetTab === 'crit'){
+    const hpNow = state.sheet.currentHP||0;
+    html += `<div class="sv4-fab-hp" title="Быстрый урон/лечение">
+      <button class="sv4-fab-btn heal" onclick="sv2HpDelta(1,${maxHP})">＋</button>
+      <div class="sv4-fab-val" data-hp-val>${hpNow}</div>
+      <button class="sv4-fab-btn dmg" onclick="sv2HpDelta(-1,${maxHP})">－</button>
+    </div>`;
+  }
 
   // === Нижняя панель быстрого доступа ===
   const navItem = (tab, icon, label) =>
@@ -1325,17 +1345,23 @@ function renderTabSkills(){
                 : sk.sources.includes('лист') ? 'Лист'
                 : sk.sources.includes('XP-магазин') ? 'Магазин'
                 : '—';
+  // Все 26 общих навыков разом — это почти три экрана, и за игрой вкладку
+  // приходилось листать. Необученные (ноль шагов и никакого источника) по
+  // умолчанию свёрнуты: бросают по ним редко, а нужное число всё равно есть на
+  // бланке — у необученного общего навыка итог равен характеристике.
+  // Из разметки они при этом не исчезают, поэтому фильтр находит их по-прежнему.
+  const untrained = sk => !sk.adv && !(sk.sources && sk.sources.length);
+  const hidden = common.filter(untrained).length;
   let h = '';
   h += `<input class="sv4-text" style="width:100%;margin-bottom:8px;" placeholder="⌕ Фильтр навыков — начни вводить…" oninput="skillFilterApply(this.value)">`;
-  // Общие навыки — всегда все 25
   h += `<div class="sv4-block">
     <div class="sv4-block-title">Общие навыки <span style="color:var(--text3);font-weight:normal;font-family:'EB Garamond',serif;text-transform:none;letter-spacing:0;">(есть у всех)</span></div>
     <div class="sv4-table-wrap">
-    <table class="sv4-tbl">
+    <table class="sv4-tbl sv4-sk-common${_skillsAll ? '' : ' sk-fold'}">
       <thead><tr><th>Навык</th><th>Хар.</th><th>Шаги</th><th>Итог</th><th>Источник</th></tr></thead>
       <tbody>`;
   common.forEach(sk => {
-    h += `<tr>
+    h += `<tr${untrained(sk) ? ' class="sk-untrained"' : ''}>
       <td>${escHtml(sk.name)}</td>
       <td><span class="muted">${sk.stat}</span></td>
       <td><span class="sv4-stepper"><button class="stp" onclick="stpAdj(this,-1)" tabindex="-1">−</button><input type="number" min="0" value="${sk.adv||0}" class="sv4-mini gold" data-sk="${escAttr(sk.name)}" onchange="updateSkillAdv(this)" /><button class="stp gold" onclick="stpAdj(this,1)" tabindex="-1">+</button></span></td>
@@ -1343,7 +1369,12 @@ function renderTabSkills(){
       <td><span class="muted">${sk.sources.length?srcLabel(sk):'—'}</span></td>
     </tr>`;
   });
-  h += `</tbody></table></div></div>`;
+  h += `</tbody></table></div>`;
+  if(hidden){
+    h += `<button class="sv4-btn-wide sv4-sk-more" id="sk-toggle" onclick="skillsToggleAll()">${
+      _skillsAll ? 'Скрыть навыки без обучения' : `Показать ещё ${hidden} без обучения`}</button>`;
+  }
+  h += `</div>`;
 
   // Профессиональные навыки — только освоенные / доступные
   h += `<div class="sv4-block">

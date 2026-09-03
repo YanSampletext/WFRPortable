@@ -151,17 +151,31 @@ await p.evaluate(() => {
     }
     return acc;
   };
+  // Возвращаем и число осмотренного: без него проверка на пустой или скрытой
+  // странице показывала «читается», ничего не измерив, — и раздел светлой темы
+  // именно так и зеленел вхолостую после того, как обход бокового меню уводил
+  // приложение с персонажа.
   window.__badContrast = sel => {
     const out = [];
+    let seen = 0;
     document.querySelectorAll(sel).forEach(el => {
       if (!el.textContent.trim() || el.children.length) return;
       if (!el.getBoundingClientRect().width) return;
       const fg = parse(getComputedStyle(el).color), bg = bgOf(el);
       if (!fg || !bg) return;
+      seen++;
       if (Math.abs(lum(over(fg, bg)) - lum(bg)) < 0.13)
         out.push((el.className || el.tagName).toString().slice(0, 26));
     });
-    return [...new Set(out)].slice(0, 4);
+    return { bad: [...new Set(out)].slice(0, 4), seen: seen };
+  };
+  // Разделы ниже мерят живой бланк, а обход меню и проверка обложки уводят с
+  // него. Восстанавливаем персонажа, а не надеемся, что он уцелел.
+  window.__restoreSheet = () => {
+    document.getElementById('view-landing').style.display = 'none';
+    document.getElementById('view-app').style.display = 'block';
+    if (!state.race || !state.career) _rollFullRandomCharacterDo();
+    appMode = 'character'; state.step = 8; goStep(8);
   };
 });
 
@@ -169,21 +183,25 @@ await p.evaluate(() => {
 // Цвета смешиваем с подложкой: полупрозрачный фон сам по себе ничего не значит.
 console.log('\n── светлая тема ──');
 await p.evaluate(() => document.body.classList.add('theme-light'));
+await p.evaluate(() => __restoreSheet());
+await p.waitForTimeout(300);
 for (const t of tabs) {
-  const bad = await p.evaluate(tab => { sv4NavGo(tab); return __badContrast('.sv4-page *'); }, t);
+  const r = await p.evaluate(tab => { sv4NavGo(tab); return __badContrast('.sv4-page *'); }, t);
   await p.waitForTimeout(160);
-  console.log(`  ${t.padEnd(10)} ${bad.length ? '⚠ сливается: ' + bad.join(' | ') : 'читается'}`);
+  console.log(`  ${t.padEnd(10)} ${!r.seen ? '⚠ мерить нечего — страница пуста или скрыта'
+    : r.bad.length ? '⚠ сливается: ' + r.bad.join(' | ') : 'читается (' + r.seen + ')'}`);
 }
 // Обложка светлую тему не проверялась вовсе, а это первый экран при каждом
 // запуске. Проверяем её отдельно: она живёт вне .sv4-page и в цикл по
 // вкладкам не попадала.
 {
-  const bad = await p.evaluate(() => {
+  const r = await p.evaluate(() => {
     goHome();
     document.body.classList.add('theme-light');
     return __badContrast('#view-landing *');
   });
-  console.log(`  ${'обложка'.padEnd(10)} ${bad.length ? '⚠ сливается: ' + bad.join(' | ') : 'читается'}`);
+  console.log(`  ${'обложка'.padEnd(10)} ${!r.seen ? '⚠ мерить нечего — обложка пуста'
+    : r.bad.length ? '⚠ сливается: ' + r.bad.join(' | ') : 'читается (' + r.seen + ')'}`);
 }
 
 // Карточка броска и диалоги остаются тёмными в обеих темах, и правило под
@@ -191,30 +209,39 @@ for (const t of tabs) {
 // вышло с подписью сложности: тёмно-бурые буквы на тёмной карточке.
 {
   await p.evaluate(() => {
-    goStep(8);
+    __restoreSheet();
     state.sheet.advantage = 0;
     rollCheck('скрытность', 47, -20);
   });
   await p.waitForTimeout(250);
-  const badCard = await p.evaluate(() => __badContrast('#roll-modal *'));
-  console.log(`  ${'бросок'.padEnd(10)} ${badCard.length ? '⚠ сливается: ' + badCard.join(' | ') : 'читается'}`);
+  const card = await p.evaluate(() => __badContrast('#roll-modal *'));
+  console.log(`  ${'бросок'.padEnd(10)} ${!card.seen ? '⚠ карточка не открылась'
+    : card.bad.length ? '⚠ сливается: ' + card.bad.join(' | ') : 'читается (' + card.seen + ')'}`);
   await p.evaluate(() => {
     document.getElementById('roll-modal').classList.remove('show');
     difficultyPick('скрытность', 47);
   });
   await p.waitForTimeout(250);
-  const badDlg = await p.evaluate(() => __badContrast('#ordo-dlg *'));
-  console.log(`  ${'диалог'.padEnd(10)} ${badDlg.length ? '⚠ сливается: ' + badDlg.join(' | ') : 'читается'}`);
+  const dlg = await p.evaluate(() => __badContrast('#ordo-dlg *'));
+  console.log(`  ${'диалог'.padEnd(10)} ${!dlg.seen ? '⚠ диалог не открылся'
+    : dlg.bad.length ? '⚠ сливается: ' + dlg.bad.join(' | ') : 'читается (' + dlg.seen + ')'}`);
   await p.evaluate(() => ordoDialogClose());
 }
 await p.evaluate(() => document.body.classList.remove('theme-light'));
 
+// Проверка обложки уводила приложение на лендинг, и всё, что ниже, мерило
+// спрятанную страницу: у элементов внутри display:none прямоугольник нулевой,
+// такие пропускаются — и обе проверки зеленели, ничего не осмотрев.
+// Возвращаем бланк, прежде чем что-то мерить.
+await p.evaluate(() => __restoreSheet());
+await p.waitForTimeout(400);
 // ── зоны нажатия ────────────────────────────────────────────────────────────
 console.log('\n── зоны нажатия: меньшая сторона <24px или площадь < 44×44 ──');
 for (const t of ['persona', 'health', 'skills', 'gear', 'more']) {
-  const small = await p.evaluate(tab => {
+  const res = await p.evaluate(tab => {
     sv4NavGo(tab);
     const out = [];
+    let seen = 0;
     // Мерить надо не сам элемент, а то, по чему на самом деле попадает палец:
     // поле внутри <label> ловит тап по всей строке, и его собственная высота
     // ничего не говорит о том, легко ли в него попасть.
@@ -225,15 +252,55 @@ for (const t of ['persona', 'health', 'skills', 'gear', 'more']) {
     document.querySelectorAll('.sv4-page button, .sv4-page [onclick], .sv4-page input:not([type=checkbox]), .sv4-page select').forEach(el => {
       const r = targetOf(el).getBoundingClientRect();
       if (!r.width || !r.height) return;
+      seen++;
       const side = Math.min(r.width, r.height);
       if (side < 24 || r.width * r.height < AREA) {
         out.push(`${(el.className || el.tagName).toString().slice(0, 22)} ${Math.round(r.width)}×${Math.round(r.height)}`);
       }
     });
-    return [...new Set(out)].slice(0, 4);
+    return { small: [...new Set(out)].slice(0, 4), seen: seen };
   }, t);
   await p.waitForTimeout(160);
-  console.log(`  ${t.padEnd(10)} ${small.length ? '⚠ ' + small.join(' | ') : 'все зоны достаточные'}`);
+  const { small, seen } = res;
+  console.log(`  ${t.padEnd(10)} ${!seen ? '⚠ мерить нечего — страница пуста или скрыта'
+    : small.length ? '⚠ ' + small.join(' | ') : 'все зоны достаточные (' + seen + ')'}`);
+}
+
+// ── что закрывает собой плавающая кнопка ────────────────────────────────────
+// Кнопка ран висит поверх страницы, и под ней оказывались не украшения, а
+// органы управления: «+ Добавить», «Сброс», подсказка «?» и колонка «Итог» —
+// те самые числа, по которым бросают. Смотрим в худшем положении: кнопка
+// показана (прокрутка её прячет, но пользователь вернёт её движением вверх) и
+// страница остановлена в пяти местах по высоте.
+console.log('\n── что закрывает плавающая кнопка ──');
+for (const t of tabs) {
+  const r = await p.evaluate(tab => {
+    sv4NavGo(tab);
+    const fab = document.querySelector('.sv4-fab-hp');
+    if (!fab) return null;                       // на этой вкладке её нет
+    const H = document.documentElement.scrollHeight, V = innerHeight;
+    const SEL = ['button', '[onclick]', '[data-call]', 'input', 'select',
+                 '.sv4-roll-cell', '.sv4-cond-help'].map(x => '.sv4-page ' + x).join(', ');
+    const hit = new Set();
+    for (const k of [0, 0.25, 0.5, 0.75, 1]) {
+      window.scrollTo(0, Math.round((H - V) * k));
+      fab.classList.remove('tucked');
+      const f = fab.getBoundingClientRect();
+      document.querySelectorAll(SEL).forEach(el => {
+        const q = el.getBoundingClientRect();
+        if (!q.width || !q.height) return;
+        if (q.right > f.left && q.left < f.right && q.bottom > f.top && q.top < f.bottom) {
+          const txt = (el.textContent || el.value || '').trim().replace(/\s+/g, ' ').slice(0, 20);
+          hit.add((el.className || el.tagName).toString().split(' ')[0] + (txt ? ' «' + txt + '»' : ''));
+        }
+      });
+    }
+    window.scrollTo(0, 0);
+    return [...hit];
+  }, t);
+  await p.waitForTimeout(140);
+  if (r === null) { console.log('  ' + t.padEnd(10) + ' кнопки нет'); continue; }
+  console.log(`  ${t.padEnd(10)} ${r.length ? '⚠ перекрыто ' + r.length + ': ' + r.slice(0, 4).join(' | ') : 'ничего не закрывает'}`);
 }
 
 // ── видимость из разметки ───────────────────────────────────────────────────

@@ -1825,6 +1825,102 @@ await check('карьеры и народы ссылаются на живые �
   return bad.length ? bad.slice(0, 4).join(' | ') : true;
 }));
 
+await check('необученные общие навыки свёрнуты, но фильтр их достаёт', async () => {
+  await ev(() => { _skillsAll = false; sv4NavGo('skills'); });
+  await p.waitForTimeout(320);
+  const n = await ev(() => {
+    const rows = [...document.querySelectorAll('.sv4-sk-common tbody tr')];
+    return { all: rows.length, shown: rows.filter(r => r.offsetParent).length };
+  });
+  if (n.all !== 26) return 'общих навыков в таблице ' + n.all + ', а в книге 26';
+  if (n.shown >= n.all) return 'свёрнуто ничего';
+  // Имя берём из самой таблицы: у случайного персонажа обученным может
+  // оказаться любой навык, и жёстко названный сюда не годится.
+  const probe = await ev(() => {
+    const r = document.querySelector('.sv4-sk-common tr.sk-untrained');
+    return r ? r.cells[0].textContent.trim() : null;
+  });
+  if (!probe) return 'нет ни одной свёрнутой строки';
+  const seen = await ev(name => {
+    skillFilterApply(name.toLowerCase());
+    return [...document.querySelectorAll('.sv4-sk-common tbody tr')]
+      .filter(r => r.offsetParent).map(r => r.cells[0].textContent.trim());
+  }, probe);
+  if (seen.indexOf(probe) < 0) return 'фильтр не показал «' + probe + '»: ' + seen.join(', ');
+  const back = await ev(() => {
+    skillFilterApply('');
+    const rows = [...document.querySelectorAll('.sv4-sk-common tbody tr')];
+    return rows.filter(r => r.offsetParent).length;
+  });
+  if (back !== n.shown) return 'после снятия фильтра видно ' + back + ', а было ' + n.shown;
+  const opened = await ev(() => {
+    skillsToggleAll();
+    const rows = [...document.querySelectorAll('.sv4-sk-common tbody tr')];
+    const shown = rows.filter(r => r.offsetParent).length;
+    skillsToggleAll();
+    return shown;
+  });
+  return opened === 26 ? true : 'после «показать все» видно ' + opened;
+});
+
+await check('названия талантов показываются с заглавной', () => ev(() => {
+  // Книжные данные записаны вперемешку: расовые и карьерные строчными. Регистр
+  // правится оформлением, а не данными, — значит и проверять надо оформление:
+  // собираем те же гнёзда, что рисует бланк, и спрашиваем у браузера.
+  const box = document.createElement('div');
+  box.style.cssText = 'position:absolute;left:-9999px';
+  box.innerHTML = '<div class="sv4-tal-name">грамотность</div>' +
+                  '<div class="sv4-qt-chip"><span class="sv4-qt-name">грамотность</span></div>' +
+                  '<div class="roll-talent"><b>грамотность</b></div>';
+  document.body.appendChild(box);
+  const bad = ['.sv4-tal-name', '.sv4-qt-name', '.roll-talent > b'].filter(sel =>
+    getComputedStyle(box.querySelector(sel), '::first-letter').textTransform !== 'uppercase');
+  box.remove();
+  return bad.length ? 'первая буква не поднимается: ' + bad.join(', ') : true;
+}));
+
+await check('характеристику везде зовут одним именем', () => ev(() => {
+  // Игрок читает талант «макс: рейтинг общительности» и ищет на листе
+  // общительность, которой там нет: десятая характеристика зовётся харизмой.
+  // Так же было с «дистанционным боем» вместо дальнего. Родительный падеж
+  // программой из STAT_FULL не вывести, поэтому он выписан рядом — и первым
+  // делом сверяется с самим списком: переименуют характеристику, не тронув
+  // таблицу, — проверка встанет, а не промолчит.
+  const GEN = {
+    'ББ': 'ближнего боя', 'ДБ': 'дальнего боя', 'С': 'силы', 'В': 'выносливости',
+    'И': 'инициативы', 'Пр': 'проворства', 'Л': 'ловкости', 'Инт': 'интеллекта',
+    'СВ': 'силы воли', 'Х': 'харизмы'
+  };
+  const miss = STAT_NAMES.filter(s => !GEN[s]);
+  if (miss.length) return 'в таблице падежей нет: ' + miss.join(', ');
+  const known = Object.values(GEN);
+  const skills = [...(DATA.common_skills || []), ...(DATA.prof_skills || [])]
+    .map(s => s.name.toLowerCase());
+  const bad = [];
+
+  (DATA.all_talents || []).forEach(t => {
+    const m = /^(?:рейтинг|бонус)\s+(.+)$/.exec(String(t.max || '').trim());
+    if (!m) return;                       // «1», «один раз», «нет» — не ссылки
+    const what = m[1].toLowerCase();
+    if (known.indexOf(what) >= 0) return;
+    // «рейтинг навыка стрельбы» — ссылка на навык, и это законно
+    const sk = /^навыка\s+(.+)$/.exec(what);
+    if (sk && skills.some(n => n.indexOf(sk[1].slice(0, -1)) === 0)) return;
+    bad.push('талант «' + t.name + '»: ' + t.max);
+  });
+
+  (typeof SPELL_LIB === 'undefined' ? [] : SPELL_LIB).forEach(sp => {
+    const text = [sp.t, sp.d, sp.r, sp.b].filter(Boolean).join(' ');
+    for (const m of text.matchAll(/бонус\s+([а-яё]+(?:\s+воли)?)/gi)) {
+      const what = m[1].toLowerCase();
+      if (what === 'характеристики') continue;      // общая формулировка
+      if (known.indexOf(what) < 0) bad.push('заклинание «' + sp.n + '»: бонус ' + m[1]);
+    }
+  });
+
+  return bad.length ? bad.slice(0, 5).join('; ') : true;
+}));
+
 await check('карьеры и народы ссылаются на живые таланты', () => ev(() => {
   const known = new Set(DATA.all_talents.map(t => t.name.toLowerCase()));
   const base = n => n.replace(/\s*\([^)]*\)/g, '').trim().toLowerCase();
