@@ -551,6 +551,11 @@ function renderTabDowntime(){
   </div>`;
 
   // карточки усилий
+  // Растянутые проверки — дела на несколько попыток. Место их здесь: именно
+  // между приключениями такие дела и отыгрываются, хотя счётчик годится и для
+  // долгого замка посреди подземелья.
+  if(typeof extBlockHtml === 'function') h += extBlockHtml();
+
   h += `<div class="panel" style="margin-bottom:14px;">
     <div class="panel-title">Доход</div>
     <p class="muted" style="font-size:12px;">Стандартный заработок по статусу. Опиши, чем персонаж заработал, и брось доход.</p>

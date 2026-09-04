@@ -55,7 +55,10 @@ function _difAdvantage(name) {
   return 0;
 }
 
-function difficultyPick(name, base) {
+// onPick — что делать с выбранной сложностью. По умолчанию бросок с бланка;
+// растянутая проверка передаёт своё, чтобы уровни успеха легли в накопитель, а
+// не в обычную карточку. Своей копии этого списка ей заводить незачем.
+function difficultyPick(name, base, onPick) {
   base = parseInt(base, 10) || 0;
   var adv = _difAdvantage(name);
   var rows = DIFFICULTY.map(function (d, i) {
@@ -77,7 +80,9 @@ function difficultyPick(name, base) {
     b.onclick = function () {
       var d = DIFFICULTY[parseInt(b.dataset.i, 10)];
       ordoDialogClose();
-      rollCheck(name, base, d ? d.mod : 0);
+      var mod = d ? d.mod : 0;
+      if (typeof onPick === 'function') onPick(mod);
+      else rollCheck(name, base, mod);
     };
   });
 }

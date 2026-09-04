@@ -2098,6 +2098,9 @@ await check('«Ещё раз» вообще делает бросок', async ()
   // Проверка этого не проверяла и потому молчала: карточка глушила всплытие,
   // кнопку с data-call ловит обработчик на документе — и нажатие не делало
   // ничего. Сравнение шло с той же самой записью, которая не менялась.
+  // Журнал обрезается на тридцати записях, поэтому сравнивать длину можно
+  // только с пустого — иначе «стало на одну больше» не наступит никогда.
+  await clearLog();
   await ev(() => { state.sheet.advantage = 0; rollCheck('плавание', 50); });
   await p.waitForTimeout(200);
   const before = await ev(() => state.sheet.rollLog.length);
@@ -2112,6 +2115,7 @@ await check('«Ещё раз» вообще делает бросок', async ()
 await check('«Ещё раз» не прибавляет преимущество второй раз', async () => {
   // Раньше повтор получал имя с припиской и цель уже с надбавкой — и надбавка
   // ложилась поверх самой себя.
+  await clearLog();
   await ev(() => { state.sheet.advantage = 3; rollCheck('рукопашный бой (базовый)', 40); });
   await p.waitForTimeout(150);
   const first = await ev(() => state.sheet.rollLog[0].target);
@@ -2124,6 +2128,69 @@ await check('«Ещё раз» не прибавляет преимуществ�
   return (first === 70 && r.target === 70) ? true
     : 'первый ' + first + ', повтор ' + r.target + ', а ждали 70 и 70';
 });
+
+// ── растянутые проверки ────────────────────────────────────────────────────
+await check('растянутая копит уровни успеха попытка за попыткой', () => ev(() => {
+  state.sheet.extended = [];
+  const rows = compileSkills();
+  const sk = rows[0];
+  state.sheet.extended.unshift({ id: 'extT', name: 'Перевод гримуара', skill: sk.name,
+                                 value: sk.value, goal: 8, acc: 0, tries: [] });
+  for (let i = 0; i < 5; i++) extRoll('extT');
+  const e = state.sheet.extended[0];
+  if (e.tries.length !== 5) return 'попыток записано ' + e.tries.length;
+  const sum = e.tries.reduce((a, t) => a + t.sl, 0);
+  if (e.acc !== sum) return 'накоплено ' + e.acc + ', а сумма попыток ' + sum;
+  // Каждая попытка обязана считаться по той же формуле, что и весь бланк
+  const bad = e.tries.filter(t => t.sl !== Math.trunc(t.target / 10) - Math.trunc(t.d / 10));
+  return bad.length ? 'уровни успеха посчитаны иначе, чем на бланке' : true;
+}));
+
+await check('сложность попытки сдвигает цель', () => ev(() => {
+  const e = state.sheet.extended[0];
+  const bad = [];
+  for (const d of DIFFICULTY) {
+    extRoll('extT', d.mod);
+    const t = state.sheet.extended[0].tries.slice(-1)[0];
+    if (t.target !== e.value + d.mod) bad.push(d.name + ': ≤' + t.target + ' вместо ≤' + (e.value + d.mod));
+  }
+  return bad.length ? bad.join(', ') : true;
+}));
+
+await check('растянутая берёт сегодняшнее значение навыка, а не записанное', () => ev(() => {
+  const e = state.sheet.extended[0];
+  const rows = compileSkills();
+  const live = (rows.find(r => r.name === e.skill) || {}).value;
+  e.value = 1;                       // как будто навык записали давно и он вырос
+  extRoll('extT');
+  return state.sheet.extended[0].value === live
+    ? true
+    : 'взято ' + state.sheet.extended[0].value + ', а на бланке ' + live;
+}));
+
+await check('попытка попадает в общий журнал бросков', () => ev(() => {
+  state.sheet.rollLog = [];              // журнал обрезан на тридцати записях
+  const before = state.sheet.rollLog.length;
+  extRoll('extT');
+  const r = state.sheet.rollLog[0];
+  if (state.sheet.rollLog.length !== before + 1) return 'в журнал не записалось';
+  if (!/растянутая/.test(r.name)) return 'в журнале: ' + r.name;
+  const t = state.sheet.extended[0].tries.slice(-1)[0];
+  return (r.d === t.d && r.target === t.target) ? true
+    : 'журнал и попытка разошлись: ' + r.d + '/' + r.target + ' против ' + t.d + '/' + t.target;
+}));
+
+await check('досье без растянутых проверок открывается как прежде', () => ev(() => {
+  // Поле добавлено к формату сохранения; старые досье его просто не имеют.
+  delete state.sheet.extended;
+  const html = extBlockHtml();
+  if (!/пока ничего не начато/.test(html)) return 'блок не справился с отсутствующим полем';
+  extAdd();
+  const ok = !!document.getElementById('ext-name');
+  ordoDialogClose();
+  state.sheet.extended = [];
+  return ok ? true : 'не открылось окно «завести дело»';
+}));
 
 // ── встречная проверка ─────────────────────────────────────────────────────
 await check('встречная берёт уже выпавший бросок, а не новый', async () => {
@@ -2151,6 +2218,7 @@ await check('встречная сравнивает уровни успеха �
   await p.waitForTimeout(250);
   const open = await ev(() => !!document.getElementById('opp-val'));
   if (!open) return 'диалог встречной не открылся';
+  await clearLog();
   const n = await ev(() => state.sheet.rollLog.length);
   await ev(() => { document.getElementById('opp-val').value = 45; document.getElementById('opp-go').click(); });
   await p.waitForTimeout(250);
@@ -2181,6 +2249,7 @@ await check('встречная без значения противника н�
   await p.waitForTimeout(200);
   await ev(() => document.querySelector('#roll-modal [data-call="opposed"]').click());
   await p.waitForTimeout(200);
+  await clearLog();
   const n = await ev(() => state.sheet.rollLog.length);
   await ev(() => { document.getElementById('opp-val').value = ''; document.getElementById('opp-go').click(); });
   await p.waitForTimeout(200);
@@ -2276,6 +2345,7 @@ await check('удержание на характеристике открыва
   // p.mouse этого не делает и жмёт по пустому месту вьюпорта
   const cell = p.locator('.sv4-stat.rollable').first();
   await cell.hover();
+  await clearLog();
   const logBefore = await ev(() => (state.sheet.rollLog || []).length);
   await p.mouse.down();
   await p.waitForTimeout(650);
@@ -2292,6 +2362,7 @@ await check('удержание на характеристике открыва
 
 await check('короткий тап по-прежнему просто бросает', async () => {
   await p.waitForTimeout(300);
+  await clearLog();
   const before = await ev(() => (state.sheet.rollLog || []).length);
   await p.locator('.sv4-stat.rollable').first().click();
   await p.waitForTimeout(300);
