@@ -360,7 +360,12 @@ function showRollResult(name, target, d, outcome, cls, slText, meta){
     modal = document.createElement('div');
     modal.id = 'roll-modal';
     modal.className = 'sv4-roll-modal';
-    modal.onclick = () => modal.classList.remove('show');
+    // Закрываем только по клику по самой подложке. Раньше она гасла от любого
+    // клика внутри, и карточка защищалась event.stopPropagation() — а вместе
+    // со всплытием обрубалось делегирование: кнопки с data-call ловит
+    // обработчик на документе, и «Ещё раз» не делала ничего вовсе. Ту же
+    // ловушку уже находили в справочнике, здесь она осталась незамеченной.
+    modal.onclick = (e) => { if(e.target === modal) modal.classList.remove('show'); };
     document.body.appendChild(modal);
   }
   // Строка про цель — она же кнопка смены сложности: менять её хочется ровно
@@ -372,7 +377,7 @@ function showRollResult(name, target, d, outcome, cls, slText, meta){
     ? `<button class="sv4-roll-dif" data-call="roll-dif" data-v="${escAttr(name)}" data-n="${base}"
          title="Выбрать сложность проверки">${note} · цель ≤ ${target} <span class="dif-caret">▾</span></button>`
     : `<div class="sv4-roll-target">цель ≤ ${target}</div>`;
-  modal.innerHTML = `<div class="sv4-roll-card ${cls}" onclick="event.stopPropagation()">
+  modal.innerHTML = `<div class="sv4-roll-card ${cls}">
     <div class="sv4-roll-skill">${escHtml(name)}</div>
     ${difLine}
     <div class="sv4-roll-die">${d}</div>
@@ -382,6 +387,7 @@ function showRollResult(name, target, d, outcome, cls, slText, meta){
     <div class="sv4-roll-btns">
       <button class="sv4-roll-close" onclick="document.getElementById('roll-modal').classList.remove('show')">Закрыть</button>
       <button class="sv4-roll-again" data-call="roll" data-v="${escAttr(name)}" data-n="${base}" data-d="${dif}"><span class="ic">${ICONS.dice}</span> Ещё раз</button>
+      ${meta ? `<button class="sv4-roll-again" data-call="opposed" data-v="${escAttr(name)}" data-n="${target}" data-r="${d}" data-s="${Math.trunc(target/10) - Math.trunc(d/10)}">⚔ Встречная</button>` : ''}
     </div>
   </div>`;
   modal.classList.add('show');

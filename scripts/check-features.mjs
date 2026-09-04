@@ -2094,16 +2094,104 @@ await check('сложность и преимущество складывают
   return r.target === 45 ? true : 'цель ' + r.target + ', а ждали 45 (45 +20 −20)';
 }));
 
+await check('«Ещё раз» вообще делает бросок', async () => {
+  // Проверка этого не проверяла и потому молчала: карточка глушила всплытие,
+  // кнопку с data-call ловит обработчик на документе — и нажатие не делало
+  // ничего. Сравнение шло с той же самой записью, которая не менялась.
+  await ev(() => { state.sheet.advantage = 0; rollCheck('плавание', 50); });
+  await p.waitForTimeout(200);
+  const before = await ev(() => state.sheet.rollLog.length);
+  await ev(() => document.querySelector('#roll-modal [data-call="roll"]').click());
+  await p.waitForTimeout(200);
+  const after = await ev(() => state.sheet.rollLog.length);
+  if (after !== before + 1) return 'записей было ' + before + ', стало ' + after;
+  return ev(() => document.getElementById('roll-modal').classList.contains('show')
+    ? true : 'карточка закрылась вместо повтора');
+});
+
 await check('«Ещё раз» не прибавляет преимущество второй раз', async () => {
   // Раньше повтор получал имя с припиской и цель уже с надбавкой — и надбавка
   // ложилась поверх самой себя.
   await ev(() => { state.sheet.advantage = 3; rollCheck('рукопашный бой (базовый)', 40); });
   await p.waitForTimeout(150);
   const first = await ev(() => state.sheet.rollLog[0].target);
-  await ev(() => document.querySelector('#roll-modal .sv4-roll-again').click());
-  await p.waitForTimeout(150);
-  const again = await ev(() => { const t = state.sheet.rollLog[0].target; state.sheet.advantage = 0; return t; });
-  return (first === 70 && again === 70) ? true : 'первый ' + first + ', повтор ' + again + ', а ждали 70 и 70';
+  const n = await ev(() => state.sheet.rollLog.length);
+  await ev(() => document.querySelector('#roll-modal [data-call="roll"]').click());
+  await p.waitForTimeout(200);
+  const r = await ev(() => { const l = state.sheet.rollLog; state.sheet.advantage = 0;
+    return { n: l.length, target: l[0].target }; });
+  if (r.n !== n + 1) return 'повтор не бросил: записей ' + n + ' → ' + r.n;
+  return (first === 70 && r.target === 70) ? true
+    : 'первый ' + first + ', повтор ' + r.target + ', а ждали 70 и 70';
+});
+
+// ── встречная проверка ─────────────────────────────────────────────────────
+await check('встречная берёт уже выпавший бросок, а не новый', async () => {
+  await ev(() => {
+    const m = document.getElementById('roll-modal'); if (m) m.classList.remove('show');
+    state.sheet.advantage = 0; rollCheck('обаяние', 52);
+  });
+  await p.waitForTimeout(200);
+  const mine = await ev(() => {
+    const b = document.querySelector('#roll-modal [data-call="opposed"]');
+    if (!b) return null;
+    const r = state.sheet.rollLog[0];
+    return { d: parseInt(b.dataset.r, 10), target: parseInt(b.dataset.n, 10),
+             sl: parseInt(b.dataset.s, 10), logD: r.d, logTarget: r.target };
+  });
+  if (!mine) return 'кнопки встречной на карточке нет';
+  if (mine.d !== mine.logD || mine.target !== mine.logTarget)
+    return 'кнопка несёт d=' + mine.d + '/≤' + mine.target + ', а выпало ' + mine.logD + '/≤' + mine.logTarget;
+  const want = Math.trunc(mine.target / 10) - Math.trunc(mine.d / 10);
+  return mine.sl === want ? true : 'ст.усп. в кнопке ' + mine.sl + ', а по формуле ' + want;
+});
+
+await check('встречная сравнивает уровни успеха и пишет в журнал', async () => {
+  await ev(() => document.querySelector('#roll-modal [data-call="opposed"]').click());
+  await p.waitForTimeout(250);
+  const open = await ev(() => !!document.getElementById('opp-val'));
+  if (!open) return 'диалог встречной не открылся';
+  const n = await ev(() => state.sheet.rollLog.length);
+  await ev(() => { document.getElementById('opp-val').value = 45; document.getElementById('opp-go').click(); });
+  await p.waitForTimeout(250);
+  return ev(prev => {
+    const sides = document.querySelectorAll('#roll-modal .opp-side');
+    if (sides.length !== 2) return 'сторон на карточке ' + sides.length;
+    const nums = [...sides].map(s => ({
+      d: parseInt(s.querySelector('.opp-die').textContent, 10),
+      t: parseInt(s.querySelector('.opp-vs').textContent.replace(/[^\d]/g, ''), 10)
+    }));
+    const sl = nums.map(x => Math.trunc(x.t / 10) - Math.trunc(x.d / 10));
+    const diff = sl[0] - sl[1];
+    const said = (document.querySelector('#roll-modal .sv4-roll-outcome') || {}).textContent || '';
+    const want = diff > 0 ? 'Верх твой' : diff < 0 ? 'Верх за противником' : 'Ничья';
+    if (said.indexOf(want) < 0) return 'сказано «' + said + '», а разница ' + diff;
+    if (nums[1].t !== 45) return 'противник бросает против ' + nums[1].t + ', а задали 45';
+    const log = state.sheet.rollLog;
+    if (log.length !== prev + 1) return 'в журнал не записалось';
+    return /^Встречная: обаяние/.test(log[0].name) ? true : 'в журнале: ' + log[0].name;
+  }, n);
+});
+
+await check('встречная без значения противника не бросает', async () => {
+  await ev(() => {
+    const m = document.getElementById('roll-modal'); if (m) m.classList.remove('show');
+    state.sheet.advantage = 0; rollCheck('запугивание', 40);
+  });
+  await p.waitForTimeout(200);
+  await ev(() => document.querySelector('#roll-modal [data-call="opposed"]').click());
+  await p.waitForTimeout(200);
+  const n = await ev(() => state.sheet.rollLog.length);
+  await ev(() => { document.getElementById('opp-val').value = ''; document.getElementById('opp-go').click(); });
+  await p.waitForTimeout(200);
+  return ev(prev => {
+    const still = !!document.getElementById('opp-val');
+    const rolled = state.sheet.rollLog.length !== prev;
+    ordoDialogClose();
+    const m = document.getElementById('roll-modal'); if (m) m.classList.remove('show');
+    if (rolled) return 'бросок случился без значения противника';
+    return still ? true : 'диалог закрылся, ничего не сказав';
+  }, n);
 });
 
 await check('карточка называет сложность и служит кнопкой', async () => {

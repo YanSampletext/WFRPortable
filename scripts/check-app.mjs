@@ -225,7 +225,18 @@ for (const t of tabs) {
   const dlg = await p.evaluate(() => __badContrast('#ordo-dlg *'));
   console.log(`  ${'диалог'.padEnd(10)} ${!dlg.seen ? '⚠ диалог не открылся'
     : dlg.bad.length ? '⚠ сливается: ' + dlg.bad.join(' | ') : 'читается (' + dlg.seen + ')'}`);
-  await p.evaluate(() => ordoDialogClose());
+  await p.evaluate(() => {
+    ordoDialogClose();
+    rollCheck('обаяние', 52);
+    document.querySelector('#roll-modal [data-call="opposed"]').click();
+    document.getElementById('opp-val').value = 45;
+    document.getElementById('opp-go').click();
+  });
+  await p.waitForTimeout(250);
+  const opp = await p.evaluate(() => __badContrast('#roll-modal *'));
+  console.log(`  ${'встречная'.padEnd(10)} ${!opp.seen ? '⚠ карточка не открылась'
+    : opp.bad.length ? '⚠ сливается: ' + opp.bad.join(' | ') : 'читается (' + opp.seen + ')'}`);
+  await p.evaluate(() => { document.getElementById('roll-modal').classList.remove('show'); });
 }
 await p.evaluate(() => document.body.classList.remove('theme-light'));
 

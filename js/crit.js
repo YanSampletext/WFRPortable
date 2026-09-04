@@ -48,10 +48,16 @@ function critShowResult(z, w){
   if(typeof autosave==='function') autosave();
   // показать модалку
   let modal = document.getElementById('crit-modal');
+  // Подложка закрывается только по клику по себе. Раньше она гасла от любого
+  // клика внутри, и карточку приходилось защищать event.stopPropagation() —
+  // а это глушит и делегирование: кнопку с data-call ловит обработчик на
+  // документе, и она молча перестаёт работать. На карточке броска так и
+  // случилось с «Ещё раз».
   if(!modal){ modal=document.createElement('div'); modal.id='crit-modal'; modal.className='sv4-roll-modal';
-    modal.onclick=()=>modal.classList.remove('show'); document.body.appendChild(modal); }
+    modal.onclick=(e)=>{ if(e.target===modal) modal.classList.remove('show'); };
+    document.body.appendChild(modal); }
   const condTxt = Object.keys(conds).length ? Object.entries(conds).map(([k,v])=>v+'× '+k).join(', ') : '—';
-  modal.innerHTML = `<div class="sv4-roll-card ${w.lethal?'crit-fail':''}" onclick="event.stopPropagation()">
+  modal.innerHTML = `<div class="sv4-roll-card ${w.lethal?'crit-fail':''}">
     <div class="sv4-roll-skill">${escHtml(z.label)} · d100=${z.d}/${w.d}</div>
     <div class="sv4-roll-outcome" style="font-size:18px;margin:6px 0;">${escHtml(w.name)}</div>
     <div class="sv4-roll-sl" style="font-size:13px;">Раны: <b>${w.wounds}</b> (не снижаются доспехом/БВ)</div>

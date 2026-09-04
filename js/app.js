@@ -476,6 +476,11 @@ document.addEventListener('click', function (e) {
     // повтор шёл против той же цели, что и первый бросок.
     case 'roll':          rollCheck(v, parseInt(n, 10) || 0, parseInt(el.dataset.d, 10) || 0); break;
     case 'roll-dif':      difficultyPick(v, parseInt(n, 10) || 0); break;
+    // data-r и data-s — уже выпавший бросок и его уровень успеха: встречная
+    // проверка не перебрасывает твой кубик, она добавляет к нему чужой.
+    case 'opposed':       opposedFrom(v, parseInt(n, 10) || 0,
+                                      parseInt(el.dataset.r, 10) || 0,
+                                      parseInt(el.dataset.s, 10) || 0); break;
     case 'career-pick':   pickCareerFromSearch(el.dataset.cls || '', v); break;
     case 'talent-race':   chooseRaceTalent(parseInt(n, 10) || 0, v); break;
     case 'skill-career':  changeCareerSkill(v, parseInt(n, 10) || 0); break;

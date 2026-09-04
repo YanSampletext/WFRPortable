@@ -628,3 +628,32 @@ body.theme-light .sv4-sk-adv{ color:var(--gold,#7a5a1e); }
 .sv4-btn-mini{ min-width:44px; }
 .sv4-adv-reset{ min-width:44px; }
 .sv4-hp-actions .sv4-btn-dmg, .sv4-hp-actions .sv4-btn-heal{ min-width:44px; }
+
+/* ═══════════ ВСТРЕЧНАЯ ПРОВЕРКА ═══════════ */
+/* Кнопок на карточке броска стало три — пусть переносятся, а не сжимаются */
+.sv4-roll-btns{ flex-wrap:wrap; }
+
+/* Готовые значения из схватки: подставить одним нажатием, но не навязывать —
+   против обаяния защита не годится, там своё число */
+.opp-quick{ display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:10px; }
+.opp-foe{
+  min-height:36px; padding:0 10px; cursor:pointer; border-radius:6px;
+  font-family:'EB Garamond', serif; font-size:12px;
+  color:var(--text2,#c9bda0); background:rgba(0,0,0,.24);
+  border:1px solid var(--border,rgba(201,162,39,.25));
+}
+.opp-foe b{ color:var(--gold2,#e0c14e); font-family:Cinzel, serif; }
+body.theme-light .opp-foe{ background:rgba(125,95,36,.08); color:#3d2f18; }
+
+/* Два броска рядом и разница между ними посередине */
+.opp-pair{ display:flex; align-items:center; justify-content:center; gap:10px; margin:10px 0 6px; }
+.opp-side{ flex:1 1 0; min-width:0; padding:6px 4px; border-radius:8px;
+  border:1px solid var(--border2,rgba(201,162,39,.25)); background:rgba(0,0,0,.22); }
+.opp-side.ok{ border-color:var(--gold-dk,#5e4720); }
+.opp-who{ font-family:Cinzel, serif; font-size:10px; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--text3,#8a7c58); }
+.opp-die{ font-family:'EB Garamond', serif; font-size:30px; line-height:1.1; color:var(--text,#e6d9b8); }
+.opp-side.ok .opp-die{ color:var(--gold2,#e0c373); }
+.opp-vs, .opp-sl{ font-size:10.5px; color:var(--text3,#8a7c58); }
+.opp-mid{ flex:0 0 auto; font-family:Cinzel, serif; font-size:15px; color:var(--gold2,#e0c373);
+  font-variant-numeric:tabular-nums; }
