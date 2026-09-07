@@ -682,3 +682,8 @@ body.theme-light .opp-foe{ background:rgba(125,95,36,.08); color:#3d2f18; }
 .ext-btns{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
 body.theme-light .ext-item{ background:rgba(125,95,36,.06); }
 body.theme-light .ext-try{ background:rgba(125,95,36,.08); }
+
+/* Удержание на «Атаковать» открывает выбор сложности — значит и здесь нельзя
+   давать системе начать выделение текста, пока палец лежит */
+[data-atk]{ -webkit-touch-callout:none; -webkit-user-select:none; user-select:none;
+  touch-action:manipulation; }

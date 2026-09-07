@@ -95,15 +95,28 @@ function difficultyPick(name, base, onPick) {
   var MOVE = 10;    // px — палец поехал: это прокрутка, а не удержание
   var timer = null, el = null, sx = 0, sy = 0, firedAt = 0;
 
+  // Удержание работает и на кнопке «Атаковать»: выстрел в темноте по бегущему —
+  // обычное дело, и сложность там нужна не реже, чем на бланке. Жест один и
+  // тот же, поэтому учить ему заново не приходится.
   function rollableAt(node) {
-    var r = node && node.closest ? node.closest('[data-call="roll"]') : null;
-    return (r && r.dataset.v) ? r : null;
+    if (!node || !node.closest) return null;
+    var r = node.closest('[data-call="roll"]');
+    if (r && r.dataset.v) return r;
+    var a = node.closest('[data-atk]');
+    return (a && a.dataset.atk !== undefined) ? a : null;
   }
   function cancel() { if (timer) { clearTimeout(timer); timer = null; } el = null; }
 
   function open(node) {
     firedAt = Date.now();
     if (navigator.vibrate) navigator.vibrate(12);
+    if (node.dataset.atk !== undefined) {
+      var i = parseInt(node.dataset.atk, 10) || 0;
+      var t = (typeof attackTarget === 'function') ? attackTarget(i) : null;
+      if (!t) return;
+      difficultyPick(t.name, t.value, function (mod) { attackWith(i, mod); });
+      return;
+    }
     difficultyPick(node.dataset.v, parseInt(node.dataset.n, 10) || 0);
   }
 

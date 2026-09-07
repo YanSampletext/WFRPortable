@@ -910,7 +910,7 @@ function renderTabPersona(){
           ${w.range?`<span><b>Дист:</b> ${escHtml(w.range)}</span>`:''}
           ${w.qualities?`<span><b>Кач:</b> ${escHtml(w.qualities)}</span>`:''}
         </div>
-        <button class="sv4-btn-mini btn-gold sv4-w-atk" data-atk="${wi}">Атаковать</button>
+        <button class="sv4-btn-mini btn-gold sv4-w-atk" data-atk="${wi}" title="Тап — удар, удержание — сложность">Атаковать</button>
       </div>`;
     });
     h += `</div>`;

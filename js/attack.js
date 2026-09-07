@@ -41,13 +41,25 @@
     return { formula: formula || '—', value: (typeof n === 'number' && !isNaN(n)) ? n : null };
   }
 
+  // Чем и против чего бьём — нужно снаружи, чтобы выбор сложности показал те же
+  // числа, что выпадут на карточке.
+  window.attackTarget = function (i) {
+    var w = ((state.sheet && state.sheet.weapons) || [])[i];
+    if (!w) return null;
+    var sk = skillValue(skillFor(w));
+    return { name: (w.name || 'оружие') + ' · ' + sk.name, value: sk.value };
+  };
+
   // ── сам удар ────────────────────────────────────────────────────────────────
-  window.attackWith = function (i) {
+  // mod — сложность из книги. Приходит от удержания на кнопке «Атаковать»:
+  // выстрел в темноте по бегущему — обычное дело, и до сих пор его нечем было
+  // записать.
+  window.attackWith = function (i, mod) {
     var w = ((state.sheet && state.sheet.weapons) || [])[i];
     if (!w) { notify('Оружие не найдено.'); return; }
 
     var targets = (typeof encList === 'function') ? encList() : [];
-    if (!targets.length) { attackRoll(w, null); return; }
+    if (!targets.length) { attackRoll(w, null, mod); return; }
 
     ordoChoice({
       title: 'Удар: ' + (w.name || 'оружие'),
@@ -56,20 +68,21 @@
         return {
           label: t.name + ' · ' + t.hp + (t.maxHp ? '/' + t.maxHp : '') + ' ран' +
                  (t.soak ? ' · гасит ' + t.soak : ''),
-          cb: function () { attackRoll(w, t.id); }
+          cb: function () { attackRoll(w, t.id, mod); }
         };
-      }).concat([{ label: 'Без цели — просто бросок', cb: function () { attackRoll(w, null); } }])
+      }).concat([{ label: 'Без цели — просто бросок', cb: function () { attackRoll(w, null, mod); } }])
     });
   };
 
-  function attackRoll(w, targetId) {
+  function attackRoll(w, targetId, mod) {
     var base = skillFor(w);
     var sk = skillValue(base);
 
     // Преимущество даёт +10 за пункт — ровно как в rollCheck на бланке
     var adv = (state.sheet && state.sheet.advantage) || 0;
     var bonus = adv > 0 ? adv * 10 : 0;
-    var target = sk.value + bonus;
+    var dif = parseInt(mod, 10) || 0;
+    var target = sk.value + bonus + dif;
 
     var d = Math.floor(Math.random() * 100) + 1;
     var sl = Math.trunc(target / 10) - Math.trunc(d / 10);
@@ -96,18 +109,19 @@
     var slPlus = Math.max(0, sl);
     var raw = (dmg.value === null) ? null : dmg.value + slPlus;
 
-    logRoll(w, sk, target, d, hit, sl, opp);
-    showAttack(w, sk, target, d, hit, sl, dmg, raw, targetId, opp);
+    logRoll(w, sk, target, d, hit, sl, opp, dif);
+    showAttack(w, sk, target, d, hit, sl, dmg, raw, targetId, opp, dif);
     if (navigator.vibrate) navigator.vibrate(hit ? [20] : [40, 30, 40]);
   }
 
-  function logRoll(w, sk, target, d, hit, sl, opp) {
+  function logRoll(w, sk, target, d, hit, sl, opp, dif) {
     if (!state || !state.sheet) return;
     if (!Array.isArray(state.sheet.rollLog)) state.sheet.rollLog = [];
     state.sheet.rollLog.unshift({
       name: 'Удар: ' + (w.name || 'оружие') + ' · ' + sk.name +
             (opp ? ' (встречная, защита ' + opp.target + ')' : ''),
       target: target, d: d,
+      dif: dif || undefined,
       outcome: hit ? 'Попал' : 'Мимо',
       // Минус типографский — как в остальных строках журнала и в книжных таблицах
       sl: (sl >= 0 ? '+' + sl : String(sl).replace('-', '−')) + ' ст.усп.',
@@ -119,7 +133,7 @@
     if (body && typeof rollLogRows === 'function') body.innerHTML = rollLogRows();
   }
 
-  function showAttack(w, sk, target, d, hit, sl, dmg, raw, targetId, opp) {
+  function showAttack(w, sk, target, d, hit, sl, dmg, raw, targetId, opp, dif) {
     var soak = (targetId && typeof encSoak === 'function') ? encSoak(targetId) : 0;
     var net = raw === null ? null : Math.max(0, raw - soak);
 
@@ -166,7 +180,8 @@
     modal.innerHTML =
       '<div class="sv4-roll-card ' + (hit ? 'success' : 'fail') + '">' +
         '<div class="sv4-roll-skill">' + escHtml(w.name || 'Удар') + '</div>' +
-        '<div class="sv4-roll-target">' + escHtml(sk.name) + ' · цель ≤ ' + target + '</div>' +
+        '<div class="sv4-roll-target">' + escHtml(sk.name) + ' · цель ≤ ' + target +
+          (dif && typeof difficultyNote === 'function' ? ' · ' + difficultyNote(dif) : '') + '</div>' +
         '<div class="sv4-roll-die">' + d + '</div>' +
         '<div class="sv4-roll-outcome">' + (hit ? 'Попал' : 'Мимо') + '</div>' +
         (opp

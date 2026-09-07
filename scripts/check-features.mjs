@@ -2181,6 +2181,55 @@ await check('ни одна кнопка не заглушена по дорог�
   return bad.length ? 'заглушены: ' + bad.slice(0, 4).join('; ') : true;
 });
 
+// ── сложность в ударе ──────────────────────────────────────────────────────
+await check('удержание на «Атаковать» открывает сложность и бьёт с ней', async () => {
+  await ev(() => {
+    const m = document.getElementById('roll-modal'); if (m) m.classList.remove('show');
+    ordoDialogClose();
+    state.sheet.advantage = 0;
+    state.sheet.weapons = [{ name: 'Лук', group: 'Лук', damage: '+РС+3', range: 'дальняя' }];
+    encList().forEach(x => encRemove(x.id));       // без цели удар идёт сразу
+    sv4NavGo('persona');
+  });
+  await p.waitForTimeout(400);
+  const base = await ev(() => (attackTarget(0) || {}).value);
+  if (!(base > 0)) return 'значение навыка удара не получено';
+  const btn = p.locator('[data-atk]').first();
+  await btn.hover();
+  await clearLog();
+  await p.mouse.down();
+  await p.waitForTimeout(650);
+  await p.mouse.up();
+  await p.waitForTimeout(300);
+  const opened = await ev(() => document.querySelectorAll('#ordo-dlg .dif-row').length);
+  if (opened !== 7) return 'выбор сложности не открылся (строк ' + opened + ')';
+  await ev(() => document.querySelectorAll('#ordo-dlg .dif-row')[5].click());   // трудная −20
+  await p.waitForTimeout(350);
+  return ev(b => {
+    const r = state.sheet.rollLog[0];
+    if (!r || !/^Удар/.test(r.name)) return 'удар не состоялся';
+    if (r.dif !== -20) return 'сложность в журнале ' + r.dif;
+    if (r.target !== b - 20) return 'цель ' + r.target + ', а ждали ' + (b - 20);
+    const line = (document.querySelector('#roll-modal .sv4-roll-target') || {}).textContent || '';
+    return /Трудная\s*−20/.test(line) ? true : 'на карточке не написана сложность: ' + line;
+  }, base);
+});
+
+await check('короткий тап по «Атаковать» бьёт без сложности', async () => {
+  await ev(() => { const m = document.getElementById('roll-modal'); if (m) m.classList.remove('show'); });
+  const base = await ev(() => (attackTarget(0) || {}).value);
+  await clearLog();
+  await p.locator('[data-atk]').first().click();
+  await p.waitForTimeout(350);
+  return ev(b => {
+    const r = state.sheet.rollLog[0];
+    if (!r || !/^Удар/.test(r.name)) return 'удар не состоялся';
+    if (r.dif) return 'приписана сложность ' + r.dif;
+    const m = document.getElementById('roll-modal'); if (m) m.classList.remove('show');
+    return r.target === b ? true : 'цель ' + r.target + ', а ждали ' + b;
+  }, base);
+});
+
 // ── сложность в магии и вере ───────────────────────────────────────────────
 await check('сложность доходит до сотворения, каналирования и молитвы', () => ev(() => {
   state.sheet.langMagick = 52; state.sheet.channelSkill = 44; state.sheet.praySkill = 48;
