@@ -1657,7 +1657,14 @@ await check('на удар из лука боевой талант рукопа�
     attackWith(0);
   });
   await p.waitForTimeout(300);
-  return ev(() => !document.querySelector('#roll-modal .roll-talents'));
+  return ev(() => {
+    // Блока может не быть вовсе, а может и быть: у случайного персонажа
+    // найдутся собственные стрелковые таланты, и это правильно. Важно одно —
+    // рукопашного среди них нет. Прежняя редакция требовала пустоты и падала
+    // примерно раз в пять прогонов не из-за кода, а из-за везения генератора.
+    const box = document.querySelector('#roll-modal .roll-talents');
+    return !box || !/Батман/.test(box.textContent);
+  });
 });
 
 // ── стоимость развития: сверка с таблицей книги ────────────────────────────
@@ -2128,6 +2135,101 @@ await check('«Ещё раз» не прибавляет преимуществ�
   return (first === 70 && r.target === 70) ? true
     : 'первый ' + first + ', повтор ' + r.target + ', а ждали 70 и 70';
 });
+
+await check('ни одна кнопка не заглушена по дороге к обработчику', async () => {
+  // Кнопки с data-атрибутами ловит один обработчик на документе. Стоит предку
+  // погасить всплытие — и кнопка мертва молча, без ошибки в консоли. Так и было
+  // с «Ещё раз» несколько выпусков подряд. Смотрим на всех вкладках и внутри
+  // окон: карточка броска, справочник, лоток кубов, критическое ранение.
+  const SEL = '[data-call],[data-act],[data-atk],[data-ref-kind],[data-dice],[data-sk]';
+  const scan = () => ev(sel => {
+    const out = [];
+    document.querySelectorAll(sel).forEach(el => {
+      for (let n = el.parentElement; n; n = n.parentElement) {
+        const h = n.getAttribute && n.getAttribute('onclick');
+        if (h && /stopPropagation/.test(h)) {
+          out.push(((el.className || el.tagName) + '').slice(0, 22) +
+                   ' в ' + ((n.className || n.tagName) + '').slice(0, 20));
+          break;
+        }
+      }
+    });
+    return [...new Set(out)];
+  }, SEL);
+  let bad = [];
+  const tabs = await ev(() => SHEET_TABS.map(t => t.id));
+  for (const t of tabs) { await ev(x => sv4NavGo(x), t); bad = bad.concat(await scan()); }
+  const closeAll = () => ev(() => {
+    ['roll-modal', 'crit-modal', 'ref-modal'].forEach(id => {
+      const m = document.getElementById(id); if (m) m.classList.remove('show');
+    });
+    if (typeof ordoDialogClose === 'function') ordoDialogClose();
+  });
+  for (const open of [
+    () => { state.sheet.advantage = 0; rollCheck('плавание', 50); },
+    () => refOpen(),
+    () => diceOpen(),
+    () => critDoFullRoll()
+  ]) {
+    await closeAll();
+    await ev(open);
+    await p.waitForTimeout(200);
+    bad = bad.concat(await scan());
+  }
+  await closeAll();
+  bad = [...new Set(bad)];
+  return bad.length ? 'заглушены: ' + bad.slice(0, 4).join('; ') : true;
+});
+
+// ── сложность в магии и вере ───────────────────────────────────────────────
+await check('сложность доходит до сотворения, каналирования и молитвы', () => ev(() => {
+  state.sheet.langMagick = 52; state.sheet.channelSkill = 44; state.sheet.praySkill = 48;
+  state.sheet.spells = [{ name: 'Проба', cn: 2, range: '', target: '', duration: '' }];
+  state.sheet.blessings = [{ name: 'Проба', range: '', target: '', duration: '' }];
+  state.sheet.miscastLog = []; state.sheet.wrathLog = [];
+  const bad = [];
+  // Провал или дубль кладут сверху запись об ошибке сотворения или о гневе
+  // богов, так что строка самого броска не обязана быть первой. Ищем по
+  // всему журналу, а не в его верхушке.
+  const said = (log, want) => {
+    const hit = log.find(e => ((e || {}).text || '').indexOf('против ' + want) >= 0);
+    return hit ? null : log.map(e => (e.text || '').replace(/<[^>]+>/g, '')).join(' // ').slice(0, 90);
+  };
+  rollCastingTest(0, -20);
+  let w = said(state.sheet.miscastLog, 32);      // 52 − 20
+  if (w) bad.push('сотворение: ' + w);
+  state.sheet.miscastLog = [];
+  rollChannelling(20);
+  w = said(state.sheet.miscastLog, 64);          // 44 + 20
+  if (w) bad.push('каналирование: ' + w);
+  rollPrayTest(0, 'blessing', -30);
+  w = said(state.sheet.wrathLog, 18);            // 48 − 30
+  if (w) bad.push('молитва: ' + w);
+  return bad.length ? bad.join(' | ') : true;
+}));
+
+await check('без сложности магия бросает как прежде', () => ev(() => {
+  state.sheet.miscastLog = [];
+  state.sheet.langMagick = 52;
+  rollCastingTest(0);
+  const hit = state.sheet.miscastLog.find(e => /d100 = /.test((e || {}).text || ''));
+  if (!hit) return 'записи о броске нет вовсе';
+  const t = hit.text;
+  if (t.indexOf('против 52') < 0) return 'цель не 52: ' + t.replace(/<[^>]+>/g, '').slice(0, 70);
+  // Подписи сложности при нулевом модификаторе быть не должно
+  return /\(Серьёзная/.test(t) ? 'приписана серьёзная при обычном броске' : true;
+}));
+
+await check('в журнал веры не попадает сырая подстановка', () => ev(() => {
+  // Две строки были записаны в обычных кавычках, и «${ICONS.check}» уходило
+  // в журнал буквально.
+  state.sheet.wrathLog = [];
+  state.sheet.praySkill = 99;                    // чтобы наверняка вышел успех
+  rollPrayTest(0, 'blessing');
+  // Смотрим весь журнал: гнев богов мог лечь поверх строки молитвы.
+  const raw = state.sheet.wrathLog.filter(e => ((e || {}).text || '').indexOf('${') >= 0);
+  return raw.length ? 'сырая подстановка: ' + raw[0].text.slice(0, 80) : true;
+}));
 
 // ── растянутые проверки ────────────────────────────────────────────────────
 await check('растянутая копит уровни успеха попытка за попыткой', () => ev(() => {

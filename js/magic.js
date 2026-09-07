@@ -150,12 +150,35 @@ function arcUnitsDigit(r){ return (r===100?0:r)%10; }
 // Подключается ПОСЛЕ app.js: тот держит state и расчёты, которыми здесь
 // пользуются. Порядок задан в index.html и в списке ASSETS у sw.js.
 
+// Сложность проверки — та же книжная шкала, что и на бланке. Сотворение,
+// каналирование и молитва — обычные проверки навыка, и мастер называет им
+// сложность ровно так же; до сих пор они бросались только по голому значению.
+// Своей копии шкалы здесь нет: difficultyPick умеет отдавать выбор наружу.
+function arcDifNote(mod){
+  mod = parseInt(mod)||0;
+  return mod && typeof difficultyNote === 'function' ? ' (' + difficultyNote(mod) + ')' : '';
+}
+function castDifficulty(i){
+  difficultyPick('Сотворение · язык (магик)', parseInt(state.sheet.langMagick)||0,
+                 function(m){ rollCastingTest(i, m); });
+}
+function channelDifficulty(){
+  difficultyPick('Каналирование · концентрация', parseInt(state.sheet.channelSkill)||0,
+                 function(m){ rollChannelling(m); });
+}
+function prayDifficulty(i, kind){
+  difficultyPick('Молитва', parseInt(state.sheet.praySkill)||0,
+                 function(m){ rollPrayTest(i, kind, m); });
+}
+
 // ===================== ПРОВЕРКА СОТВОРЕНИЯ =====================
-function rollCastingTest(idx){
+function rollCastingTest(idx, mod){
   const sp = (state.sheet.spells||[])[idx];
   if(!sp){ notify('Не выбрано заклинание.'); return; }
-  const target = parseInt(state.sheet.langMagick)||0;
-  if(target<=0){ notify('Укажи навык «язык (магик)» вверху вкладки.'); return; }
+  const base = parseInt(state.sheet.langMagick)||0;
+  if(base<=0){ notify('Укажи навык «язык (магик)» вверху вкладки.'); return; }
+  const dif = parseInt(mod)||0;
+  const target = base + dif;
   const cn = parseInt(sp.cn)||0;
   const r = rollD100();
   const sl = arcSL(target, r);
@@ -164,7 +187,7 @@ function rollCastingTest(idx){
   const effSL = sl + (parseInt(state.sheet.channelled)||0);
   const cast = success && effSL >= cn;
   let lines = [];
-  lines.push(`<span class="ic">${ICONS.dice}</span> d100 = <b>${r}</b> против ${target} → ${success?'успех':'провал'}, SL ${sl>=0?'+':''}${sl}`);
+  lines.push(`<span class="ic">${ICONS.dice}</span> d100 = <b>${r}</b> против ${target}${arcDifNote(dif)} → ${success?'успех':'провал'}, SL ${sl>=0?'+':''}${sl}`);
   if(state.sheet.channelled>0) lines.push(`Каналировано: +${state.sheet.channelled} SL → итог SL ${effSL>=0?'+':''}${effSL}`);
   lines.push(cast ? `<span class="ic">${ICONS.check}</span> Заклинание сотворено (нужно ЗС ${cn}).` : `<span class="ic">${ICONS.cross}</span> Не сотворено (нужно SL ≥ ЗС ${cn}).`);
   // дубли → критическое сотворение / ошибка
@@ -187,15 +210,17 @@ function rollCastingTest(idx){
   else renderSheet();
 }
 
-function rollChannelling(){
-  const target = parseInt(state.sheet.channelSkill)||0;
-  if(target<=0){ notify('Укажи навык «концентрация» вверху вкладки.'); return; }
+function rollChannelling(mod){
+  const base = parseInt(state.sheet.channelSkill)||0;
+  if(base<=0){ notify('Укажи навык «концентрация» вверху вкладки.'); return; }
+  const dif = parseInt(mod)||0;
+  const target = base + dif;
   const r = rollD100();
   const sl = arcSL(target, r);
   const success = r <= target;
   let add = success ? Math.max(0, sl) : 0;
   if(success) state.sheet.channelled = (parseInt(state.sheet.channelled)||0) + add;
-  let txt = `<span class="ic">${ICONS.dice}</span> Концентрация d100 = ${r} против ${target} → ${success?'успех':'провал'}, SL ${sl>=0?'+':''}${sl}. Накоплено каналированием: <b>${state.sheet.channelled||0}</b>.`;
+  let txt = `<span class="ic">${ICONS.dice}</span> Концентрация d100 = ${r} против ${target}${arcDifNote(dif)} → ${success?'успех':'провал'}, SL ${sl>=0?'+':''}${sl}. Накоплено каналированием: <b>${state.sheet.channelled||0}</b>.`;
   let auto=null;
   if(!success){ txt += ' Провал — малая ошибка, накопленное теряется.'; state.sheet.channelled=0; auto='minor'; }
   else if(arcIsDouble(r)){ txt += ' Дубль — малая ошибка.'; auto='minor'; }
@@ -229,20 +254,24 @@ function rollMajorMiscast(silent){
 }
 
 // ===================== ВЕРА: МОЛИТВА / ГНЕВ =====================
-function rollPrayTest(idx, kind){
+function rollPrayTest(idx, kind, mod){
   const list = kind==='miracle' ? (state.sheet.miracles||[]) : (state.sheet.blessings||[]);
   const it = list[idx];
-  const target = parseInt(state.sheet.praySkill)||0;
-  if(target<=0){ notify('Укажи навык «молитва» вверху раздела «Вера».'); return; }
+  const base = parseInt(state.sheet.praySkill)||0;
+  if(base<=0){ notify('Укажи навык «молитва» вверху раздела «Вера».'); return; }
+  const dif = parseInt(mod)||0;
+  const target = base + dif;
   const r = rollD100();
   const sl = arcSL(target, r);
   const success = r <= target;
   const sin = parseInt(state.sheet.sin)||0;
-  let lines = [`<span class="ic">${ICONS.dice}</span> Молитва d100 = <b>${r}</b> против ${target} → ${success?'успех':'провал'}, SL ${sl>=0?'+':''}${sl}` + (it?` — ${it.name}`:'')];
+  let lines = [`<span class="ic">${ICONS.dice}</span> Молитва d100 = <b>${r}</b> против ${target}${arcDifNote(dif)} → ${success?'успех':'провал'}, SL ${sl>=0?'+':''}${sl}` + (it?` — ${it.name}`:'')];
   // Гнев: дубль (заминка) ИЛИ единицы ≤ грех
   const triggerWrath = arcIsDouble(r) || (sin>0 && arcUnitsDigit(r) <= sin);
-  if(success) lines.push('<span class="ic">${ICONS.check}</span> Благословение/чудо проявляется (каждые +2 SL — усиление: цель/дистанция/длительность).');
-  else lines.push('<span class="ic">${ICONS.cross}</span> Не проявляется.');
+  // Обратные кавычки, а не обычные: в обычных подстановка не работает, и в
+  // журнал веры уходило буквальное «${ICONS.check}».
+  if(success) lines.push(`<span class="ic">${ICONS.check}</span> Благословение/чудо проявляется (каждые +2 SL — усиление: цель/дистанция/длительность).`);
+  else lines.push(`<span class="ic">${ICONS.cross}</span> Не проявляется.`);
   state.sheet.wrathLog = state.sheet.wrathLog || [];
   state.sheet.wrathLog.unshift({type:'pray', roll:r, text: lines.join(' · ')});
   if(state.sheet.wrathLog.length>12) state.sheet.wrathLog.pop();
@@ -299,6 +328,7 @@ function arcSpellRows(){
       <td><input class="sv4-text" style="width:70px;" placeholder="длит." value="${escAttr(s.duration)}" onchange="state.sheet.spells[${i}].duration=this.value;autosave();"/></td>
       <td style="white-space:nowrap;">
         <button class="btn btn-sm btn-gold" onclick="rollCastingTest(${i})" title="проверка сотворения"><span class="ic">${ICONS.dice}</span></button>
+        <button class="btn btn-sm" onclick="castDifficulty(${i})" title="сотворение с выбором сложности">±</button>
         <button class="sv4-cond-btn" onclick="state.sheet.spells.splice(${i},1);autosave();renderSheet();">×</button>
       </td>
     </tr>`;
@@ -319,6 +349,7 @@ function arcPrayerRows(kind){
       <td><input class="sv4-text" style="width:70px;" placeholder="длит." value="${escAttr(s.duration)}" onchange="state.sheet.${fld}[${i}].duration=this.value;autosave();"/></td>
       <td style="white-space:nowrap;">
         <button class="btn btn-sm btn-gold" onclick="rollPrayTest(${i},'${kind}')" title="проверка молитвы"><span class="ic">${ICONS.dice}</span></button>
+        <button class="btn btn-sm" onclick="prayDifficulty(${i},'${kind}')" title="молитва с выбором сложности">±</button>
         <button class="sv4-cond-btn" onclick="state.sheet.${fld}.splice(${i},1);autosave();renderSheet();">×</button>
       </td>
     </tr>`;
@@ -347,6 +378,7 @@ function renderTabArcane(){
     </div>
     <div class="sv4-row" style="gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">
       <button class="btn btn-sm" onclick="rollChannelling()"><span class="ic">${ICONS.dice}</span> Каналировать (концентрация)</button>
+      <button class="btn btn-sm" onclick="channelDifficulty()" title="каналирование с выбором сложности">± сложность</button>
       <span class="muted" style="font-size:12px;">накоплено: <b style="color:var(--gold2);">${s.channelled||0}</b> SL</span>
       ${(s.channelled||0)>0?`<button class="sv4-cond-btn" onclick="state.sheet.channelled=0;autosave();renderSheet();" title="сбросить">×</button>`:''}
       <span style="flex:1;"></span>

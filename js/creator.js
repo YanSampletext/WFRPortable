@@ -899,7 +899,7 @@ function renderCareerSkills(el){
     </div>`;
   });
   const statusClass = (total === 40) ? 'good' : (total > 40 ? 'bad' : 'warn');
-  const statusText = (total === 40) ? '✓ всё распределено' : (total > 40 ? '<span class="ic">${ICONS.warn}</span> слишком много' : `осталось распределить: ${40 - total}`);
+  const statusText = (total === 40) ? '✓ всё распределено' : (total > 40 ? `<span class="ic">${ICONS.warn}</span> слишком много` : `осталось распределить: ${40 - total}`);
   html += `<p class="status-line ${statusClass}" style="margin-top:6px;">Распределено: ${total} / 40. ${statusText}</p>`;
   html += '</div>';
 
