@@ -108,6 +108,8 @@
   // ── восстановление ──────────────────────────────────────────────────────────
   window.importArchive = function (input) {
     var file = input.files && input.files[0];
+    // Тот же предел, что и у импорта одного досье: выбрать не тот файл легко.
+    if (typeof tooBig === 'function' && tooBig(file)) { input.value = ''; return; }
     input.value = '';                        // иначе тот же файл второй раз не выберется
     if (!file) return;
     var reader = new FileReader();

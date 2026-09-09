@@ -37,6 +37,59 @@ function saveRoster(roster){
   }
 }
 
+// Полная схема бланка — единственный источник правды: и для нового досье, и
+// для дозаполнения старых сохранений, и для белого списка при импорте.
+//
+// Списков было два — этот и свой собственный внутри freshState, — и они
+// разъехались ровно так, как предупреждает комментарий: новое досье получало
+// armours/items, которых схема уже не знала, а armor и trappings приходили
+// сюда из схемы ПО ССЫЛКЕ. Оттого второе досье, заведённое в том же сеансе,
+// рождалось с состояниями, увечьями и бронёй первого. Теперь список один, и
+// разъехаться ему негде.
+const SHEET_DEFAULTS = {
+    tier: 1, currentHP: null, spentXP: 0, currentLuck: null, resolveCurrent: null,
+    weapons: [], armor: [], trappings: [],
+    extraSkills: [], skillAdv: {}, extraTalents: [],
+    money: { gc: 0, ss: 0, bp: 0 },
+    psychology: '', corruption: 0, mutations: '', notes: '',
+    teamName: '', teamShort: '', teamLong: '', starterImported: false,
+    doomedProphecy: '',
+    moneyRolled: false,
+    statAdvBought: {},
+    skillAdvBought: {},
+    talentBought: [],
+    careerTier1Done: true,
+    tierCompleteOverride: false,
+    careerLog: [],
+    conditions: {}, injuries: [], diseases: [], advantage: 0,
+    spells: [], blessings: [], miracles: [],
+    rollLog: [],
+    critLog: [], critWounds: 0, potionUsedScene: false,
+    psych: {fearRank:0, fearSL:0, fearActive:false, frenzy:false},
+    langMagick: 0, channelSkill: 0, channelled: 0, nearCorruption: false, miscastLog: [],
+    praySkill: 0, sin: 0, wrathLog: [],
+    endeavoursUsed: 0, downtimeLog: [], extended: [],
+    portrait: '',
+    // Эти двое живут на бланке с самого начала, но в схеме их не было:
+    // без них импорт молча терял потраченную судьбу и отметку о смерти.
+    fateSpent: 0, gmDead: false,
+};
+
+
+// Копию отдаём глубокую. Массив или объект из схемы, розданный по ссылке, —
+// это общая на всех бумага: правка у одного персонажа меняет и эталон, и
+// каждого, кто будет заведён после него.
+function cloneDefault(v){
+  if(Array.isArray(v)) return v.map(cloneDefault);
+  if(v && typeof v === 'object') return JSON.parse(JSON.stringify(v));
+  return v;
+}
+function freshSheet(){
+  const sheet = {};
+  for(const k in SHEET_DEFAULTS) sheet[k] = cloneDefault(SHEET_DEFAULTS[k]);
+  return sheet;
+}
+
 // Свежий, "чистый" state — для нового персонажа
 function freshState(){
   return {
@@ -56,17 +109,7 @@ function freshState(){
     pendingRandom: null,
     name: '', age: '', height: '', hair: '', eyes: '',
     motivation: '', ambitionShort: '', ambitionLong: '',
-    sheet: {
-      tier: 1, currentHP: null, spentXP: 0, currentLuck: null, resolveCurrent: null,
-      weapons: [], armours: [], extraSkills: [], skillAdv: {}, extraTalents: [],
-      items: [], money: { gc: 0, ss: 0, bp: 0 },
-      psychology: '', corruption: 0, mutations: '', notes: '',
-      teamName: '', teamShort: '', teamLong: '', starterImported: false,
-      doomedProphecy: '',
-      moneyRolled: false,
-      statAdvBought: {}, skillAdvBought: {}, talentBought: [],
-      careerTier1Done: true, tierCompleteOverride: false, careerLog: [],
-    },
+    sheet: freshSheet(),
   };
 }
 
@@ -124,6 +167,18 @@ function finishAndSaveCharacter(){
 // образца их не различить, и числовые перечислены поимённо ниже.
 const NUMERIC_OR_EMPTY = ['currentHP', 'currentLuck', 'resolveCurrent'];
 
+// Число из чужого файла: только настоящее число или строка целиком из цифр.
+// parseInt брал префикс — «123abc» превращалось в 123, то есть в выдуманное
+// значение характеристики. Number() тут не годится в другую сторону: он
+// считает числами null, [] , true и пустую строку, и проверка стала бы слабее
+// прежней. Не разобрали — ключ не берём вовсе: пустая характеристика видна на
+// бланке нулём, и человек её поправит, а подсунутое число — нет.
+function wholeNumber(raw){
+  if(typeof raw === 'number') return Number.isFinite(raw) ? Math.trunc(raw) : null;
+  if(typeof raw === 'string' && /^\s*-?\d+\s*$/.test(raw)) return parseInt(raw, 10);
+  return null;
+}
+
 function fitsShape(value, sample, key){
   if(value === undefined) return false;
   if(sample === null){
@@ -149,9 +204,7 @@ function sanitizeCharacter(raw){
   for(const k in SHEET_DEFAULTS){
     clean.sheet[k] = fitsShape(rawSheet[k], SHEET_DEFAULTS[k], k)
       ? rawSheet[k]
-      : (Array.isArray(SHEET_DEFAULTS[k]) ? SHEET_DEFAULTS[k].slice()
-        : (SHEET_DEFAULTS[k] && typeof SHEET_DEFAULTS[k] === 'object'
-           ? JSON.parse(JSON.stringify(SHEET_DEFAULTS[k])) : SHEET_DEFAULTS[k]));
+      : cloneDefault(SHEET_DEFAULTS[k]);
   }
   // Характеристики проходят проверку формы как объект, но значения внутри
   // идут прямо в арифметику — строка там превращает весь бланк в NaN.
@@ -159,7 +212,10 @@ function sanitizeCharacter(raw){
     const src = clean[key];
     if(src && typeof src === 'object'){
       const num = {};
-      for(const k in src){ const v = parseInt(src[k], 10); if(!isNaN(v)) num[k] = v; }
+      for(const k in src){
+        const v = wholeNumber(src[k]);
+        if(v !== null) num[k] = v;
+      }
       clean[key] = num;
     }
   }
@@ -167,9 +223,21 @@ function sanitizeCharacter(raw){
   return clean;
 }
 
+// Досье — это несколько килобайт текста. Открыть по ошибке видеофайл или
+// дамп базы можно одним промахом в выборщике, и приложение зависнет, разбирая
+// его. Предел щедрый: самое толстое досье с портретом не доходит и до
+// половины.
+const MAX_IMPORT_BYTES = 4 * 1024 * 1024;
+function tooBig(file){
+  if(!file || file.size <= MAX_IMPORT_BYTES) return false;
+  notify('Файл слишком большой (' + Math.round(file.size / 1048576) + ' МБ) — это не досье.');
+  return true;
+}
+
 function importToRoster(input){
   const file = input.files[0];
   if(!file) return;
+  if(tooBig(file)){ input.value = ''; return; }
   const reader = new FileReader();
   reader.onload = e => {
     try{
@@ -223,45 +291,11 @@ function importSheet(input){
   importToRoster(input);
 }
 
-// Полная схема бланка — единственный источник правды и для дозаполнения
-// старых сохранений, и для белого списка при импорте. Разъедься эти два
-// списка — импорт начал бы молча выбрасывать поля, которые приложение
-// считает своими.
-const SHEET_DEFAULTS = {
-    tier: 1, currentHP: null, spentXP: 0, currentLuck: null, resolveCurrent: null,
-    weapons: [], armor: [], trappings: [],
-    extraSkills: [], skillAdv: {}, extraTalents: [],
-    money: { gc: 0, ss: 0, bp: 0 },
-    psychology: '', corruption: 0, mutations: '', notes: '',
-    teamName: '', teamShort: '', teamLong: '', starterImported: false,
-    doomedProphecy: '',
-    moneyRolled: false,
-    statAdvBought: {},
-    skillAdvBought: {},
-    talentBought: [],
-    careerTier1Done: true,
-    tierCompleteOverride: false,
-    careerLog: [],
-    conditions: {}, injuries: [], diseases: [], advantage: 0,
-    spells: [], blessings: [], miracles: [],
-    rollLog: [],
-    critLog: [], critWounds: 0, potionUsedScene: false,
-    psych: {fearRank:0, fearSL:0, fearActive:false, frenzy:false},
-    langMagick: 0, channelSkill: 0, channelled: 0, nearCorruption: false, miscastLog: [],
-    praySkill: 0, sin: 0, wrathLog: [],
-    endeavoursUsed: 0, downtimeLog: [],
-    portrait: '',
-    // Эти двое живут на бланке с самого начала, но в схеме их не было:
-    // без них импорт молча терял потраченную судьбу и отметку о смерти.
-    fateSpent: 0, gmDead: false,
-};
-
 function migrateState(){
   // Гарантируем, что вся структура state.sheet существует (для старых сохранений)
   if(!state.sheet) state.sheet = {};
-  const defaults = SHEET_DEFAULTS;
-  for(const k in defaults){
-    if(state.sheet[k] === undefined) state.sheet[k] = defaults[k];
+  for(const k in SHEET_DEFAULTS){
+    if(state.sheet[k] === undefined) state.sheet[k] = cloneDefault(SHEET_DEFAULTS[k]);
   }
   // Миграция старых названий состояний → канонические имена книги (значения сохраняются)
   if(state.sheet.conditions){

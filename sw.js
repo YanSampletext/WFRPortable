@@ -1,5 +1,5 @@
 // Имперский архив — service worker (cache-first для оффлайна)
-const CACHE = 'ordo-v56';
+const CACHE = 'ordo-v57';
 const ASSETS = [
   './', './index.html', './manifest.json',
   './css/fonts.css',

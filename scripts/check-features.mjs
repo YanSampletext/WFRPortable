@@ -2527,6 +2527,136 @@ await check('короткий тап по-прежнему просто брос
   }, before);
 });
 
+// ── схема бланка и создание досье ──────────────────────────────────────────
+await check('новое досье не наследует чужие раны и броню', () => ev(() => {
+  // Схема раздавала массивы и объекты по ссылке, и второе досье, заведённое в
+  // том же сеансе, рождалось с состояниями, увечьями и бронёй первого.
+  // Без случайной генерации: она выдаёт снаряжение по карьере, и броня у
+  // второго досье появилась бы законно — проверка падала бы через раз не по делу.
+  handleCreate();
+  state.sheet.conditions['Кровоточащий'] = 2;
+  state.sheet.injuries.push('сломанное ребро');
+  state.sheet.armor.push({ name: 'Кольчуга' });
+  state.sheet.extended.push({ id: 'a', name: 'дело', skill: 'Атлетика', value: 40, goal: 8, acc: 5, tries: [] });
+  handleCreate();
+  const got = [];
+  if (Object.keys(state.sheet.conditions).length) got.push('состояния');
+  if (state.sheet.injuries.length) got.push('увечья');
+  if (state.sheet.armor.length) got.push('броня');
+  if (state.sheet.extended.length) got.push('растянутые проверки');
+  return got.length ? 'второму досье достались: ' + got.join(', ') : true;
+}));
+
+await check('старое досье не тащит чужое при дозаполнении', () => ev(() => {
+  // Дозаполнение по схеме — путь не нового досье, а старого сохранения, где
+  // поля ещё не было. Раздача по ссылке била именно здесь: открыл одно старое
+  // досье, потом другое — и второму достались состояния первого.
+  handleCreate();
+  state.sheet = { tier: 1 };                 // как у очень старого сохранения
+  migrateState();
+  const first = state.sheet;
+  first.conditions['Кровоточащий'] = 2;
+  first.injuries.push('старая рана');
+  state.sheet = { tier: 1 };
+  migrateState();
+  const second = state.sheet;
+  const got = [];
+  if (Object.keys(second.conditions).length) got.push('состояния');
+  if (second.injuries.length) got.push('увечья');
+  if (first.conditions === second.conditions) got.push('общий объект состояний');
+  return got.length ? 'второму досье достались: ' + got.join(', ') : true;
+}));
+
+await check('эталон схемы никто не портит', () => ev(() => {
+  handleCreate();
+  state.sheet.conditions['Оглушённый'] = 1;
+  state.sheet.rollLog.push({ name: 'проба' });
+  const shared = Object.keys(SHEET_DEFAULTS).filter(k =>
+    SHEET_DEFAULTS[k] && typeof SHEET_DEFAULTS[k] === 'object' && state.sheet[k] === SHEET_DEFAULTS[k]);
+  if (shared.length) return 'раздано по ссылке: ' + shared.join(', ');
+  const dirty = Object.keys(SHEET_DEFAULTS).filter(k => {
+    const v = SHEET_DEFAULTS[k];
+    if (Array.isArray(v)) return v.length > 0;
+    if (v && typeof v === 'object' && k !== 'money' && k !== 'psych') return Object.keys(v).length > 0;
+    return false;
+  });
+  return dirty.length ? 'эталон испачкан: ' + dirty.join(', ') : true;
+}));
+
+await check('новое досье и схема бланка описывают одно и то же', () => ev(() => {
+  // Списков было два, и они разъехались: новое досье получало armours/items,
+  // которых схема не знала. Теперь список один — сторожим, чтобы им и остался.
+  const a = Object.keys(freshState().sheet).sort();
+  const b = Object.keys(SHEET_DEFAULTS).sort();
+  const only = (x, y) => x.filter(k => y.indexOf(k) < 0);
+  const l = only(a, b), r = only(b, a);
+  if (l.length || r.length)
+    return 'только в новом досье: [' + l.join(', ') + '], только в схеме: [' + r.join(', ') + ']';
+  return true;
+}));
+
+await check('всё, что живёт на бланке, переживает выгрузку и импорт', () => ev(() => {
+  // Поле, забытое в схеме, импорт молча выбрасывает — так уже случилось с
+  // растянутыми проверками. Складываем в каждое поле что-нибудь заметное и
+  // смотрим, что вернётся.
+  handleCreate();
+  // sanitizeCharacter отвергает досье без народа и характеристик — это её
+  // работа, а нам нужно проверить сохранность полей бланка.
+  state.race = 'human'; state.stats = { 'ББ': 35 };
+  const mark = {};
+  for (const k in SHEET_DEFAULTS) {
+    const v = SHEET_DEFAULTS[k];
+    if (Array.isArray(v)) { state.sheet[k] = [{ проба: k }]; mark[k] = 'array'; }
+    else if (v && typeof v === 'object') { state.sheet[k] = { проба: 1 }; mark[k] = 'object'; }
+  }
+  const back = sanitizeCharacter(JSON.parse(JSON.stringify(state))).sheet;
+  const lost = Object.keys(mark).filter(k => {
+    const v = back[k];
+    return mark[k] === 'array' ? !(Array.isArray(v) && v.length) : !(v && v.проба === 1);
+  });
+  return lost.length ? 'потеряно при импорте: ' + lost.join(', ') : true;
+}));
+
+await check('импорт не выдумывает числа из мусора', () => ev(() => {
+  const base = JSON.parse(JSON.stringify(state));
+  base.race = 'human';                       // иначе sanitizeCharacter не пропустит
+  const probe = raw => {
+    const c = JSON.parse(JSON.stringify(base));
+    c.stats = { 'ББ': raw };
+    return sanitizeCharacter(c).stats['ББ'];
+  };
+  const bad = [];
+  // берём как есть
+  if (probe(35) !== 35) bad.push('число 35 → ' + probe(35));
+  if (probe('35') !== 35) bad.push('строка «35» → ' + probe('35'));
+  if (probe(' 35 ') !== 35) bad.push('« 35 » → ' + probe(' 35 '));
+  if (probe(-4) !== -4) bad.push('число −4 → ' + probe(-4));
+  // не берём вовсе
+  for (const junk of ['123abc', 'abc', '', null, true, [], {}, '1e3', NaN, Infinity]) {
+    const got = probe(junk);
+    if (got !== undefined) bad.push(JSON.stringify(junk) + ' → ' + got);
+  }
+  return bad.length ? bad.slice(0, 4).join('; ') : true;
+}));
+
+await check('слишком большой файл не читается', () => ev(() => {
+  if (typeof tooBig !== 'function') return 'проверки размера нет вовсе';
+  if (tooBig({ size: 100 * 1024 })) return 'обычное досье отвергнуто';
+  if (!tooBig({ size: 50 * 1024 * 1024 })) return 'файл в 50 МБ пропущен';
+  return true;
+}));
+
+  // Эти проверки заводят досье с нуля, поэтому стоят последними и возвращают
+  // персонажа, на котором работает весь остальной прогон.
+  await ev(() => {
+    _rollFullRandomCharacterDo();
+    state.name = 'Гюнтер Фогель'; state.xpGained = 2000;
+    saveCharacterToRoster();
+    appMode = 'character'; state.step = 8; goStep(8);
+  });
+  await p.waitForTimeout(400);
+
+
 console.log(results.join('\n'));
 console.log('\nпрошло ' + pass + ', не прошло ' + fail);
 console.log('ошибок JS за прогон: ' + errs.length);
