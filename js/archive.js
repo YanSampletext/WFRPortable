@@ -21,8 +21,18 @@
     var c = p.career ? DATA.careers[p.career] : null;
     var tierNo = (p.sheet && p.sheet.tier) || 1;
     var tier = c && c.tiers ? c.tiers[tierNo - 1] : null;
-    var maxHP = (p.sheet && p.sheet.maxHP) || 0;
-    var hp = (p.sheet && typeof p.sheet.currentHP === 'number') ? p.sheet.currentHP : null;
+    // Производные числа считаем тем же расчётом, что и бланк, и по этому
+    // самому досье, а не по открытому. Раньше карточка читала sheet.maxHP и
+    // sheet.fate — полей, которых нет ни в схеме, ни где-либо ещё в коде: их
+    // не пишет никто. Оттого максимум ран всегда выходил нулём, полоса
+    // здоровья не рисовалась вовсе, а судьба показывалась базовая народная,
+    // без купленной и потраченной.
+    var calc = (typeof sheetCalc === 'function') ? sheetCalc(p) : {};
+    var maxHP = calc.maxHP || 0;
+    // null в currentHP на бланке значит «полное здоровье» — так его понимает
+    // renderSheet. Карточка обязана понимать так же, а не прятать полосу.
+    var hp = (p.sheet && typeof p.sheet.currentHP === 'number') ? p.sheet.currentHP
+           : (maxHP > 0 ? maxHP : null);
     return {
       id: p.id,
       name: p.name || '(без имени)',
@@ -31,7 +41,7 @@
       tierNo: tierNo,
       tierName: tier ? tier.name : '',
       xp: (p.xpGained || 0) - ((p.sheet && p.sheet.spentXP) || 0),
-      fate: (p.sheet && p.sheet.fate) != null ? p.sheet.fate : ((r && r.fate) || 0),
+      fate: (typeof calc.fate === 'number') ? calc.fate : ((r && r.fate) || 0),
       hp: hp, maxHP: maxHP,
       hpPct: (maxHP > 0 && hp != null) ? Math.max(0, Math.min(1, hp / maxHP)) : null,
       dead: !!(p.sheet && p.sheet.gmDead),

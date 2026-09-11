@@ -2527,6 +2527,155 @@ await check('короткий тап по-прежнему просто брос
   }, before);
 });
 
+// ── архив: те же числа, что на бланке ──────────────────────────────────────
+// Карточка читала sheet.maxHP и sheet.fate — полей, которых не пишет никто.
+// Максимум ран выходил нулём, полоса здоровья не рисовалась вовсе, а судьба
+// показывалась базовая народная, без купленной и потраченной.
+const arkCards = async () => {
+  await ev(() => {
+    var box = document.getElementById('ark-probe');
+    if (!box) { box = document.createElement('div'); box.id = 'ark-probe'; document.body.appendChild(box); }
+    renderArchiveInto(box, {});
+  });
+  await p.waitForTimeout(200);
+  return ev(() => [...document.querySelectorAll('#ark-probe .ark-card')].map(c => ({
+    name: (c.querySelector('.ark-name') || {}).textContent || '',
+    figures: (c.querySelector('.ark-figures') || {}).textContent || '',
+    bar: !!c.querySelector('.ark-hp i'),
+    pct: c.querySelector('.ark-hp i') ? c.querySelector('.ark-hp i').style.width : null
+  })));
+};
+
+await check('карточка архива показывает тот же максимум ран, что и бланк', async () => {
+  const want = await ev(() => {
+    localStorage.removeItem('wfrp4_roster_v1');
+    handleCreate(); _rollFullRandomCharacterDo(); state.name = 'Раненый';
+    state.sheet.currentHP = 4;
+    saveCharacterToRoster();
+    return sheetCalc().maxHP;
+  });
+  if (!(want > 0)) return 'у персонажа нет максимума ран';
+  const cards = await arkCards();
+  const c = cards.find(x => x.name === 'Раненый');
+  if (!c) return 'карточки нет';
+  if (!c.bar) return 'полоса здоровья не нарисована';
+  if (c.figures.indexOf('4/' + want) < 0) return 'на карточке: ' + c.figures.replace(/\s+/g, ' ');
+  return true;
+});
+
+await check('карточка архива считает судьбу как бланк', async () => {
+  const want = await ev(() => {
+    localStorage.removeItem('wfrp4_roster_v1');
+    handleCreate(); _rollFullRandomCharacterDo(); state.name = 'Везунчик';
+    state.extraFate = 2; state.sheet.fateSpent = 1;   // купил две, одну потратил
+    saveCharacterToRoster();
+    return sheetCalc().fate;
+  });
+  const cards = await arkCards();
+  const c = cards.find(x => x.name === 'Везунчик');
+  if (!c) return 'карточки нет';
+  return c.figures.indexOf(want + ' судьба') >= 0
+    ? true
+    : 'на карточке: ' + c.figures.replace(/\s+/g, ' ') + ', а на бланке ' + want;
+});
+
+await check('нетронутое досье в архиве показано полным здоровьем', async () => {
+  // currentHP = null на бланке значит «полное»; карточка обязана понимать так же
+  const want = await ev(() => {
+    localStorage.removeItem('wfrp4_roster_v1');
+    handleCreate(); _rollFullRandomCharacterDo(); state.name = 'Свежий';
+    state.sheet.currentHP = null;
+    saveCharacterToRoster();
+    return sheetCalc().maxHP;
+  });
+  const c = (await arkCards()).find(x => x.name === 'Свежий');
+  if (!c) return 'карточки нет';
+  if (!c.bar || c.pct !== '100%') return 'полоса ' + (c.bar ? c.pct : 'не нарисована');
+  return c.figures.indexOf(want + '/' + want) >= 0 ? true : 'на карточке: ' + c.figures.replace(/\s+/g, ' ');
+});
+
+await check('нулевое здоровье в архиве не прячется', async () => {
+  await ev(() => {
+    localStorage.removeItem('wfrp4_roster_v1');
+    handleCreate(); _rollFullRandomCharacterDo(); state.name = 'Павший';
+    state.sheet.currentHP = 0;
+    saveCharacterToRoster();
+  });
+  const c = (await arkCards()).find(x => x.name === 'Павший');
+  if (!c) return 'карточки нет';
+  if (!c.bar || c.pct !== '0%') return 'полоса ' + (c.bar ? c.pct : 'не нарисована');
+  return /\b0\// .test(c.figures) ? true : 'на карточке: ' + c.figures.replace(/\s+/g, ' ');
+});
+
+await check('расчёт одной карточки не задевает другую и открытое досье', async () => {
+  const want = await ev(() => {
+    localStorage.removeItem('wfrp4_roster_v1');
+    handleCreate(); _rollFullRandomCharacterDo(); state.name = 'Первый';
+    state.extraFate = 3; saveCharacterToRoster();
+    handleCreate(); _rollFullRandomCharacterDo(); state.name = 'Второй';
+    state.extraFate = 0; saveCharacterToRoster();
+    return { первый: sheetCalc(loadRoster().find(x => x.name === 'Первый')).fate,
+             второй: sheetCalc(loadRoster().find(x => x.name === 'Второй')).fate,
+             открыто: state.name, максОткрытого: sheetCalc().maxHP };
+  });
+  const cards = await arkCards();
+  const a = cards.find(x => x.name === 'Первый'), b2 = cards.find(x => x.name === 'Второй');
+  if (!a || !b2) return 'карточек не хватает';
+  if (a.figures.indexOf(want.первый + ' судьба') < 0) return 'у первого: ' + a.figures.replace(/\s+/g, ' ');
+  if (b2.figures.indexOf(want.второй + ' судьба') < 0) return 'у второго: ' + b2.figures.replace(/\s+/g, ' ');
+  // и после всей отрисовки открытое досье осталось тем же
+  return ev(w => (state.name === w.открыто && sheetCalc().maxHP === w.максОткрытого)
+    ? true : 'открытое досье подменилось: ' + state.name, want);
+});
+
+// ── навык под группу оружия ────────────────────────────────────────────────
+await check('удар идёт по специализации под группу оружия', () => ev(() => {
+  // Бралась самая развитая специализация: удар кинжалом уходил по навыку
+  // алебарды, и игрок промахивался вдвое реже, чем должен.
+  handleCreate(); _rollFullRandomCharacterDo(); state.name = 'Боец';
+  state.sheet.extraSkills = [
+    { name: 'Рукопашный бой (основное)', stat: 'ББ', adv: 0 },
+    { name: 'Рукопашный бой (двуручное)', stat: 'ББ', adv: 40 },
+    { name: 'Стрельба (луки)', stat: 'ДБ', adv: 20 }
+  ];
+  state.sheet.weapons = [
+    { name: 'Кинжал', group: 'Основное', damage: '+РС+2' },
+    { name: 'Двуручный меч', group: 'Двуручное', damage: '+РС+5' },
+    { name: 'Лук', group: 'Луки', damage: '+РС+3' }
+  ];
+  const rows = compileSkills();
+  const val = n => (rows.find(r => r.name.toLowerCase() === n) || {}).value;
+  const want = [val('рукопашный бой (основное)'), val('рукопашный бой (двуручное)'), val('стрельба (луки)')];
+  const got = [0, 1, 2].map(i => attackTarget(i).value);
+  const bad = [0, 1, 2].filter(i => got[i] !== want[i])
+    .map(i => state.sheet.weapons[i].name + ': ' + got[i] + ' вместо ' + want[i]);
+  return bad.length ? bad.join('; ') : true;
+}));
+
+await check('чужая специализация не подставляется никогда', () => ev(() => {
+  // Группы «Древковое» у бойца нет. По книге необученная группа бросается по
+  // характеристике; подставлять вместо неё двуручное — враньё в цифре.
+  state.sheet.weapons = [{ name: 'Алебарда', group: 'Древковое', damage: '+РС+4' }];
+  const got = attackTarget(0);
+  const dvu = (compileSkills().find(r => /двуручное/i.test(r.name)) || {}).value;
+  if (got.value === dvu) return 'взято двуручное: ' + got.name;
+  const plain = (compileSkills().find(r => r.name.toLowerCase() === 'рукопашный бой') || {}).value;
+  const bb = sheetCalc().totals['ББ'];
+  return (got.value === plain || got.value === bb)
+    ? true
+    : 'взято ' + got.value + ' (' + got.name + '), а ждали ' + plain + ' или ' + bb;
+}));
+
+await check('оружие без группы навыка не лишается', () => ev(() => {
+  // Вписанное руками название, которого нет в каталоге, приходит с пустой
+  // группой. Сопоставлять не с чем — отнимать у человека его навык не за что.
+  state.sheet.weapons = [{ name: 'Странная штуковина', group: '', damage: '+РС+1' }];
+  const best = compileSkills().filter(r => /^рукопашный бой/i.test(r.name))
+    .reduce((m, r) => Math.max(m, r.value || 0), 0);
+  const got = attackTarget(0).value;
+  return got === best ? true : 'взято ' + got + ', а лучшее из имеющихся ' + best;
+}));
+
 // ── схема бланка и создание досье ──────────────────────────────────────────
 await check('новое досье не наследует чужие раны и броню', () => ev(() => {
   // Схема раздавала массивы и объекты по ссылке, и второе досье, заведённое в

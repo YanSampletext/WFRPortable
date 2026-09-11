@@ -19,16 +19,48 @@
     return RANGED.test(text) ? 'Стрельба' : 'Рукопашный бой';
   }
 
-  // Значение навыка с бланка. Берём самую развитую специализацию: у бойца
-  // может быть и «Рукопашный бой (Основное)», и «(Двуручное)» — бьём лучшим.
-  function skillValue(base) {
+  // Уточнение навыка — то, что в скобках: «рукопашный бой (основное)» → «основное».
+  function specOf(name) {
+    var m = /\(([^)]*)\)/.exec(String(name || ''));
+    return m ? m[1].trim().toLowerCase() : null;
+  }
+
+  // Значение навыка с бланка — по группе оружия, а не «самое развитое».
+  //
+  // Раньше здесь бралась самая развитая специализация, какая найдётся. У бойца
+  // с «рукопашный бой (двуручное) 76» и «(основное) 40» удар кинжалом уходил
+  // по семидесяти шести: игрок бросал по навыку алебарды. Группа оружия в
+  // каталоге записана теми же словами, что и уточнение навыка («Основное» →
+  // «(основное)»), так что выбирать есть по чему.
+  //
+  // Порядок: своя специализация → тот же навык без уточнения (если игрок ведёт
+  // его так) → характеристика, как книга и велит для необученного. Чужую
+  // специализацию не подставляем никогда.
+  //
+  // Особый случай — оружие без группы: вписанное руками название, которого нет
+  // в каталоге, приходит с пустой группой. Сопоставлять там не с чем, и
+  // отнимать у человека его навык не за что, поэтому остаётся прежнее «самое
+  // развитое».
+  function skillValue(base, group) {
     var totals = (typeof sheetCalc === 'function') ? (sheetCalc().totals || {}) : {};
     var rows = (typeof compileSkills === 'function') ? compileSkills() : [];
     var low = base.toLowerCase();
-    var found = rows.filter(function (r) { return String(r.name).toLowerCase().indexOf(low) === 0; })
-                    .sort(function (a, b) { return (b.value || 0) - (a.value || 0); })[0];
-    if (found) return { name: found.name, value: found.value || 0 };
-    // Навыка нет вовсе — бросок по характеристике: ББ в ближнем, ДБ в стрельбе
+    var best = function (list) {
+      return list.slice().sort(function (a, b) { return (b.value || 0) - (a.value || 0); })[0];
+    };
+    var mine = rows.filter(function (r) { return String(r.name).toLowerCase().indexOf(low) === 0; });
+    var want = String(group == null ? '' : group).trim().toLowerCase();
+
+    if (want) {
+      var exact = best(mine.filter(function (r) { return specOf(r.name) === want; }));
+      if (exact) return { name: exact.name, value: exact.value || 0 };
+      var plain = best(mine.filter(function (r) { return !specOf(r.name); }));
+      if (plain) return { name: plain.name, value: plain.value || 0 };
+    } else {
+      var any = best(mine);
+      if (any) return { name: any.name, value: any.value || 0 };
+    }
+    // Подходящего навыка нет — бросок по характеристике: ББ в ближнем, ДБ в стрельбе
     var ch = base === 'Стрельба' ? 'ДБ' : 'ББ';
     return { name: base + ' (по ' + ch + ')', value: totals[ch] || 0 };
   }
@@ -46,7 +78,7 @@
   window.attackTarget = function (i) {
     var w = ((state.sheet && state.sheet.weapons) || [])[i];
     if (!w) return null;
-    var sk = skillValue(skillFor(w));
+    var sk = skillValue(skillFor(w), w.group);
     return { name: (w.name || 'оружие') + ' · ' + sk.name, value: sk.value };
   };
 
@@ -76,7 +108,7 @@
 
   function attackRoll(w, targetId, mod) {
     var base = skillFor(w);
-    var sk = skillValue(base);
+    var sk = skillValue(base, w.group);
 
     // Преимущество даёт +10 за пункт — ровно как в rollCheck на бланке
     var adv = (state.sheet && state.sheet.advantage) || 0;

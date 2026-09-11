@@ -267,30 +267,34 @@ function calcWeaponDamage(formula, rs){
 // ===================== STEP 8 : INTERACTIVE SHEET =====================
 
 // ---- helpers ----
-function sheetCalc(){
+// ch — по какому досье считаем. По умолчанию открытое; архив передаёт своё,
+// потому что карточка обязана показывать те же числа, что и бланк, а глобальное
+// state там принадлежит совсем другому персонажу.
+function sheetCalc(ch){
+  ch = ch || state;
   // Возвращает все вычисленные итоги листа
-  const r = state.race ? DATA.races[state.race] : null;
-  const tals = compileTalents(); // собираем таланты один раз на весь расчёт
+  const r = ch.race ? DATA.races[ch.race] : null;
+  const tals = compileTalents(ch); // собираем таланты один раз на весь расчёт
   // Полные значения характеристик = базовое (2d10 + народ) + 5 стартовых шагов карьеры (шаг 4 книги)
   // + купленное за опыт + бонусы талантов.
   const totals = {};
   STAT_NAMES.forEach(s => {
-    const base = state.stats[s] || 0;
-    const starting = (state.careerStatAdv && state.careerStatAdv[s]) || 0; // 5 стартовых шагов карьеры
-    const bought = (state.sheet.statAdvBought && state.sheet.statAdvBought[s]) || 0;
+    const base = (ch.stats || {})[s] || 0;
+    const starting = (ch.careerStatAdv && ch.careerStatAdv[s]) || 0; // 5 стартовых шагов карьеры
+    const bought = (ch.sheet && ch.sheet.statAdvBought && ch.sheet.statAdvBought[s]) || 0;
     const talBonus = talentStatBonus(s, tals);
     totals[s] = base + starting + bought + talBonus;
   });
   const C = totals['С']||0, V = totals['В']||0, SV = totals['СВ']||0;
   let maxHP = null;
-  if(state.race && V > 0){
+  if(ch.race && V > 0){
     // HP считаем как только выбран народ и есть выносливость
     const RS = Math.floor(C/10), RV = Math.floor(V/10), RSV = Math.floor(SV/10);
-    maxHP = (state.race === 'halfling') ? (2*RV+RSV) : (RS+2*RV+RSV);
+    maxHP = (ch.race === 'halfling') ? (2*RV+RSV) : (RS+2*RV+RSV);
     maxHP += talentHpBonus(RV, tals); // Здоровяк
   }
-  const fate   = r ? Math.max(0, r.fate + state.extraFate - ((state.sheet&&state.sheet.fateSpent)||0)) : 0;
-  const upor   = r ? r.resilience + state.extraRes + talentResolveBonus(tals) : 0;
+  const fate   = r ? Math.max(0, r.fate + (ch.extraFate||0) - ((ch.sheet&&ch.sheet.fateSpent)||0)) : 0;
+  const upor   = r ? r.resilience + (ch.extraRes||0) + talentResolveBonus(tals) : 0;
   const move   = (r ? r.move : 0) + talentMoveBonus(tals);
   // Лимит переносимого веса = РС + РВ (в пунктах веса); +2 за уровень «Бугая».
   const RS_b = Math.floor((totals['С']||0)/10);
@@ -492,27 +496,30 @@ document.addEventListener('click', function (e) {
   }
 });
 
-function compileTalents(){
-  const r = state.race ? DATA.races[state.race] : null;
+// ch — чьи таланты собираем. По умолчанию открытое досье; архиву нужно
+// считать по карточке, которую он рисует, а их на экране много сразу.
+function compileTalents(ch){
+  ch = ch || state;
+  const r = ch.race ? DATA.races[ch.race] : null;
   const tals = [];
   if(r){
     r.race_talents.forEach((t, idx) => {
       if(t.includes(' или ')){
-        const ch = state.raceTalentChoices['rt_'+idx];
-        if(ch) tals.push({ name: ch, level: 1, src: 'народ', hint: findTalentHint(ch) });
+        const pick = (ch.raceTalentChoices || {})['rt_'+idx];
+        if(pick) tals.push({ name: pick, level: 1, src: 'народ', hint: findTalentHint(pick) });
         else tals.push({ name: t, level: 1, src: 'народ — не выбрано', hint: 'Расовый талант не выбран — выбери один вариант на шаге «Народ».' });
       } else if(t === '{случайный талант}'){
-        const tn = state.randomTalents[idx];
+        const tn = (ch.randomTalents || [])[idx];
         if(tn) tals.push({ name: tn.talent, level: 1, src: 'народ', hint: findTalentHint(tn.talent) });
       } else {
         tals.push({ name: t, level: 1, src: 'народ', hint: findTalentHint(t) });
       }
     });
   }
-  if(state.careerTalentLvl) tals.push({
-    name: state.careerTalentLvl, level: 1, src: 'карьера', hint: findTalentHint(state.careerTalentLvl)
+  if(ch.careerTalentLvl) tals.push({
+    name: ch.careerTalentLvl, level: 1, src: 'карьера', hint: findTalentHint(ch.careerTalentLvl)
   });
-  state.sheet.extraTalents.forEach(t => tals.push({
+  ((ch.sheet && ch.sheet.extraTalents) || []).forEach(t => tals.push({
     name: t.name, level: t.level, src: 'ручн.', hint: t.hint || findTalentHint(t.name)
   }));
   return tals;
