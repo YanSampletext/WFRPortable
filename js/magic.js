@@ -192,8 +192,13 @@ function rollCastingTest(idx, mod){
   lines.push(cast ? `<span class="ic">${ICONS.check}</span> Заклинание сотворено (нужно ЗС ${cn}).` : `<span class="ic">${ICONS.cross}</span> Не сотворено (нужно SL ≥ ЗС ${cn}).`);
   // дубли → критическое сотворение / ошибка
   let auto = null;
-  if(arcIsDouble(r)){
+  // Бонус критического сотворения бывает только при успехе. Провал с дублем —
+  // просто малая ошибка; раньше и ему предлагалось выбрать бонус.
+  if(arcIsDouble(r) && success){
     lines.push(`<span class="ic">${ICONS.bolt}</span> <b>Дубль (${r})</b> — критическое сотворение: бросок по «малым ошибкам» (если нет «Инстинктивного понимания»), но выбери бонус: крит. заклинание / полная мощь / неудержимая сила.`);
+    auto = 'minor';
+  } else if(arcIsDouble(r)){
+    lines.push(`<span class="ic">${ICONS.bolt}</span> <b>Дубль (${r}) на провале</b> — малая ошибка.`);
     auto = 'minor';
   } else if(state.sheet.nearCorruption && arcUnitsDigit(r)===8){
     lines.push(`<span class="ic">${ICONS.warn}</span> Рядом с искажающим влиянием и «8» на единицах — малая ошибка.`);

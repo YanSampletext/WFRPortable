@@ -931,7 +931,7 @@ function renderTabPersona(){
   h += '</div>';
   h += `<p class="sv4-roll-tip muted">Тап — серьёзная проверка (+0). Удержание — сложность от +60 до −30.</p>`;
 
-  // Виталки: Судьба / Удача / Упорство / Решимость / Скверна
+  // Виталки: Судьба / Удача / Решимость / Скверна
   h += `<div class="sv4-section-title">${ICONS.compass} Судьба и упорство</div>`;
   h += `<div class="sv4-vitals">
     <div class="sv4-vit" onclick="sv4NavGo('fate')">
@@ -942,10 +942,10 @@ function renderTabPersona(){
     <div class="sv4-vit" onclick="sv4NavGo('fate')">
       <div class="sv4-v-l">Удача</div>
       <div class="sv4-v-ico">${ICONS.hand}</div>
-      <div class="sv4-v-v">${state.sheet.currentLuck||0}<span class="max">/${calc.fate}</span></div>
+      <div class="sv4-v-v">${state.sheet.currentLuck||0}<span class="max">/${calc.fortuneMax}</span></div>
     </div>
     <div class="sv4-vit" onclick="sv4NavGo('fate')">
-      <div class="sv4-v-l">Упорство</div>
+      <div class="sv4-v-l">Решимость</div>
       <div class="sv4-v-ico">${ICONS.star}</div>
       <div class="sv4-v-v">${state.sheet.resolveCurrent||0}<span class="max">/${calc.upor}</span></div>
     </div>
@@ -1128,8 +1128,8 @@ function renderTabFate(){
     <div class="sv4-vit">
       <div class="sv4-v-l">УДАЧА</div>
       <div class="sv4-v-ico">${ICONS.hand}</div>
-      <div class="sv4-v-v"><input type="number" min="0" value="${state.sheet.currentLuck||0}" class="sv4-inline" onchange="state.sheet.currentLuck=Math.max(0,parseInt(this.value)||0);autosave();" /><span class="max">/${calc.fate}</span></div>
-      <button class="sv4-btn-mini" onclick="state.sheet.currentLuck=${calc.fate};renderSheet();">↑ Восполнить</button>
+      <div class="sv4-v-v"><input type="number" min="0" value="${state.sheet.currentLuck||0}" class="sv4-inline" onchange="state.sheet.currentLuck=Math.max(0,parseInt(this.value)||0);autosave();" /><span class="max">/${calc.fortuneMax}</span></div>
+      <button class="sv4-btn-mini" onclick="state.sheet.currentLuck=${calc.fortuneMax};renderSheet();">↑ Восполнить</button>
     </div>
     <div class="sv4-vit">
       <div class="sv4-v-l">УПОРСТВО</div>
@@ -1767,8 +1767,8 @@ function renderTabPrint(){
     <div class="sv4-print-vitals">
       <div>Здоровье: <b>${state.sheet.currentHP}/${calc.maxHP}</b></div>
       <div>Скорость: <b>${calc.move}</b> (шаг ${calc.move*2}, бег ${calc.move*4})</div>
-      <div>Судьба: <b>${calc.fate}</b> · Удача: <b>${state.sheet.currentLuck||0}/${calc.fate}</b></div>
-      <div>Упорство: <b>${state.sheet.resolveCurrent||0}/${calc.upor}</b> · Скверна: <b>${state.sheet.corruption||0}/${calc.corruptionThreshold}</b></div>
+      <div>Судьба: <b>${calc.fate}</b> · Удача: <b>${state.sheet.currentLuck||0}/${calc.fortuneMax}</b></div>
+      <div>Упорство: <b>${(r.resilience||0) + (state.extraRes||0)}</b> · Решимость: <b>${state.sheet.resolveCurrent||0}/${calc.upor}</b> · Скверна: <b>${state.sheet.corruption||0}/${calc.corruptionThreshold}</b></div>
     </div>
     <h3 class="sv4-print-h3">Навыки (${skills.length})</h3>
     <table class="sv4-print-tbl small-tbl"><thead><tr><th>Навык</th><th>Хар.</th><th>Шаги</th><th>Итог</th></tr></thead>

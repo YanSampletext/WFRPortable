@@ -65,7 +65,7 @@ function sv2DeathCheck(){
 function sv2SpendFate(){
   state.sheet.fateSpent = (state.sheet.fateSpent||0)+1;
   const calc = sheetCalc();
-  if(state.sheet.currentLuck!=null) state.sheet.currentLuck = Math.min(state.sheet.currentLuck, calc.fate);
+  if(state.sheet.currentLuck!=null) state.sheet.currentLuck = Math.min(state.sheet.currentLuck, calc.fortuneMax);
   if(typeof autosave==='function') autosave();
   notify('Очко Судьбы потрачено навсегда — смерть отступила.');
   renderTabHealth();

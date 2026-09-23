@@ -31,6 +31,11 @@ function advCostFor(alreadyDone){
   return { char: last.char, skill: last.skill };
 }
 
+// Цена уровня таланта — одна на таблицу магазина и на покупку. Раньше таблица
+// показывала 100 × (взято + 1), а списывалось ровно 100: игрок видел одну
+// цену, а платил другую.
+const TALENT_XP = 100;
+
 // Сколько уже сделано шагов развития характеристики (куплено за опыт).
 // При создании шаги не даются, поэтому считаем только купленное.
 function statAdvancesTotal(s){
@@ -220,13 +225,15 @@ function renderShop(){
 
   // ===== Таланты карьеры =====
   html += `<div class="panel"><div class="panel-title">Таланты карьеры (${tier.name})</div>`;
-  html += `<p class="muted" style="font-size:11px;">Шаг развития таланта: <b>100</b> XP за уровень — по правилам книги цена не растёт.</p>`;
+  html += `<p class="muted" style="font-size:11px;">Шаг развития таланта: <b>${TALENT_XP}</b> XP за уровень.</p>`;
   html += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Талант</th><th>Уже шагов</th><th>Цена след.</th><th>Купить</th></tr></thead><tbody>';
   tierTalents.forEach(tn => {
     const lower = tn.toLowerCase();
-    const cnt = (state.sheet.talentBought || []).filter(x => x.name.toLowerCase() === lower).length;
+    // уровень, а не число записей: взятый повторно талант — одна запись с level
+    const cnt = (state.sheet.talentBought || []).filter(x => x.name.toLowerCase() === lower)
+      .reduce((n, x) => n + (x.level || 1), 0);
     const inCart = cartCountTalent(tn);
-    const cost = 100 + 100*(cnt + inCart);
+    const cost = TALENT_XP;
     const can  = avail >= cost;
     const hint = findTalentHint(tn);
     html += `<tr${inCart?' style="background:rgba(218,165,32,0.06);"':''}>
@@ -287,8 +294,8 @@ function renderCartBadge(){
 
 // === Авто-проверка завершения ступени карьеры (правила WFRP4) ===
 // Ступень считается завершённой, когда вложено нужное число шагов развития
-// (1→5, 2→10, 3→15, 4→20) во ВСЕ 8 карьерных умений этой ступени, во все
-// карьерные характеристики и хотя бы в 1 талант этой ступени.
+// (1→5, 2→10, 3→15, 4→20) в 8 умений, доступных на ступени (вместе с умениями
+// прежних ступеней), во все её характеристики и хотя бы в 1 талант ступени.
 // ВАЖНО: модель приложения не хранит, какие именно характеристики относятся
 // к карьере (в книге они заданы значками), поэтому число характеристик
 // сверяется по количеству, а не по конкретным. Остальное проверяется точно.
@@ -306,8 +313,14 @@ function careerTierCompletion(career, tierIdx){
   //     В КАЖДОЙ характеристике уровня, В 8 умениях уровня и ≥1 талант уровня.
   //     Уровень 1 → 5, ур.2 → 10, ур.3 → 15, ур.4 → 20. Ранее купленные учитываются. ═══
 
-  // 1) Умения: минимум 8 умений, доступных на этом уровне, с ≥ need шагами каждое
-  const tierSkills = (tier.skills||'').split(/,(?![^()]*\))/).map(s=>s.trim()).filter(Boolean);
+  // 1) Умения: минимум 8 умений, доступных на этом уровне, с ≥ need шагами каждое.
+  // Доступны на уровне и умения прежних ступеней: в данных у ступени записаны
+  // только новые (8, 6, 4, 2), и раньше проверялись одни они — на 4-й ступени
+  // хватало двух навыков по 20 шагов вместо восьми.
+  const seen = new Set();
+  const tierSkills = c.tiers.slice(0, tierIdx + 1)
+    .flatMap(t => (t.skills||'').split(/,(?![^()]*\))/).map(s=>s.trim()).filter(Boolean))
+    .filter(s => !seen.has(s.toLowerCase()) && seen.add(s.toLowerCase()));
   res.skills = tierSkills.map(name => ({ name, adv: skillAdvancesTotal(name), ok: skillAdvancesTotal(name) >= res.need }));
   res.skillsDone = res.skills.filter(s => s.ok).length;
   res.skillsNeed = Math.min(8, res.skills.length);
@@ -355,7 +368,7 @@ function renderCareerChange(c, tierIdx){
     <b>Завершение ступени ${tierIdx+1} «${escHtml(tier.name)}»:</b>
     ${completed?'<b style="color:var(--green2)">✓ ЗАВЕРШЕНА</b>':'<b style="color:var(--blood2)">НЕ завершена</b>'}
     ${override && !chk.ok ? '<span class="muted">(вручную, GM)</span>' : ''}
-    <div style="margin-top:5px;">${mark(chk.skillsOk)} Умения уровня с ≥${chk.need} шагами: <b>${chk.skillsDone||0} / ${chk.skillsNeed||8}</b><br><span class="muted">${skillsList || '—'}</span></div>
+    <div style="margin-top:5px;">${mark(chk.skillsOk)} Умения ступени и прежних с ≥${chk.need} шагами: <b>${chk.skillsDone||0} / ${chk.skillsNeed||8}</b><br><span class="muted">${skillsList || '—'}</span></div>
     <div style="margin-top:4px;">${mark(chk.talentOk)} Взят хотя бы 1 талант этой ступени</div>
     <div style="margin-top:4px;">${mark(chk.statsOk)} Характеристики схемы — в каждой ≥${chk.need} шагов:
       <span class="muted">${chk.statList ? chk.statList.map(x=>`${x.st} ${x.adv}/${chk.need}${x.ok?' ✓':''}`).join(' · ') : `сумма ${chk.statsAdvSum||0}`}</span></div>
@@ -474,8 +487,7 @@ function buyArbitrarySkill(){
 
 function buyTalent(name){
   const lower = name.toLowerCase();
-  // По правилам WFRP4 талант стоит ровно 100 XP за каждый уровень (без нарастания цены).
-  const cost = 100;
+  const cost = TALENT_XP;
   if(xpAvailable() < cost){ notify('Недостаточно XP (с учётом корзины).'); return; }
   if(!state.sheet._cart) state.sheet._cart = [];
   state.sheet._cart.push({ type:'talent', key:lower, name, cost, label:`Талант «${name}»` });

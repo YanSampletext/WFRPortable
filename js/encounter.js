@@ -12,7 +12,7 @@
   // трекеру. Полный список и правила живут на бланке персонажа.
   var TICKING = {
     'Кровоточащий': 'теряет 1 рану за пункт',
-    'Горящий':      'получает 1d10 урона за пункт'
+    'Горящий':      'получает 1d10 урона, +1 за каждый пункт сверх первого'
   };
 
   function fresh() { return { round: 1, turnId: null, list: [] }; }
@@ -83,10 +83,12 @@
     if (typeof state === 'undefined' || !state || !state.name) { notify('Сначала открой персонажа.'); return; }
     if (load().list.some(function (p) { return p.name === state.name; })) { notify('Уже в схватке.'); return; }
     var calc = (typeof sheetCalc === 'function') ? sheetCalc() : null;
-    // Выносливость и броню берём с бланка: считать их руками незачем
-    var tb = calc ? Math.floor((calc.totals['СВ'] || 0) / 10) : 0;
+    // Выносливость и броню берём с бланка: считать их руками незачем.
+    // «В» — выносливость, «СВ» — сила воли; раньше бонус брался из воли.
+    // Инициатива — итоговая, с купленными шагами и талантами, а не базовая.
+    var tb = calc ? Math.floor((calc.totals['В'] || 0) / 10) : 0;
     var ap = (typeof encSelfAP === 'function') ? encSelfAP() : 0;
-    encAdd(state.name, (state.stats && state.stats['И']) || 0,
+    encAdd(state.name, calc ? (calc.totals['И'] || 0) : ((state.stats && state.stats['И']) || 0),
            (state.sheet && state.sheet.currentHP) || (calc && calc.maxHP) || 0, false, tb, ap, defenceOf());
   };
 
@@ -121,7 +123,7 @@
         init: (calc.totals && calc.totals['И']) || 0,
         hp: (p.sheet && p.sheet.currentHP != null) ? p.sheet.currentHP : (calc.maxHP || 0),
         maxHp: calc.maxHP || 0,
-        tb: Math.floor(((calc.totals && calc.totals['СВ']) || 0) / 10),
+        tb: Math.floor(((calc.totals && calc.totals['В']) || 0) / 10),
         ap: apOf(p.sheet),
         def: defenceOf()
       };
@@ -205,8 +207,13 @@
     });
   }
 
-  // «Кровоточащий» — ровно 1 рана за пункт, это можно списать сразу.
-  // «Горящий» — 1d10 за пункт, бросок отдаём кубам, чтобы всё было в журнале.
+  // «Кровоточащий» — ровно 1 рана за пункт, модификаторы не действуют.
+  // «Горящий» — по книге один бросок 1d10 и +1 за каждый пункт сверх первого,
+  // минус бонус выносливости и броня наименее защищённой зоны, но не меньше 1.
+  // Раньше бросалось 1d10 на каждый пункт и выносливость не вычиталась: три
+  // пункта огня снимали в среднем 16,5 раны вместо 7,5 − БВ. Броня трекеру
+  // известна только на корпусе, а наименее защищённая зона — обычно голая,
+  // поэтому вычитаем одну выносливость.
   window.encTickApply = function () {
     var hit = tickList();
     if (!hit.length) return;
@@ -216,7 +223,7 @@
       var bleed = p.conds['Кровоточащий'] || 0;
       if (bleed) lost += bleed;
       var burn = p.conds['Горящий'] || 0;
-      for (var i = 0; i < burn; i++) lost += Math.floor(Math.random() * 10) + 1;
+      if (burn) lost += Math.max(1, Math.floor(Math.random() * 10) + 1 + (burn - 1) - (p.tb || 0));
       if (!lost) return;
       p.hp = Math.max(0, p.hp - lost);
       lines.push(p.name + ' −' + lost);
@@ -292,7 +299,7 @@
     ordoConfirm({
       title: 'Конец раунда ' + (load().round - 1),
       text: hit.map(function (r) { return r.text; }).join('\n') +
-            '\n\nКровоточащий — 1 рана за пункт, Горящий — 1d10 за пункт.',
+            '\n\nКровоточащий — 1 рана за пункт. Горящий — 1d10 и +1 за каждый пункт сверх первого, минус БВ, не меньше 1.',
       yes: 'Списать раны', no: 'Пропустить',
       onYes: function () { encTickApply(); }
     });

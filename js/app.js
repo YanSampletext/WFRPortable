@@ -303,9 +303,9 @@ function sheetCalc(ch){
   // Порог скверны: рейтинг СВ + рейтинг В + Духовная чистота
   const RSV_b = Math.floor((totals['СВ']||0)/10);
   const corruptionThreshold = RV_b + RSV_b + talentCorruptionThresholdBonus(tals);
-  // Максимум очков удачи = текущие очки судьбы + уровень таланта «Удачливый»
+  // Максимум очков удачи = текущие очки судьбы + уровень таланта «Фортуна»
   // (Luck, Максимум: бонус харизмы)
-  const fortuneMax = fate + talentEffLevel('удачливый', tals, totals);
+  const fortuneMax = fate + talentEffLevel('фортуна', tals, totals);
   return {
     maxHP, fate, upor, totals, move, fortuneMax,
     encMax, corruptionThreshold,
