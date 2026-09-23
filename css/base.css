@@ -1542,7 +1542,6 @@ textarea { background: var(--panel); border: 1px solid var(--border2); color: va
 .sv4-btn-mini.btn-red { color: var(--blood2); border-color: var(--blood); }
 .sv4-btn-mini.btn-red:hover { background: rgba(139,26,26,0.15); }
 .sv4-btn-mini.btn-gold { color: var(--gold2); border-color: var(--gold); }
-.sv4-btn-mini.btn-gold:hover { background: rgba(218,165,32,0.1); }
 
 .sv4-cond-btn {
   width: 26px; height: 26px;

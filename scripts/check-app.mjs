@@ -125,7 +125,14 @@ await p.evaluate(() => {
   };
   const over = (t, b) => ({ r: t.r*t.a + b.r*(1-t.a), g: t.g*t.a + b.g*(1-t.a),
                             b: t.b*t.a + b.b*(1-t.a), a: 1 });
-  const lum = c => (0.2126*c.r + 0.7152*c.g + 0.0722*c.b) / 255;
+  // Отношение контраста по WCAG. Раньше сравнивалась разность яркостей, и
+  // золотая буква на золотой заливке (1,5 : 1, не читается) проходила: разница
+  // выходила 0,21 при пороге 0,13. Порог ниже книжных 4,5 : 1 — в тёмной
+  // теме приглушённый текст намеренно тусклый, — но нечитаемое он ловит.
+  const MIN_RATIO = 2.5;
+  const lin = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  const rel = c => 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
+  const ratio = (a, b) => { const x = rel(a), y = rel(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
   // Градиент — тоже фон. Пока здесь читался только background-color, элемент
   // на градиентной карточке мерился против сплошного цвета где-то выше по
   // дереву: светлая тема проходила проверку, выглядя тёмной кашей. Стопы
@@ -164,7 +171,7 @@ await p.evaluate(() => {
       const fg = parse(getComputedStyle(el).color), bg = bgOf(el);
       if (!fg || !bg) return;
       seen++;
-      if (Math.abs(lum(over(fg, bg)) - lum(bg)) < 0.13)
+      if (ratio(over(fg, bg), bg) < MIN_RATIO)
         out.push((el.className || el.tagName).toString().slice(0, 26));
     });
     return { bad: [...new Set(out)].slice(0, 4), seen: seen };
@@ -179,17 +186,25 @@ await p.evaluate(() => {
   };
 });
 
-// ── светлая тема: читается ли текст ─────────────────────────────────────────
+// ── читается ли текст, в обеих темах ──────────────────────────────────────
 // Цвета смешиваем с подложкой: полупрозрачный фон сам по себе ничего не значит.
-console.log('\n── светлая тема ──');
-await p.evaluate(() => document.body.classList.add('theme-light'));
-await p.evaluate(() => __restoreSheet());
-await p.waitForTimeout(300);
-for (const t of tabs) {
-  const r = await p.evaluate(tab => { sv4NavGo(tab); return __badContrast('.sv4-page *'); }, t);
-  await p.waitForTimeout(160);
-  console.log(`  ${t.padEnd(10)} ${!r.seen ? '⚠ мерить нечего — страница пуста или скрыта'
-    : r.bad.length ? '⚠ сливается: ' + r.bad.join(' | ') : 'читается (' + r.seen + ')'}`);
+// Тёмная тема — та, что стоит по умолчанию, — долго не мерилась вовсе, и
+// золотые мини-кнопки с золотой буквой на золоте прошли незамеченными.
+// Растянутую проверку заводим, чтобы на вкладке была её кнопка «Попытка».
+for (const theme of ['тёмная', 'светлая']) {
+  console.log(`\n── ${theme} тема ──`);
+  await p.evaluate(light => {
+    document.body.classList.toggle('theme-light', light);
+    __restoreSheet();
+    state.sheet.extended = [{ id: 'ext1', name: 'Дело', skill: 'Атлетика', value: 30, goal: 5, acc: 0, tries: [] }];
+  }, theme === 'светлая');
+  await p.waitForTimeout(300);
+  for (const t of tabs) {
+    const r = await p.evaluate(tab => { sv4NavGo(tab); return __badContrast('.sv4-page *'); }, t);
+    await p.waitForTimeout(160);
+    console.log(`  ${t.padEnd(10)} ${!r.seen ? '⚠ мерить нечего — страница пуста или скрыта'
+      : r.bad.length ? '⚠ сливается: ' + r.bad.join(' | ') : 'читается (' + r.seen + ')'}`);
+  }
 }
 // Обложка светлую тему не проверялась вовсе, а это первый экран при каждом
 // запуске. Проверяем её отдельно: она живёт вне .sv4-page и в цикл по
