@@ -158,10 +158,10 @@ function finishAndSaveCharacter(){
 // персонажа заново по схеме: незнакомые ключи не переносятся, а знакомые
 // берутся только если тип совпал с ожидаемым.
 //
-// Значения при этом не «чистятся» — имя со скобками остаётся именем со
-// скобками. Безопасность обеспечивает экранирование при выводе; здесь задача
-// другая: не пустить в состояние приложения посторонние поля и не дать
-// строке оказаться там, где код ждёт число.
+// Текст при этом не «чистится» — имя со скобками остаётся именем со
+// скобками: строки бланк экранирует при выводе. Здесь задача другая: не
+// пустить посторонние поля и не дать строке оказаться там, где код ждёт
+// число, — числа он выводит без экранирования (см. IMPORT_NUMBERS).
 // null в схеме значит «ещё не заполнено», и стоит он у полей разного рода:
 // race и career — строки, currentHP и currentLuck — числа. Поэтому по типу
 // образца их не различить, и числовые перечислены поимённо ниже.
@@ -192,6 +192,60 @@ function fitsShape(value, sample, key){
   return typeof value === typeof sample;
 }
 
+// Проверка формы смотрит только на верхний уровень: «weapons — массив». Что
+// внутри записей, она не видит, а часть полей там — числа, которые бланк
+// вставляет в разметку как есть. Строка на их месте — это готовый HTML
+// из чужого файла. Поэтому числовые поля записей перечислены здесь.
+const IMPORT_NUMBERS = {
+  weapons: ['enc'], armor: ['enc', 'ap'], trappings: ['enc'],
+  extraSkills: ['adv'], extraTalents: ['level'], talentBought: ['level'],
+  careerLog: ['cost'], diseases: ['day'], spells: ['cn'],
+  rollLog: ['target', 'd'], critLog: ['wounds'],
+  miscastLog: ['roll'], wrathLog: ['roll'], extended: ['value', 'goal', 'acc'],
+  downtimeLog: [],
+};
+// Словари «название → число» на бланке
+const IMPORT_NUMBER_MAPS = ['money', 'conditions', 'skillAdv', 'statAdvBought', 'skillAdvBought'];
+
+// Число из записи. null оставляем: у броска кубов цели нет. Что не
+// разобралось — ноль, а не пропуск: пропуск бланк покажет как undefined.
+function importNumber(v){
+  if(v === null) return null;
+  if(typeof v === 'number') return Number.isFinite(v) ? v : 0;
+  if(typeof v === 'string' && /^\s*-?\d+(\.\d+)?\s*$/.test(v)) return Number(v);
+  return 0;
+}
+function numberMap(obj){
+  const out = {};
+  for(const k in obj) out[k] = importNumber(obj[k]) || 0;
+  return out;
+}
+
+function normalizeLists(sheet){
+  for(const key in IMPORT_NUMBERS){
+    // запись не объектом бланк не разберёт — выбрасываем
+    sheet[key] = sheet[key].filter(e => e && typeof e === 'object' && !Array.isArray(e));
+    sheet[key].forEach((e, i) => {
+      for(const f of IMPORT_NUMBERS[key]) if(f in e) e[f] = importNumber(e[f]);
+      // id уходит в обработчики кнопок, кавычка в нём ломает атрибут
+      if('id' in e && !/^[\w.-]+$/.test(String(e.id))) e.id = 'imp' + Date.now() + '_' + i;
+    });
+  }
+  for(const e of sheet.extended){
+    e.tries = Array.isArray(e.tries) ? e.tries.filter(t => t && typeof t === 'object') : [];
+    for(const t of e.tries) for(const f of ['d', 'target', 'sl']) t[f] = importNumber(t[f]);
+  }
+  // Журналы магии хранят готовый HTML с иконками. Из чужого файла берём
+  // только текст: иконки пропадут, зато разметка с кодом тоже.
+  for(const key of ['miscastLog', 'wrathLog']){
+    for(const e of sheet[key]){
+      const text = new DOMParser().parseFromString(String(e.text || ''), 'text/html').body.textContent;
+      e.text = escHtml(text);
+    }
+  }
+  for(const key of IMPORT_NUMBER_MAPS) sheet[key] = numberMap(sheet[key]);
+}
+
 function sanitizeCharacter(raw){
   if(!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('это не досье');
   const clean = freshState();
@@ -208,7 +262,7 @@ function sanitizeCharacter(raw){
   }
   // Характеристики проходят проверку формы как объект, но значения внутри
   // идут прямо в арифметику — строка там превращает весь бланк в NaN.
-  for(const key of ['stats', 'rolls', 'careerStatAdv']){
+  for(const key of ['stats', 'rolls', 'careerStatAdv', 'careerSkills']){
     const src = clean[key];
     if(src && typeof src === 'object'){
       const num = {};
@@ -220,6 +274,19 @@ function sanitizeCharacter(raw){
     }
   }
   if(!clean.race || !clean.stats) throw new Error('в файле нет ни народа, ни характеристик');
+  // Бланк строится от справочника: с незнакомым народом он не откроется
+  // вовсе, с незнакомой карьерой — наполовину. Такой файл в архив не берём.
+  const known = (table, key) => Object.prototype.hasOwnProperty.call(table, key);
+  if(!known(DATA.races, clean.race)) throw new Error('незнакомый народ «' + clean.race + '»');
+  if(clean.cls && !known(DATA.classes, clean.cls)) throw new Error('незнакомое сословие «' + clean.cls + '»');
+  if(clean.career && !known(DATA.careers, clean.career)) throw new Error('незнакомая карьера «' + clean.career + '»');
+  // Случайные таланты народа. Массив разреженный: номер — место таланта в
+  // списке народа, прочие места null. Выбрасывать ничего нельзя, сдвинутся.
+  clean.randomTalents = clean.randomTalents.map(e =>
+    (e && typeof e === 'object' && !Array.isArray(e))
+      ? Object.assign({}, e, { talent: String(e.talent || ''), roll: importNumber(e.roll) })
+      : null);
+  normalizeLists(clean.sheet);
   return clean;
 }
 

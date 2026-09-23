@@ -821,7 +821,7 @@ function renderRaceSkills(el){
     } else if(t === '{случайный талант}'){
       const tn = state.randomTalents[idx];
       if(tn){
-        html += `<div style="margin:4px 0;"><span class="tag">${tn.talent}</span> <span class="muted">(выпало ${tn.roll})</span> <button class="btn btn-sm" onclick="rerollRandomTalent(${idx})"><span class="ic">${ICONS.dice}</span> Перебросить</button></div>`;
+        html += `<div style="margin:4px 0;"><span class="tag">${escHtml(tn.talent)}</span> <span class="muted">(выпало ${escHtml(tn.roll)})</span> <button class="btn btn-sm" onclick="rerollRandomTalent(${idx})"><span class="ic">${ICONS.dice}</span> Перебросить</button></div>`;
       } else {
         html += `<div style="margin:4px 0;"><button class="btn btn-sm" onclick="rollRandomTalent(${idx})"><span class="ic">${ICONS.dice}</span> Бросить 1d100</button></div>`;
       }
