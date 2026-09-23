@@ -68,5 +68,22 @@ await shot('5-more');
 await p.evaluate(() => { sv4NavGo('persona'); drawerOpen(); });
 await shot('6-menu');
 
+// Выбор сложности — то, что открывает долгое нажатие на проверку
+await p.evaluate(() => { drawerClose(); sv4NavGo('skills'); difficultyPick('Атлетика', 38); });
+await shot('7-difficulty');
+
+// Растянутая проверка с парой попыток: накопление видно сразу
+await p.evaluate(() => {
+  ordoDialogClose();
+  state.sheet.extended = [{ id: 'ext1', name: 'Перевод гримуара', skill: 'Язык (магический)',
+    value: 42, goal: 8, acc: 5, tries: [
+      { d: 17, target: 42, sl: 3, dif: 'Серьёзная', t: Date.now() - 86400000 },
+      { d: 23, target: 42, sl: 2, dif: 'Серьёзная', t: Date.now() }] }];
+  sv4NavGo('downtime');
+  const el = document.querySelector('.ext-list');
+  if (el) el.closest('.panel').scrollIntoView({ block: 'start' });
+});
+await shot('8-extended');
+
 await b.close();
 srv.close();

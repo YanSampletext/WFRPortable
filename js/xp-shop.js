@@ -220,7 +220,7 @@ function renderShop(){
 
   // ===== Таланты карьеры =====
   html += `<div class="panel"><div class="panel-title">Таланты карьеры (${tier.name})</div>`;
-  html += `<p class="muted" style="font-size:11px;">Шаг развития таланта: <b>100</b> XP за уровень — по правилам WFRP4 цена не растёт.</p>`;
+  html += `<p class="muted" style="font-size:11px;">Шаг развития таланта: <b>100</b> XP за уровень — по правилам книги цена не растёт.</p>`;
   html += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Талант</th><th>Уже шагов</th><th>Цена след.</th><th>Купить</th></tr></thead><tbody>';
   tierTalents.forEach(tn => {
     const lower = tn.toLowerCase();

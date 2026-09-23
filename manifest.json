@@ -1,7 +1,7 @@
 {
   "name": "Имперский архив",
   "short_name": "Имперский архив",
-  "description": "Создание и ведение персонажа Warhammer Fantasy Roleplay 4 (рус.)",
+  "description": "Лист персонажа для настольных ролевых игр. Работает без интернета.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
