@@ -1671,14 +1671,15 @@ await check('на удар из лука боевой талант рукопа�
 
 // ── стоимость развития: сверка с таблицей книги ────────────────────────────
 await check('таблица развития совпадает с книгой', () => ev(() => {
-  // WFRP4, таблица стоимости развития: шаги 1–5, 6–10, … 66+
+  // WFRP4, с. 35: «От 1 до 5 — 25/10 … От 66 до 70 — 450/380, 70 и более — 520/440»
   const book = [
     [1, 25, 10], [5, 25, 10], [6, 30, 15], [10, 30, 15], [11, 40, 20],
     [15, 40, 20], [16, 50, 30], [20, 50, 30], [21, 70, 40], [25, 70, 40],
     [26, 90, 60], [30, 90, 60], [31, 120, 80], [35, 120, 80], [36, 150, 110],
     [40, 150, 110], [41, 190, 140], [45, 190, 140], [46, 230, 180],
     [50, 230, 180], [51, 280, 220], [55, 280, 220], [56, 330, 270],
-    [60, 330, 270], [61, 390, 320], [65, 390, 320]
+    [60, 330, 270], [61, 390, 320], [65, 390, 320], [66, 450, 380],
+    [70, 450, 380], [71, 520, 440]
   ];
   const bad = book.filter(([step, ch, sk]) => {
     const c = advCostFor(step - 1);
@@ -1687,14 +1688,16 @@ await check('таблица развития совпадает с книгой'
   return bad.length ? 'расходится на шагах: ' + bad.map(b => b[0]).join(', ') : true;
 }));
 
-await check('полоса «66+» открытая, надбавки сверху нет', () => ev(() => {
-  // В книге последняя полоса без верхней границы: всё от 66-го шага — 450/380
-  const over = [66, 70, 71, 80, 120, 500];
+await check('полоса «70 и более» открытая, надбавки сверху нет', () => ev(() => {
+  // В книге (с. 35) последняя полоса без верхней границы: всё после 70-го
+  // шага — 520/440. Раньше здесь закреплялось «66+ по 450/380» — по памяти,
+  // а не по книге.
+  const over = [71, 80, 120, 500];
   const bad = over.filter(n => {
     const c = advCostFor(n - 1);
-    return c.char !== 450 || c.skill !== 380;
+    return c.char !== 520 || c.skill !== 440;
   });
-  return bad.length ? 'дороже книги на шагах: ' + bad.join(', ') : true;
+  return bad.length ? 'не по книге на шагах: ' + bad.join(', ') : true;
 }));
 
 await check('карьерный шаг вдвое дороже вне карьеры', () => ev(() => {
@@ -2851,23 +2854,53 @@ await check('ступень: 8 навыков вместе с прежними',
   return true;
 }));
 
-await check('цена таланта в магазине = списанию', () => ev(() => {
+await check('талант: 100 и +100 за каждый взятый уровень', () => ev(() => {
+  // Книга, с. 35: «100 XP +100 XP за каждое улучшение, уже взятое в этом
+  // таланте… второй раз стоит 200 XP, третий 300». Цена в таблице магазина
+  // и в корзине должна быть одна.
   const keepSheet = JSON.stringify(state.sheet), keepXp = state.xpGained;
   try {
     state.xpGained = 5000;
     const tn = DATA.careers[state.career].tiers[(state.sheet.tier || 1) - 1]
       .talents.split(/,(?![^()]*\))/)[0].trim();
+    const had = talentLevel(tn);
     const row = () => [...document.querySelectorAll('#shop-area tr')]
       .find(tr => tr.cells[0] && tr.cells[0].textContent.trim().startsWith(tn));
-    for (let i = 0; i < 2; i++) { buyTalent(tn); cartApply(); }
+    buyTalent(tn);
+    const first = state.sheet._cart.at(-1).cost;
+    if (first !== 100 * (had + 1)) return `уровень ${had + 1} стоит ${first}, по книге ${100 * (had + 1)}`;
+    cartApply();
+    buyTalent(tn); cartApply();
     renderShop();
     const shownPrice = parseInt(row().cells[2].textContent, 10);
     const shownLevel = parseInt(row().cells[1].textContent, 10);
+    if (shownLevel !== had + 2) return `после двух покупок «уже шагов» ${shownLevel}, ждали ${had + 2}`;
+    if (shownPrice !== 100 * (had + 3)) return `в таблице ${shownPrice}, по книге ${100 * (had + 3)}`;
     buyTalent(tn);
     const charged = state.sheet._cart.at(-1).cost;
-    if (shownPrice !== charged) return `в таблице ${shownPrice}, списывается ${charged}`;
-    if (shownLevel !== 2) return `после двух покупок «уже шагов» ${shownLevel}`;
-    return true;
+    return charged === shownPrice ? true : `в таблице ${shownPrice}, списывается ${charged}`;
+  } finally { state.sheet = JSON.parse(keepSheet); state.xpGained = keepXp; }
+}));
+
+await check('навык вне карьеры вдвое, прежних ступеней — нет', () => ev(() => {
+  // Книга, с. 35: вне карьеры — вдвое; улучшать по обычной цене можно все
+  // умения своего уровня карьеры и ниже.
+  const keepSheet = JSON.stringify(state.sheet), keepXp = state.xpGained;
+  try {
+    state.xpGained = 5000;
+    state.sheet.tier = 2;
+    const mine = careerSkillsUpTo(state.career, 2).map(s => s.toLowerCase());
+    const low = DATA.careers[state.career].tiers[0].skills.split(/,(?![^()]*\))/)[0].trim();
+    const all = DATA.common_skills.concat(DATA.prof_skills).map(x => x.name);
+    const alien = all.find(n => !mine.some(m => m.startsWith(n.toLowerCase())));
+    state.sheet._cart = [];
+    buySkillAdv(low);
+    const lowCost = state.sheet._cart.at(-1).cost;
+    if (lowCost !== advCostFor(skillAdvancesTotal(low)).skill) return `навык 1-й ступени на 2-й стоит ${lowCost}, а не обычную цену`;
+    buySkillAdv(alien);
+    const alienCost = state.sheet._cart.at(-1).cost;
+    const plain = advCostFor(skillAdvancesTotal(alien)).skill;
+    return alienCost === plain * 2 ? true : `«${alien}» вне карьеры стоит ${alienCost}, по книге ${plain * 2}`;
   } finally { state.sheet = JSON.parse(keepSheet); state.xpGained = keepXp; }
 }));
 

@@ -12,6 +12,9 @@
 // Стоимость шага развития характеристики/навыка по уже сделанным шагам.
 // Берётся из DATA.adv_cost_table (см. источник).
 // ВАЖНО (правила WFRP4): цена зависит от НОМЕРА покупаемого шага, а не от уже сделанных.
+// Так в таблице на с. 35 («От 1 до 5…») и в её примере: 9 улучшений скрытности —
+// «первые 5 по 10 XP, 4 оставшихся по 15». Таблица на с. 31 пишет «0–5», текст
+// на с. 34 — «уже осуществили»; пример с девятью шагами решает спор.
 // Имея alreadyDone шагов, мы покупаем шаг №(alreadyDone+1) — его и ищем в таблице.
 // Полосы таблицы: шаги 1–5 → 25/10, 6–10 → 30/15, 11–15 → 40/20 и т.д.
 function advCostFor(alreadyDone){
@@ -22,19 +25,38 @@ function advCostFor(alreadyDone){
     const lo = Math.max(1, row.min);
     if(n >= lo && n <= row.max) return { char: row.char, skill: row.skill };
   }
-  // Последняя полоса в книге открытая — «66+», и всё от 66-го шага и дальше
-  // стоит одинаково. Здесь когда-то дописали надбавку +50/+40 за каждые пять
-  // шагов сверх семидесяти: это домашнее правило, а не книга, и оно брало с
-  // игрока лишнее. Полоса теперь открыта в самой таблице, так что сюда
-  // попадаем только если таблицу вовсе не прочитали.
-  const last = tbl[tbl.length-1] || { char: 450, skill: 380 };
+  // Последняя полоса книги открытая: «70 и более — 520 / 440» (с. 35).
+  // Сюда попадаем, только если таблицу вовсе не прочитали.
+  const last = tbl[tbl.length-1] || { char: 520, skill: 440 };
   return { char: last.char, skill: last.skill };
 }
 
-// Цена уровня таланта — одна на таблицу магазина и на покупку. Раньше таблица
-// показывала 100 × (взято + 1), а списывалось ровно 100: игрок видел одну
-// цену, а платил другую.
-const TALENT_XP = 100;
+// Цена уровня таланта по книге (с. 35): «100 XP +100 XP за каждое улучшение,
+// уже взятое в этом таланте» — второй раз 200, третий 300. Взятым считается
+// и полученное при создании. Одна функция на таблицу магазина и на покупку:
+// раньше таблица показывала растущую цену, а списывалось всегда 100.
+function talentCost(name){
+  return 100 * (talentLevel(name) + cartCountTalent(name) + 1);
+}
+
+// Умения карьеры, доступные на ступени: по книге — умения этой ступени и
+// всех ниже (с. 35). В данных у ступени записаны только новые.
+function careerSkillsUpTo(career, tier){
+  const c = DATA.careers[career]; if(!c) return [];
+  const seen = new Set();
+  return c.tiers.slice(0, tier)
+    .flatMap(t => (t.skills||'').split(/,(?![^()]*\))/).map(s=>s.trim()).filter(Boolean))
+    .filter(s => !seen.has(s.toLowerCase()) && seen.add(s.toLowerCase()));
+}
+// Входит ли навык в карьеру. «Знание (любое)» в карьере покрывает любое знание.
+function isCareerSkill(name){
+  const n = String(name||'').trim().toLowerCase();
+  const base = n.replace(/\s*\(.*\)$/, '');
+  return careerSkillsUpTo(state.career, state.sheet.tier||1).some(s => {
+    const k = s.toLowerCase();
+    return k === n || (/\((любое|любая|любой|любые)\)$/.test(k) && k.replace(/\s*\(.*\)$/, '') === base);
+  });
+}
 
 // Сколько уже сделано шагов развития характеристики (куплено за опыт).
 // При создании шаги не даются, поэтому считаем только купленное.
@@ -153,13 +175,15 @@ function renderShop(){
     </div>`;
   }
 
-  // ===== Карьерные навыки/таланты текущей ступени (для подсказки) =====
-  const tierSkills = (tier.skills || '').split(/,(?![^()]*\))/).map(s=>s.trim()).filter(Boolean);
+  // ===== Навыки карьеры до текущей ступени, таланты — только текущей =====
+  // По книге (с. 35) умения улучшаются все, что на уровне карьеры и ниже,
+  // а таланты — только текущего уровня.
+  const tierSkills = careerSkillsUpTo(state.career, state.sheet.tier || 1);
   const tierTalents = (tier.talents || '').split(/,(?![^()]*\))/).map(s=>s.trim()).filter(Boolean);
 
   // ===== Покупка характеристик =====
   html += `<div class="panel"><div class="panel-title">Характеристики (покупка шагов развития)</div>`;
-  html += `<p class="muted" style="font-size:11px;">Цена шага зависит от уже сделанных шагов: 0–5: <b>25</b>, 6–10: <b>30</b>, 11–15: <b>40</b>, 16–20: <b>50</b>, 21–25: <b>70</b>, 26–30: <b>90</b>, 31–35: <b>120</b>, 36–40: <b>150</b>, и далее по таблице.</p>`;
+  html += `<p class="muted" style="font-size:11px;">Цена шага по его номеру: 1–5: <b>25</b>, 6–10: <b>30</b>, 11–15: <b>40</b>, 16–20: <b>50</b>, 21–25: <b>70</b>, 26–30: <b>90</b>, 31–35: <b>120</b>, 36–40: <b>150</b>, и далее по таблице. Вне карьеры — вдвое.</p>`;
   html += '<div class="shop-grid">';
   const availStats = careerStatsAvailable(state.sheet.tier); // характеристики карьеры на текущей ступени
   const schemeAll = careerScheme();
@@ -191,8 +215,8 @@ function renderShop(){
   html += '</div></div>';
 
   // ===== Покупка навыков (карьерные текущей ступени) =====
-  html += `<div class="panel"><div class="panel-title">Навыки карьеры (${tier.name})</div>`;
-  html += `<p class="muted" style="font-size:11px;">Цена шага: 0–5: <b>10</b>, 6–10: <b>15</b>, 11–15: <b>20</b>, 16–20: <b>30</b>, 21–25: <b>40</b>, 26–30: <b>60</b>, 31–35: <b>80</b>, 36–40: <b>110</b>.</p>`;
+  html += `<div class="panel"><div class="panel-title">Навыки карьеры (${tier.name} и ниже)</div>`;
+  html += `<p class="muted" style="font-size:11px;">Цена шага по его номеру: 1–5: <b>10</b>, 6–10: <b>15</b>, 11–15: <b>20</b>, 16–20: <b>30</b>, 21–25: <b>40</b>, 26–30: <b>60</b>, 31–35: <b>80</b>, 36–40: <b>110</b>, и далее по таблице.</p>`;
   html += '<div class="shop-grid">';
   tierSkills.forEach(skName => {
     const done = skillAdvancesTotal(skName);
@@ -215,7 +239,7 @@ function renderShop(){
   const profOpts = DATA.prof_skills.map(p => `<option value="${escAttr(p.name)}">`).join('');
   const commonOpts = DATA.common_skills.map(p => `<option value="${escAttr(p.name)}">`).join('');
   html += `<div class="panel"><div class="panel-title">Купить шаг любого навыка</div>
-    <p class="muted" style="font-size:11px;">Стоимость недоступного навыка (не из карьерной ступени) — х2 по правилам, но здесь даём базовую цену (ведущий пусть решает доступность).</p>
+    <p class="muted" style="font-size:11px;">Навык не из карьеры стоит вдвое (книга, с. 35), и ведущий может потребовать учителя.</p>
     <datalist id="shop-all-skills">${commonOpts}${profOpts}</datalist>
     <div class="add-row">
       <input type="text" id="shop-skill-name" list="shop-all-skills" placeholder="название навыка"/>
@@ -225,15 +249,13 @@ function renderShop(){
 
   // ===== Таланты карьеры =====
   html += `<div class="panel"><div class="panel-title">Таланты карьеры (${tier.name})</div>`;
-  html += `<p class="muted" style="font-size:11px;">Шаг развития таланта: <b>${TALENT_XP}</b> XP за уровень.</p>`;
+  html += `<p class="muted" style="font-size:11px;">Талант: <b>100</b> XP за первый уровень и +100 за каждый уже взятый — второй стоит 200, третий 300.</p>`;
   html += '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Талант</th><th>Уже шагов</th><th>Цена след.</th><th>Купить</th></tr></thead><tbody>';
   tierTalents.forEach(tn => {
-    const lower = tn.toLowerCase();
-    // уровень, а не число записей: взятый повторно талант — одна запись с level
-    const cnt = (state.sheet.talentBought || []).filter(x => x.name.toLowerCase() === lower)
-      .reduce((n, x) => n + (x.level || 1), 0);
+    // уровень из всех источников: народ, карьера при создании, покупки
+    const cnt = talentLevel(tn);
     const inCart = cartCountTalent(tn);
-    const cost = TALENT_XP;
+    const cost = talentCost(tn);
     const can  = avail >= cost;
     const hint = findTalentHint(tn);
     html += `<tr${inCart?' style="background:rgba(218,165,32,0.06);"':''}>
@@ -317,10 +339,7 @@ function careerTierCompletion(career, tierIdx){
   // Доступны на уровне и умения прежних ступеней: в данных у ступени записаны
   // только новые (8, 6, 4, 2), и раньше проверялись одни они — на 4-й ступени
   // хватало двух навыков по 20 шагов вместо восьми.
-  const seen = new Set();
-  const tierSkills = c.tiers.slice(0, tierIdx + 1)
-    .flatMap(t => (t.skills||'').split(/,(?![^()]*\))/).map(s=>s.trim()).filter(Boolean))
-    .filter(s => !seen.has(s.toLowerCase()) && seen.add(s.toLowerCase()));
+  const tierSkills = careerSkillsUpTo(career, tierIdx + 1);
   res.skills = tierSkills.map(name => ({ name, adv: skillAdvancesTotal(name), ok: skillAdvancesTotal(name) >= res.need }));
   res.skillsDone = res.skills.filter(s => s.ok).length;
   res.skillsNeed = Math.min(8, res.skills.length);
@@ -454,14 +473,6 @@ function buyStatAdv(s){
   const inCareer = !availStats || availStats.includes(s);
   const cost = advCostFor(done).char * (inCareer ? 1 : 2);
   if(xpAvailable() < cost){ notify('Недостаточно XP (с учётом корзины).'); return; }
-  // Мягкое напоминание о лимите шагов характеристики по ступени карьеры
-  // (книга: каждая ступень открывает +5 шагов; 1-я → 5, 2-я → 10, 3-я → 15, 4-я → 20)
-  const tier = state.sheet.tier || 1;
-  const tierLimit = tier * 5;
-  if(done >= tierLimit && !state.sheet._statLimitAck){
-    state.sheet._statLimitAck = true;
-    notify('⚠ ' + s + ': ' + done + ' шагов — это предел для ' + tier + '-й ступени (' + tierLimit + '). По правилам выше можно качать только на следующих ступенях. Покупка разрешена.');
-  }
   if(!state.sheet._cart) state.sheet._cart = [];
   state.sheet._cart.push({ type:'stat', key:s, cost, label:`+1 шаг ${s}` });
   renderShop();
@@ -470,7 +481,8 @@ function buyStatAdv(s){
 function buySkillAdv(name){
   const lower = name.toLowerCase();
   const done = skillAdvancesTotal(name) + cartCountSkill(name);
-  const cost = advCostFor(done).skill;
+  // вне карьеры — вдвое (книга, с. 35), как и у характеристик
+  const cost = advCostFor(done).skill * (isCareerSkill(name) ? 1 : 2);
   if(xpAvailable() < cost){ notify('Недостаточно XP (с учётом корзины).'); return; }
   if(!state.sheet._cart) state.sheet._cart = [];
   state.sheet._cart.push({ type:'skill', key:lower, name, cost, label:`+1 шаг «${name}»` });
@@ -487,7 +499,7 @@ function buyArbitrarySkill(){
 
 function buyTalent(name){
   const lower = name.toLowerCase();
-  const cost = TALENT_XP;
+  const cost = talentCost(name);
   if(xpAvailable() < cost){ notify('Недостаточно XP (с учётом корзины).'); return; }
   if(!state.sheet._cart) state.sheet._cart = [];
   state.sheet._cart.push({ type:'talent', key:lower, name, cost, label:`Талант «${name}»` });
