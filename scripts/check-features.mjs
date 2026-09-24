@@ -3186,6 +3186,24 @@ await check('снаряжение: доступность и цены по кн�
   return odd.length || bad.length ? 'не по книге: ' + [...odd, ...bad].join(', ') : true;
 }));
 
+await check('библиотека заклинаний: все 135 из книги, по своим школам', () => ev(() => {
+  // гл. VIII, с. 198–215: в каждой школе 8 заклинаний, малых 25, тайных 23;
+  // ведовство, колдовство, демонология, некромантия и Хаос — отдельные знания
+  const n = l => SPELL_LIB.filter(s => s.l === l).length;
+  const want = { 'Малые заклинания': 25, 'Тайная магия': 23, 'Знание Теней': 8, 'Знание Металла': 8,
+                 'Знание ведовства': 6, 'Знание колдовства': 6, 'Знание некромантии': 4, 'Знание Тзинча': 1 };
+  const bad = Object.keys(want).filter(l => n(l) !== want[l]).map(l => l + ' ' + n(l));
+  if (SPELL_LIB.length !== 135) bad.push('всего ' + SPELL_LIB.length);
+  const old = state.sheet._spellLore;
+  state.sheet._spellLore = 'Тёмная магия';
+  spellPickerOpen();
+  const rows = document.querySelectorAll('#spick-list .spick-row').length;
+  document.getElementById('spell-picker').classList.remove('show');
+  state.sheet._spellLore = old;
+  if (!rows) bad.push('старая школа из досье даёт пустой список');
+  return bad.length ? bad.join(', ') : true;
+}));
+
 console.log(results.join('\n'));
 console.log('\nпрошло ' + pass + ', не прошло ' + fail);
 console.log('ошибок JS за прогон: ' + errs.length);
