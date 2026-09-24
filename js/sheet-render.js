@@ -241,8 +241,12 @@ function addXP(delta){
 // Названия, к которым по книге применяется преимущество: бой и оружейные навыки
 function advantageApplies(name){
   const n = String(name || '').toLowerCase();
+  // Книга, с. 127: боевые и психологические проверки — рукопашная, уклонение,
+  // стрельба и хладнокровие против врагов. После боя преимущество и так
+  // сбрасывается, поэтому вне схватки прибавлять тут нечего.
   return n === 'бб' || n === 'дб' ||
-         n.startsWith('рукопашный бой') || n.startsWith('стрельба');
+         n.startsWith('рукопашный бой') || n.startsWith('стрельба') ||
+         n.startsWith('уклонение') || n.startsWith('хладнокровие');
 }
 
 // mod — сложность проверки из книги, от +60 до −30. Без неё бросок считается
@@ -262,31 +266,22 @@ function rollCheck(name, target, mod){
   const dif = parseInt(mod) || 0;
   target = base + advBonus + dif;
   const d = Math.floor(Math.random()*100) + 1; // 1..100
-  let outcome, cls, slvl = 0;
-  // Уровни успеха/провала: разница десятков
-  const diff = target - d;
-  slvl = Math.trunc(target/10) - Math.trunc(d/10);
-  const crit = (d % 11 === 0) || d === 1 || d === 100; // дубли = критич.
-  if(d === 1){ outcome = 'Критический успех!'; cls='crit-success'; }
-  else if(d === 100){ outcome = 'Критический провал!'; cls='crit-fail'; }
-  else if(d <= target){
-    outcome = crit ? 'Критический успех!' : 'Успех';
-    cls = crit ? 'crit-success' : 'success';
-  } else {
-    outcome = crit ? 'Критический провал!' : 'Провал';
-    cls = crit ? 'crit-fail' : 'fail';
-  }
-  // Минус типографский: во всех книжных таблицах приложения он такой, и «−4»
-  // под подписью «Трудная −20» не должно вдруг писаться другим знаком.
-  const slText = (d<=target ? '+' + slvl : String(slvl).replace('-', '−')) + ' ст.усп.';
-  if(navigator.vibrate) navigator.vibrate(d<=target?[20]:[40,30,40]);
+  // Исход по книге: 01–05 и 96–00 решают сами, SL — разница десятков.
+  // Дубль на успехе — крит, на провале — заминка (опциональное правило, с. 117).
+  const o = testOutcome(target, d);
+  const outcome = o.ok ? (o.double ? 'Критический успех!' : 'Успех')
+                       : (o.double ? 'Критический провал!' : 'Провал');
+  const cls = o.ok ? (o.double ? 'crit-success' : 'success')
+                   : (o.double ? 'crit-fail' : 'fail');
+  const slText = slSigned(o) + ' ст.усп.';
+  if(navigator.vibrate) navigator.vibrate(o.ok?[20]:[40,30,40]);
   showRollResult(name, target, d, outcome, cls, slText, { base, adv: advBonus, dif });
 }
 function rollLogRows(){
   const log = (state.sheet && state.sheet.rollLog) || [];
   if(!log.length) return '<p class="muted" style="padding:6px 2px;">Бросков пока нет. Тапни характеристику или навык, чтобы бросить d100.</p>';
   return log.map(r => {
-    const ok = r.d <= r.target;
+    const ok = typeof r.target === 'number' && testOutcome(r.target, r.d).ok;
     const col = /Крит.*успех/.test(r.outcome) ? 'var(--green2)' : /Крит.*провал/.test(r.outcome) ? 'var(--blood2)' : (ok?'var(--gold2)':'var(--text3)');
     const tm = new Date(r.t||Date.now());
     const hh = String(tm.getHours()).padStart(2,'0')+':'+String(tm.getMinutes()).padStart(2,'0');
@@ -387,7 +382,7 @@ function showRollResult(name, target, d, outcome, cls, slText, meta){
     <div class="sv4-roll-btns">
       <button class="sv4-roll-close" onclick="document.getElementById('roll-modal').classList.remove('show')">Закрыть</button>
       <button class="sv4-roll-again" data-call="roll" data-v="${escAttr(name)}" data-n="${base}" data-d="${dif}"><span class="ic">${ICONS.dice}</span> Ещё раз</button>
-      ${meta ? `<button class="sv4-roll-again" data-call="opposed" data-v="${escAttr(name)}" data-n="${target}" data-r="${d}" data-s="${Math.trunc(target/10) - Math.trunc(d/10)}">⚔ Встречная</button>` : ''}
+      ${meta ? `<button class="sv4-roll-again" data-call="opposed" data-v="${escAttr(name)}" data-n="${target}" data-r="${d}" data-s="${testOutcome(target, d).sl}">⚔ Встречная</button>` : ''}
     </div>
   </div>`;
   modal.classList.add('show');
@@ -931,7 +926,7 @@ function renderTabPersona(){
   h += '</div>';
   h += `<p class="sv4-roll-tip muted">Тап — серьёзная проверка (+0). Удержание — сложность от +60 до −30.</p>`;
 
-  // Виталки: Судьба / Удача / Упорство / Решимость / Скверна
+  // Виталки: Судьба / Удача / Решимость / Скверна
   h += `<div class="sv4-section-title">${ICONS.compass} Судьба и упорство</div>`;
   h += `<div class="sv4-vitals">
     <div class="sv4-vit" onclick="sv4NavGo('fate')">
@@ -942,10 +937,10 @@ function renderTabPersona(){
     <div class="sv4-vit" onclick="sv4NavGo('fate')">
       <div class="sv4-v-l">Удача</div>
       <div class="sv4-v-ico">${ICONS.hand}</div>
-      <div class="sv4-v-v">${state.sheet.currentLuck||0}<span class="max">/${calc.fate}</span></div>
+      <div class="sv4-v-v">${state.sheet.currentLuck||0}<span class="max">/${calc.fortuneMax}</span></div>
     </div>
     <div class="sv4-vit" onclick="sv4NavGo('fate')">
-      <div class="sv4-v-l">Упорство</div>
+      <div class="sv4-v-l">Решимость</div>
       <div class="sv4-v-ico">${ICONS.star}</div>
       <div class="sv4-v-v">${state.sheet.resolveCurrent||0}<span class="max">/${calc.upor}</span></div>
     </div>
@@ -1128,8 +1123,8 @@ function renderTabFate(){
     <div class="sv4-vit">
       <div class="sv4-v-l">УДАЧА</div>
       <div class="sv4-v-ico">${ICONS.hand}</div>
-      <div class="sv4-v-v"><input type="number" min="0" value="${state.sheet.currentLuck||0}" class="sv4-inline" onchange="state.sheet.currentLuck=Math.max(0,parseInt(this.value)||0);autosave();" /><span class="max">/${calc.fate}</span></div>
-      <button class="sv4-btn-mini" onclick="state.sheet.currentLuck=${calc.fate};renderSheet();">↑ Восполнить</button>
+      <div class="sv4-v-v"><input type="number" min="0" value="${state.sheet.currentLuck||0}" class="sv4-inline" onchange="state.sheet.currentLuck=Math.max(0,parseInt(this.value)||0);autosave();" /><span class="max">/${calc.fortuneMax}</span></div>
+      <button class="sv4-btn-mini" onclick="state.sheet.currentLuck=${calc.fortuneMax};renderSheet();">↑ Восполнить</button>
     </div>
     <div class="sv4-vit">
       <div class="sv4-v-l">УПОРСТВО</div>
@@ -1351,7 +1346,7 @@ function renderTabSkills(){
                 : sk.sources.includes('лист') ? 'Лист'
                 : sk.sources.includes('XP-магазин') ? 'Магазин'
                 : '—';
-  // Все 26 общих навыков разом — это почти три экрана, и за игрой вкладку
+  // Все 25 общих навыков разом — это почти три экрана, и за игрой вкладку
   // приходилось листать. Необученные (ноль шагов и никакого источника) по
   // умолчанию свёрнуты: бросают по ним редко, а нужное число всё равно есть на
   // бланке — у необученного общего навыка итог равен характеристике.
@@ -1667,7 +1662,8 @@ function renderTabGear(){
     const calcW = sheetCalc();
     let carried = 0;
     (state.sheet.weapons||[]).forEach(w => carried += (parseInt(w.enc)||0));
-    (state.sheet.armor||[]).forEach(a => carried += (parseInt(a.enc)||0));
+    // надетое весит на 1 меньше (с. 244): броня в листе — та, что надета
+    (state.sheet.armor||[]).forEach(a => carried += Math.max(0, (parseInt(a.enc)||0) - 1));
     (state.sheet.trappings||[]).forEach(t => carried += (parseInt(t.enc)||0));
     const eMax = calcW.encMax||0;
     const baseMove = calcW.move||0;
@@ -1676,13 +1672,17 @@ function renderTabGear(){
     let barColor = 'var(--green,#3a8a55)';
     if(over > 0) barColor = 'var(--red,#c0392b)';
     else if(eMax>0 && carried >= eMax*0.8) barColor = 'var(--gold2)';
+    // Перегруз по таблице с. 245: до двойного предела −1 к Движению (не ниже 3)
+    // и −10 к проворству, до тройного −2 (не ниже 2) и −20, дальше — ни шагу.
     let statusLine;
     if(over <= 0){
       statusLine = `<span style="color:var(--text3);">запас ${eMax-carried}</span>`;
-    } else if(carried < eMax*2){
-      statusLine = `<span style="color:var(--red,#c0392b);font-weight:600;">Перегруз +${over} · Движение −${over} (${Math.max(0,baseMove-over)})</span>`;
+    } else if(carried <= eMax*3){
+      const lvl = carried <= eMax*2 ? 1 : 2;
+      const mv = Math.min(baseMove, Math.max(lvl===1 ? 3 : 2, baseMove-lvl));
+      statusLine = `<span style="color:var(--red,#c0392b);font-weight:600;">Перегруз +${over} · Движение ${mv} · −${lvl*10} к проворству</span>`;
     } else {
-      statusLine = `<span style="color:var(--red,#c0392b);font-weight:700;">Критический перегруз — обездвижен</span>`;
+      statusLine = `<span style="color:var(--red,#c0392b);font-weight:700;">Больше тройного предела — не сдвинуться с места</span>`;
     }
     const hasBugai = calcW.encMax > (calcW.RSb||0)+(calcW.RVb||0);
     h += `<div class="sv4-block">
@@ -1695,7 +1695,7 @@ function renderTabGear(){
       <div style="height:8px;border-radius:4px;background:rgba(255,255,255,.08);margin-top:8px;overflow:hidden;">
         <div style="height:100%;width:${pct}%;background:${barColor};transition:width .2s;"></div>
       </div>
-      <p class="muted" style="font-size:10px;margin-top:6px;">Предел = РС + РВ${hasBugai?` + Бугай (+${calcW.encMax-((calcW.RSb||0)+(calcW.RVb||0))})`:''}. Сверх предела: −1 к Движению за каждый пункт; при удвоенном пределе — обездвижен.</p>
+      <p class="muted" style="font-size:10px;margin-top:6px;">Предел = РС + РВ${hasBugai?` + Бугай (+${calcW.encMax-((calcW.RSb||0)+(calcW.RVb||0))})`:''}. Надетая броня — на 1 легче. До двойного предела: −1 Движение (не ниже 3), −10 проворство; до тройного: −2 (не ниже 2), −20; больше — стоишь на месте.</p>
     </div>`;
   }
   return h;
@@ -1767,8 +1767,8 @@ function renderTabPrint(){
     <div class="sv4-print-vitals">
       <div>Здоровье: <b>${state.sheet.currentHP}/${calc.maxHP}</b></div>
       <div>Скорость: <b>${calc.move}</b> (шаг ${calc.move*2}, бег ${calc.move*4})</div>
-      <div>Судьба: <b>${calc.fate}</b> · Удача: <b>${state.sheet.currentLuck||0}/${calc.fate}</b></div>
-      <div>Упорство: <b>${state.sheet.resolveCurrent||0}/${calc.upor}</b> · Скверна: <b>${state.sheet.corruption||0}/${calc.corruptionThreshold}</b></div>
+      <div>Судьба: <b>${calc.fate}</b> · Удача: <b>${state.sheet.currentLuck||0}/${calc.fortuneMax}</b></div>
+      <div>Упорство: <b>${(r.resilience||0) + (state.extraRes||0)}</b> · Решимость: <b>${state.sheet.resolveCurrent||0}/${calc.upor}</b> · Скверна: <b>${state.sheet.corruption||0}/${calc.corruptionThreshold}</b></div>
     </div>
     <h3 class="sv4-print-h3">Навыки (${skills.length})</h3>
     <table class="sv4-print-tbl small-tbl"><thead><tr><th>Навык</th><th>Хар.</th><th>Шаги</th><th>Итог</th></tr></thead>

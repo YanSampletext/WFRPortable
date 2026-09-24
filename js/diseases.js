@@ -41,10 +41,10 @@ function diseaseDel(i){
 }
 /* Проверка малой инфекции после боя с критом: очень лёгкая (+60) выносливость */
 function sv2InfectionCheck(){
-  const calc = sheetCalc();
-  const target = (calc.totals['В']||0) + 60;
+  // очень лёгкая (+60) проверка навыка «стойкость» (Endurance), с. 147
+  const target = sheetSkillValue('стойкость') + 60;
   const d = Math.floor(Math.random()*100)+1;
-  const ok = d <= target;
+  const ok = testOutcome(target, d).ok;
   if(typeof showRollResult==='function')
     showRollResult('Малая инфекция: выносливость', target, d, ok?'Заражения нет':'ЗАРАЖЕНИЕ', ok?'success':'fail', ok?'рана чистая':'малая инфекция!');
   if(!ok){ diseaseAdd('Малая инфекция'); notify('Малая инфекция добавлена в болезни (инкубация 1d10 дней).'); }

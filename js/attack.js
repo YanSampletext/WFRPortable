@@ -117,8 +117,9 @@
     var target = sk.value + bonus + dif;
 
     var d = Math.floor(Math.random() * 100) + 1;
-    var sl = Math.trunc(target / 10) - Math.trunc(d / 10);
-    var hit = (d <= target && d !== 100) || d === 1;
+    var me = testOutcome(target, d);        // 01–05 и 96–00 — по книге
+    var sl = me.sl;
+    var hit = me.ok;
 
     // Ближний бой по книге — встречная проверка: защищающийся бросает тоже, и
     // в дело идёт разница уровней успеха. Так считается, только если у цели
@@ -130,10 +131,12 @@
       : 0;
     if (targetDef > 0) {
       var dd = Math.floor(Math.random() * 100) + 1;
-      var dsl = Math.trunc(targetDef / 10) - Math.trunc(dd / 10);
-      opp = { target: targetDef, d: dd, sl: dsl };
-      sl = sl - dsl;                       // разница уровней успеха и решает
-      hit = sl > 0 || (sl === 0 && d < dd); // при равенстве верх берёт меньший бросок
+      var them = testOutcome(targetDef, dd);
+      opp = { target: targetDef, d: dd, sl: them.sl, ok: them.ok, double: them.double };
+      sl = me.sl - them.sl;                // разница уровней успеха и решает
+      // Книга, с. 117: при равных SL побеждает большее значение умения, при
+      // полном равенстве — пат. Раньше здесь верх брал меньший бросок.
+      hit = sl > 0 || (sl === 0 && target > targetDef);
     }
 
     var dmg = weaponDamage(w);
@@ -141,12 +144,14 @@
     var slPlus = Math.max(0, sl);
     var raw = (dmg.value === null) ? null : dmg.value + slPlus;
 
-    logRoll(w, sk, target, d, hit, sl, opp, dif);
-    showAttack(w, sk, target, d, hit, sl, dmg, raw, targetId, opp, dif);
+    logRoll(w, sk, target, d, hit, opp ? signedSL(sl) : slSigned(me), opp, dif);
+    showAttack(w, sk, target, d, hit, sl, dmg, raw, targetId, opp, dif, me);
     if (navigator.vibrate) navigator.vibrate(hit ? [20] : [40, 30, 40]);
   }
 
-  function logRoll(w, sk, target, d, hit, sl, opp, dif) {
+  function signedSL(n) { return n >= 0 ? '+' + n : String(n).replace('-', '−'); }
+
+  function logRoll(w, sk, target, d, hit, slTxt, opp, dif) {
     if (!state || !state.sheet) return;
     if (!Array.isArray(state.sheet.rollLog)) state.sheet.rollLog = [];
     state.sheet.rollLog.unshift({
@@ -156,7 +161,7 @@
       dif: dif || undefined,
       outcome: hit ? 'Попал' : 'Мимо',
       // Минус типографский — как в остальных строках журнала и в книжных таблицах
-      sl: (sl >= 0 ? '+' + sl : String(sl).replace('-', '−')) + ' ст.усп.',
+      sl: slTxt + ' ст.усп.',
       t: Date.now()
     });
     if (state.sheet.rollLog.length > 30) state.sheet.rollLog.length = 30;
@@ -165,9 +170,42 @@
     if (body && typeof rollLogRows === 'function') body.innerHTML = rollLogRows();
   }
 
-  function showAttack(w, sk, target, d, hit, sl, dmg, raw, targetId, opp, dif) {
+  // Зона попадания по книге (с. 122): перевёрнутый бросок атаки — 58 → 85,
+  // 00 остаётся 00, то есть 100.
+  function zoneOf(d) {
+    var inv = (d % 10) * 10 + Math.floor(d / 10) % 10;
+    var r = inv || 100;
+    var row = CRIT_TABLES.loc.find(function (z) { return r >= z[0] && r <= z[1]; });
+    return { key: row[3], label: row[2] };
+  }
+
+  // Криты и заминки (с. 122): успешная боевая проверка на дубле — крит, и
+  // противник сразу получает критическую рану, даже если критнул защищавшийся;
+  // проваленная на дубле — заминка, бросок по таблице «Ой!». Зону для крита
+  // бросают заново, а не переворотом броска атаки (с. 135).
+  function critLines(me, d, opp) {
+    var out = '';
+    if (me.ok && me.double) {
+      var cz = critRollZone(), z = { key: cz.zone, label: cz.label }, w = critRollWound(z.key);
+      out += '<div class="atk-line"><b>Крит!</b> Цель получает критическую рану — ' +
+             escHtml(z.label) + ': <b>' + escHtml(w.name) + '</b>' +
+             (w.wounds ? ' (+' + w.wounds + ' ран)' : '') +
+             '<div class="muted">' + escHtml(w.effect) + '</div></div>';
+    }
+    if (opp && opp.ok && opp.double) {
+      out += '<div class="atk-line"><b>Крит защищающегося!</b> Ты получаешь критическую рану — брось на вкладке «Криты».</div>';
+    }
+    if (!me.ok && me.double) {
+      out += '<div class="atk-line"><b>Заминка</b> — бросок по таблице «Ой!».</div>';
+    }
+    return out;
+  }
+
+  function showAttack(w, sk, target, d, hit, sl, dmg, raw, targetId, opp, dif, me) {
     var soak = (targetId && typeof encSoak === 'function') ? encSoak(targetId) : 0;
-    var net = raw === null ? null : Math.max(0, raw - soak);
+    // Попадание снимает не меньше 1 раны, сколько бы ни погасили (с. 122)
+    var net = raw === null ? null : Math.max(1, raw - soak);
+    var zone = zoneOf(d);
 
     var body = '';
     if (!hit) {
@@ -177,6 +215,7 @@
              '<div class="muted">Формулу посчитать не вышло — прибавь ' + Math.max(0, sl) + ' ст.усп. вручную.</div></div>';
     } else {
       body =
+        '<div class="atk-line"><span class="muted">зона:</span> <b>' + escHtml(zone.label) + '</b></div>' +
         '<div class="atk-line">' + dmg.value + ' <span class="muted">урон оружия</span>' +
           ' + ' + Math.max(0, sl) + ' <span class="muted">ст.усп.</span> = <b>' + raw + '</b></div>' +
         (targetId
@@ -218,11 +257,10 @@
         '<div class="sv4-roll-outcome">' + (hit ? 'Попал' : 'Мимо') + '</div>' +
         (opp
           ? '<div class="atk-opp">защита ' + opp.target + ' → бросок ' + opp.d +
-            ' (' + (opp.sl >= 0 ? '+' : '') + opp.sl + ')</div>'
+            ' (' + slSigned(opp) + ')' + (sl === 0 ? ' · равные SL: верх у большего значения' : '') + '</div>'
           : '') +
-        '<div class="sv4-roll-sl">' + (sl >= 0 ? '+' : '') + sl + ' ст.усп.' +
-          (opp ? ' разницы' : '') + '</div>' +
-        '<div class="atk-dmg">' + body + '</div>' +
+        '<div class="sv4-roll-sl">' + (opp ? signedSL(sl) + ' ст.усп. разницы' : slSigned(me) + ' ст.усп.') + '</div>' +
+        '<div class="atk-dmg">' + body + critLines(me, d, opp) + '</div>' +
         // Атака — самый частый бросок в бою, и боевых талантов с условиями
         // больше всего. Карточка у удара своя, так что напоминание надо
         // позвать отдельно: по названию навыка, а не оружия.
@@ -230,6 +268,7 @@
         '<div class="sv4-roll-btns">' +
           '<button class="sv4-roll-close" onclick="document.getElementById(\'roll-modal\').classList.remove(\'show\')">Закрыть</button>' +
           advBtn + apply +
+          (!me.ok && me.double ? '<button class="sv4-roll-again" onclick="fumbleRoll()">«Ой!»</button>' : '') +
         '</div>' +
       '</div>';
     modal.classList.add('show');

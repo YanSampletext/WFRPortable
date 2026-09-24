@@ -13,11 +13,8 @@
 (function () {
   'use strict';
 
-  // Уровень успеха считаем ровно так же, как на бланке: разница десятков.
-  // Своя формула здесь развела бы два экрана в разные стороны.
-  function slOf(target, d) {
-    return Math.trunc(target / 10) - Math.trunc(d / 10);
-  }
+  // Исход считаем той же функцией, что и бланк (testOutcome): своя формула
+  // развела бы два экрана в разные стороны.
   function signed(n) { return (n < 0 ? '−' + Math.abs(n) : '+' + n); }
 
   window.opposedFrom = function (name, target, d, sl) {
@@ -45,7 +42,7 @@
       '<div class="ordo-dlg-seal">✠</div>' +
       '<div class="ordo-dlg-title">Встречная проверка</div>' +
       '<div class="ordo-dlg-text">' + escHtml(name) + ': d100 = <b>' + d + '</b> против ≤' + target +
-        ' → ' + (d <= target ? 'успех' : 'провал') + ', ' + signed(sl) + ' ст.усп.' +
+        ' → ' + (testOutcome(target, d).ok ? 'успех' : 'провал') + ', ' + signed(sl) + ' ст.усп.' +
         '<br>Против чего бросает противник?</div>' +
       quick +
       '<input id="opp-val" class="ordo-dlg-input" type="number" inputmode="numeric" ' +
@@ -73,16 +70,16 @@
 
   function resolve(name, target, d, sl, foeTarget) {
     var dd = Math.floor(Math.random() * 100) + 1;
-    var dsl = slOf(foeTarget, dd);
+    var dsl = testOutcome(foeTarget, dd).sl;
     var diff = sl - dsl;
 
-    // Кто кого — по разнице уровней успеха, как и в ударе. Ничью не разрешаем
-    // сами: в книге у неё своё правило, и придумывать его за неё нельзя —
-    // показываем оба числа и оставляем решение столу.
+    // Кто кого — по разнице уровней успеха, как и в ударе. При равных SL, по
+    // книге (с. 117), побеждает большее значение умения; если равны и они —
+    // мастер решает: пат или переброс.
     var outcome, cls;
-    if (diff > 0) { outcome = 'Верх твой'; cls = 'success'; }
-    else if (diff < 0) { outcome = 'Верх за противником'; cls = 'fail'; }
-    else { outcome = 'Ничья по уровням успеха'; cls = ''; }
+    if (diff > 0 || (diff === 0 && target > foeTarget)) { outcome = 'Верх твой'; cls = 'success'; }
+    else if (diff < 0 || (diff === 0 && target < foeTarget)) { outcome = 'Верх за противником'; cls = 'fail'; }
+    else { outcome = 'Полная ничья'; cls = ''; }
 
     if (navigator.vibrate) navigator.vibrate(diff > 0 ? [20] : [40, 30, 40]);
     logIt(name, target, d, foeTarget, dd, diff, outcome);
@@ -108,7 +105,7 @@
   }
 
   function side(title, target, d, sl) {
-    return '<div class="opp-side' + (d <= target ? ' ok' : '') + '">' +
+    return '<div class="opp-side' + (testOutcome(target, d).ok ? ' ok' : '') + '">' +
              '<div class="opp-who">' + title + '</div>' +
              '<div class="opp-die">' + d + '</div>' +
              '<div class="opp-vs">≤ ' + target + '</div>' +
@@ -135,9 +132,11 @@
           side('противник', foeTarget, dd, dsl) +
         '</div>' +
         '<div class="sv4-roll-outcome">' + outcome + '</div>' +
-        '<div class="sv4-roll-sl">' + (diff === 0
-          ? 'Уровни успеха равны — исход за столом'
-          : 'разница ' + signed(diff) + ' ст.усп.') + '</div>' +
+        '<div class="sv4-roll-sl">' + (diff !== 0
+          ? 'разница ' + signed(diff) + ' ст.усп.'
+          : target !== foeTarget
+            ? 'SL равны — верх у большего значения'
+            : 'SL и значения равны — пат или переброс, решает мастер') + '</div>' +
         '<div class="sv4-roll-btns">' +
           '<button class="sv4-roll-close" onclick="document.getElementById(\'roll-modal\').classList.remove(\'show\')">Закрыть</button>' +
           '<button class="sv4-roll-again" data-call="opposed" data-v="' + escAttr(name) + '" data-n="' + target +

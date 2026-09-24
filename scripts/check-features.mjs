@@ -560,8 +560,10 @@ await check('encDamage гасит стойкостью и бронёй', () => e
   encList().forEach(x => encRemove(x.id));
   const id = encAdd('Латник', 20, 15, true, 4, 3);   // гасит 7
   const lost = encDamage(id, 10);
-  const none = encDamage(id, 5);                     // меньше защиты — ноль
-  return lost === 3 && none === 0 && encList()[0].hp === 12;
+  // Меньше защиты — всё равно 1 рана: «если остаётся 1 или менее, противник
+  // теряет только 1 рану» (книга, с. 122). Раньше здесь ждали ноль.
+  const least = encDamage(id, 5);
+  return lost === 3 && least === 1 && encList()[0].hp === 11;
 }));
 
 await check('«+ Я» берёт стойкость и броню с бланка', () => ev(() => {
@@ -570,7 +572,9 @@ await check('«+ Я» берёт стойкость и броню с бланк�
   sv4NavGo('crit');
   encAddSelf();
   const me = encList()[0];
-  const tb = Math.floor((sheetCalc().totals['СВ'] || 0) / 10);
+  // «В» — выносливость. Здесь стояло «СВ», и проверка закрепляла ту же
+  // ошибку, что была в трекере: бонус брался из силы воли.
+  const tb = Math.floor((sheetCalc().totals['В'] || 0) / 10);
   return me.soak === tb + 2;
 }));
 
@@ -1669,14 +1673,15 @@ await check('на удар из лука боевой талант рукопа�
 
 // ── стоимость развития: сверка с таблицей книги ────────────────────────────
 await check('таблица развития совпадает с книгой', () => ev(() => {
-  // WFRP4, таблица стоимости развития: шаги 1–5, 6–10, … 66+
+  // WFRP4, с. 35: «От 1 до 5 — 25/10 … От 66 до 70 — 450/380, 70 и более — 520/440»
   const book = [
     [1, 25, 10], [5, 25, 10], [6, 30, 15], [10, 30, 15], [11, 40, 20],
     [15, 40, 20], [16, 50, 30], [20, 50, 30], [21, 70, 40], [25, 70, 40],
     [26, 90, 60], [30, 90, 60], [31, 120, 80], [35, 120, 80], [36, 150, 110],
     [40, 150, 110], [41, 190, 140], [45, 190, 140], [46, 230, 180],
     [50, 230, 180], [51, 280, 220], [55, 280, 220], [56, 330, 270],
-    [60, 330, 270], [61, 390, 320], [65, 390, 320]
+    [60, 330, 270], [61, 390, 320], [65, 390, 320], [66, 450, 380],
+    [70, 450, 380], [71, 520, 440]
   ];
   const bad = book.filter(([step, ch, sk]) => {
     const c = advCostFor(step - 1);
@@ -1685,14 +1690,16 @@ await check('таблица развития совпадает с книгой'
   return bad.length ? 'расходится на шагах: ' + bad.map(b => b[0]).join(', ') : true;
 }));
 
-await check('полоса «66+» открытая, надбавки сверху нет', () => ev(() => {
-  // В книге последняя полоса без верхней границы: всё от 66-го шага — 450/380
-  const over = [66, 70, 71, 80, 120, 500];
+await check('полоса «70 и более» открытая, надбавки сверху нет', () => ev(() => {
+  // В книге (с. 35) последняя полоса без верхней границы: всё после 70-го
+  // шага — 520/440. Раньше здесь закреплялось «66+ по 450/380» — по памяти,
+  // а не по книге.
+  const over = [71, 80, 120, 500];
   const bad = over.filter(n => {
     const c = advCostFor(n - 1);
-    return c.char !== 450 || c.skill !== 380;
+    return c.char !== 520 || c.skill !== 440;
   });
-  return bad.length ? 'дороже книги на шагах: ' + bad.join(', ') : true;
+  return bad.length ? 'не по книге на шагах: ' + bad.join(', ') : true;
 }));
 
 await check('карьерный шаг вдвое дороже вне карьеры', () => ev(() => {
@@ -1768,50 +1775,51 @@ await check('отдых считает деньги так же, как блан
 }));
 
 // ── навыки: базовые против профессиональных ────────────────────────────────
-await check('базовых навыков двадцать шесть', () => ev(() =>
-  DATA.common_skills.length === 26 && DATA.prof_skills.length === 19));
+await check('базовых навыков двадцать пять, продвинутых двадцать (с. 84)', () => ev(() =>
+  DATA.common_skills.length === 25 && DATA.prof_skills.length === 20));
 
-await check('плавание базовое, как гребля', () => ev(() => {
-  // Обоими правит сила, оба базовые по книге. Плавание лежало в
-  // профессиональных — значит начиналось с нуля вместо значения силы.
-  const c = n => DATA.common_skills.find(s => s.name === n);
-  const sw = c('Плавание'), row = c('Гребля');
+await check('плавание продвинутое, гребля базовая (с. 84, 95)', () => ev(() => {
+  // Книга: «Плавание (S) Продвинутое». Здесь раньше закреплялось обратное —
+  // по памяти, «в книге 26 базовых»; в перечне на с. 84 их двадцать пять.
+  const sw = DATA.prof_skills.find(s => s.name === 'Плавание');
+  const row = DATA.common_skills.find(s => s.name === 'Гребля');
   return !!sw && !!row && sw.stat === 'С' && row.stat === 'С' &&
-         !DATA.prof_skills.some(s => s.name === 'Плавание');
+         !DATA.common_skills.some(s => s.name === 'Плавание');
 }));
 
-await check('плавание есть на бланке без покупки', async () => {
+await check('плавание не выдаётся каждому как базовое', async () => {
   await ev(() => sv4NavGo('skills'));
   await p.waitForTimeout(150);
   return ev(() => {
-    // Случайному персонажу плавание могло достаться от народа или карьеры,
-    // поэтому сверяем не абсолют, а правило: итог = сила + шаги.
-    const sk = compileSkills().find(s => s.name === 'Плавание');
+    // Если плавание на бланке есть — от народа, карьеры или покупки, — оно не
+    // базовое, а итог по-прежнему сила + шаги.
+    const sk = compileSkills().find(s => s.name.toLowerCase() === 'плавание');
+    if (!sk) return true;
+    if (sk.isCommon) return 'плавание помечено базовым';
     const strength = sheetCalc().totals['С'] || 0;
-    if (!sk) return 'плавания нет на бланке';
-    if (!sk.isCommon) return 'плавание не помечено базовым';
-    return sk.value === strength + (sk.adv || 0)
-      ? true
-      : `итог ${sk.value}, а сила ${strength} плюс шаги ${sk.adv}`;
+    return sk.value === strength + (sk.adv || 0) ? true : `итог ${sk.value}, а сила ${strength} плюс шаги ${sk.adv}`;
   });
 });
 
 await check('купленное плавание не пропало у старых досье', () => ev(() => {
   // Досье из версии, где плавание было профессиональным: шаги лежат в
-  // extraSkills. migrateState обязан свернуть их в общий навык, а не потерять.
+  // extraSkills. Сворачивать их теперь некуда — плавание снова продвинутое, —
+  // но бланк обязан их видеть, а не потерять.
   // Считаем прирост, а не абсолют: у случайного персонажа плавание уже могло
   // быть от народа или карьеры, и тогда абсолютное число ничего не докажет.
   state.sheet.extraSkills = state.sheet.extraSkills || [];
-  const was = (compileSkills().find(s => s.name === 'Плавание') || {}).adv || 0;
-  const wasFolded = state.sheet.skillAdv['плавание'] || 0;
+  const was = (compileSkills().find(s => s.name.toLowerCase() === 'плавание') || {}).adv || 0;
   state.sheet.extraSkills.push({ name: 'Плавание', stat: 'С', adv: 7 });
   migrateState();
-  const left = state.sheet.extraSkills.some(s => s.name === 'Плавание');
-  const folded = (state.sheet.skillAdv['плавание'] || 0) - wasFolded;
-  const now = (compileSkills().find(s => s.name === 'Плавание') || {}).adv || 0;
-  return (!left && folded === 7 && now - was === 7)
+  const now = (compileSkills().find(s => s.name.toLowerCase() === 'плавание') || {}).adv || 0;
+  // Досье 1.13–1.16 держат шаги в skillAdv — их бланк тоже должен видеть
+  state.sheet.skillAdv['плавание'] = (state.sheet.skillAdv['плавание'] || 0) + 3;
+  const withOld = (compileSkills().find(s => s.name.toLowerCase() === 'плавание') || {}).adv || 0;
+  state.sheet.skillAdv['плавание'] -= 3;
+  state.sheet.extraSkills = state.sheet.extraSkills.filter(s => s.name !== 'Плавание');
+  return (now - was === 7 && withOld - now === 3)
     ? true
-    : `осталось в extraSkills: ${left}, свёрнуто +${folded}, на бланке +${now - was} (ждали +7)`;
+    : `на бланке +${now - was} из extraSkills (ждали +7), +${withOld - now} из skillAdv (ждали +3)`;
 }));
 
 // ── целостность справочника: ссылки обязаны разрешаться ────────────────────
@@ -1839,7 +1847,7 @@ await check('необученные общие навыки свёрнуты, н
     const rows = [...document.querySelectorAll('.sv4-sk-common tbody tr')];
     return { all: rows.length, shown: rows.filter(r => r.offsetParent).length };
   });
-  if (n.all !== 26) return 'общих навыков в таблице ' + n.all + ', а в книге 26';
+  if (n.all !== 25) return 'общих навыков в таблице ' + n.all + ', а в книге 25 (с. 84)';
   if (n.shown >= n.all) return 'свёрнуто ничего';
   // Имя берём из самой таблицы: у случайного персонажа обученным может
   // оказаться любой навык, и жёстко названный сюда не годится.
@@ -1867,7 +1875,7 @@ await check('необученные общие навыки свёрнуты, н
     skillsToggleAll();
     return shown;
   });
-  return opened === 26 ? true : 'после «показать все» видно ' + opened;
+  return opened === 25 ? true : 'после «показать все» видно ' + opened;
 });
 
 await check('названия талантов показываются с заглавной', () => ev(() => {
@@ -2290,10 +2298,11 @@ await check('растянутая копит уровни успеха попы�
   for (let i = 0; i < 5; i++) extRoll('extT');
   const e = state.sheet.extended[0];
   if (e.tries.length !== 5) return 'попыток записано ' + e.tries.length;
-  const sum = e.tries.reduce((a, t) => a + t.sl, 0);
-  if (e.acc !== sum) return 'накоплено ' + e.acc + ', а сумма попыток ' + sum;
+  // Книга, с. 118: складываются как выпали, но сумма ниже 0 начинается с 0
+  const sum = e.tries.reduce((a, t) => Math.max(0, a + t.sl), 0);
+  if (e.acc !== sum) return 'накоплено ' + e.acc + ', а по попыткам ' + sum;
   // Каждая попытка обязана считаться по той же формуле, что и весь бланк
-  const bad = e.tries.filter(t => t.sl !== Math.trunc(t.target / 10) - Math.trunc(t.d / 10));
+  const bad = e.tries.filter(t => t.sl !== testOutcome(t.target, t.d).sl);
   return bad.length ? 'уровни успеха посчитаны иначе, чем на бланке' : true;
 }));
 
@@ -2380,10 +2389,12 @@ await check('встречная сравнивает уровни успеха �
       d: parseInt(s.querySelector('.opp-die').textContent, 10),
       t: parseInt(s.querySelector('.opp-vs').textContent.replace(/[^\d]/g, ''), 10)
     }));
-    const sl = nums.map(x => Math.trunc(x.t / 10) - Math.trunc(x.d / 10));
+    const sl = nums.map(x => testOutcome(x.t, x.d).sl);
     const diff = sl[0] - sl[1];
     const said = (document.querySelector('#roll-modal .sv4-roll-outcome') || {}).textContent || '';
-    const want = diff > 0 ? 'Верх твой' : diff < 0 ? 'Верх за противником' : 'Ничья';
+    // Ничья по SL решается большим значением (книга, с. 117)
+    const want = diff > 0 || (diff === 0 && nums[0].t > nums[1].t) ? 'Верх твой'
+               : diff < 0 || (diff === 0 && nums[0].t < nums[1].t) ? 'Верх за противником' : 'Полная ничья';
     if (said.indexOf(want) < 0) return 'сказано «' + said + '», а разница ' + diff;
     if (nums[1].t !== 45) return 'противник бросает против ' + nums[1].t + ', а задали 45';
     const log = state.sheet.rollLog;
@@ -2657,6 +2668,10 @@ await check('чужая специализация не подставляетс
   // характеристике; подставлять вместо неё двуручное — враньё в цифре.
   state.sheet.weapons = [{ name: 'Алебарда', group: 'Древковое', damage: '+РС+4' }];
   const got = attackTarget(0);
+  // Случайному персонажу карьера могла дать и само «древковое» — тогда оно
+  // и есть своя специализация, и взять его правильно.
+  const own = compileSkills().find(r => /древковое/i.test(r.name));
+  if (own) return got.value === own.value ? true : 'своё древковое ' + own.value + ', взято ' + got.value;
   const dvu = (compileSkills().find(r => /двуручное/i.test(r.name)) || {}).value;
   if (got.value === dvu) return 'взято двуручное: ' + got.name;
   const plain = (compileSkills().find(r => r.name.toLowerCase() === 'рукопашный бой') || {}).value;
@@ -2805,6 +2820,410 @@ await check('слишком большой файл не читается', () =
   });
   await p.waitForTimeout(400);
 
+
+// ── сверка с книгой ─────────────────────────────────────────────────────────
+// Каждая проверка ставит бросок или данные так, чтобы прежнее поведение дало
+// другой ответ: иначе она зеленела бы и на старом коде.
+
+await check('«Фортуна» поднимает максимум Удачи', () => ev(() => {
+  // «Фортуна» есть в таблице случайных талантов: у персонажа она может уже
+  // быть, поэтому считаем от того уровня, что есть.
+  const keep = JSON.stringify(state.sheet.extraTalents), fel = state.stats['Х'];
+  try {
+    const had = talentLevel('фортуна', compileTalents());
+    state.sheet.extraTalents.push({ name: 'Фортуна', level: 2 });
+    state.stats['Х'] = 40;                                   // бонус харизмы 4+ — потолок не мешает
+    let c = sheetCalc();
+    const cap = Math.floor(c.totals['Х'] / 10);
+    if (c.fortuneMax !== c.fate + Math.min(had + 2, cap)) return `максимум ${c.fortuneMax}, ждали ${c.fate} + ${Math.min(had + 2, cap)}`;
+    sv4NavGo('fate');
+    const shown = [...document.querySelectorAll('.sv4-page .sv4-vit')]
+      .find(v => /удача/i.test(v.querySelector('.sv4-v-l')?.textContent || ''));
+    const max = shown && shown.querySelector('.max')?.textContent;
+    if (max !== '/' + c.fortuneMax) return `на вкладке «Судьба» ${max}, ждали /${c.fortuneMax}`;
+    // Максимум таланта — бонус харизмы: при харизме ниже 20 выше 1 не бывает
+    state.stats['Х'] = 0;
+    c = sheetCalc();
+    const low = Math.max(1, Math.floor(c.totals['Х'] / 10));
+    if (c.fortuneMax !== c.fate + Math.min(had + 2, low)) return `потолок по харизме не сработал: ${c.fortuneMax}, ждали ${c.fate} + ${Math.min(had + 2, low)}`;
+    return true;
+  } finally { state.sheet.extraTalents = JSON.parse(keep); state.stats['Х'] = fel; }
+}));
+
+await check('ступень: 8 навыков вместе с прежними', () => ev(() => {
+  const c = DATA.careers[state.career];
+  const t1 = c.tiers[0].skills.split(/,(?![^()]*\))/).map(s => s.trim().toLowerCase());
+  const r = careerTierCompletion(state.career, 3);
+  const names = r.skills.map(s => s.name.toLowerCase());
+  if (!t1.every(n => names.includes(n))) return 'навыки 1-й ступени не учтены на 4-й';
+  if (r.skillsNeed !== 8) return `нужно ${r.skillsNeed} навыков, по книге 8`;
+  return true;
+}));
+
+await check('талант: 100 и +100 за каждый взятый уровень', () => ev(() => {
+  // Книга, с. 35: «100 XP +100 XP за каждое улучшение, уже взятое в этом
+  // таланте… второй раз стоит 200 XP, третий 300». Цена в таблице магазина
+  // и в корзине должна быть одна.
+  const keepSheet = JSON.stringify(state.sheet), keepXp = state.xpGained;
+  try {
+    state.xpGained = 5000;
+    const tn = DATA.careers[state.career].tiers[(state.sheet.tier || 1) - 1]
+      .talents.split(/,(?![^()]*\))/)[0].trim();
+    const had = talentLevel(tn);
+    const row = () => [...document.querySelectorAll('#shop-area tr')]
+      .find(tr => tr.cells[0] && tr.cells[0].textContent.trim().startsWith(tn));
+    buyTalent(tn);
+    const first = state.sheet._cart.at(-1).cost;
+    if (first !== 100 * (had + 1)) return `уровень ${had + 1} стоит ${first}, по книге ${100 * (had + 1)}`;
+    cartApply();
+    buyTalent(tn); cartApply();
+    renderShop();
+    const shownPrice = parseInt(row().cells[2].textContent, 10);
+    const shownLevel = parseInt(row().cells[1].textContent, 10);
+    if (shownLevel !== had + 2) return `после двух покупок «уже шагов» ${shownLevel}, ждали ${had + 2}`;
+    if (shownPrice !== 100 * (had + 3)) return `в таблице ${shownPrice}, по книге ${100 * (had + 3)}`;
+    buyTalent(tn);
+    const charged = state.sheet._cart.at(-1).cost;
+    return charged === shownPrice ? true : `в таблице ${shownPrice}, списывается ${charged}`;
+  } finally { state.sheet = JSON.parse(keepSheet); state.xpGained = keepXp; }
+}));
+
+await check('навык вне карьеры вдвое, прежних ступеней — нет', () => ev(() => {
+  // Книга, с. 35: вне карьеры — вдвое; улучшать по обычной цене можно все
+  // умения своего уровня карьеры и ниже.
+  const keepSheet = JSON.stringify(state.sheet), keepXp = state.xpGained;
+  try {
+    state.xpGained = 5000;
+    state.sheet.tier = 2;
+    const mine = careerSkillsUpTo(state.career, 2).map(s => s.toLowerCase());
+    const low = DATA.careers[state.career].tiers[0].skills.split(/,(?![^()]*\))/)[0].trim();
+    const all = DATA.common_skills.concat(DATA.prof_skills).map(x => x.name);
+    const alien = all.find(n => !mine.some(m => m.startsWith(n.toLowerCase())));
+    state.sheet._cart = [];
+    buySkillAdv(low);
+    const lowCost = state.sheet._cart.at(-1).cost;
+    if (lowCost !== advCostFor(skillAdvancesTotal(low)).skill) return `навык 1-й ступени на 2-й стоит ${lowCost}, а не обычную цену`;
+    buySkillAdv(alien);
+    const alienCost = state.sheet._cart.at(-1).cost;
+    const plain = advCostFor(skillAdvancesTotal(alien)).skill;
+    return alienCost === plain * 2 ? true : `«${alien}» вне карьеры стоит ${alienCost}, по книге ${plain * 2}`;
+  } finally { state.sheet = JSON.parse(keepSheet); state.xpGained = keepXp; }
+}));
+
+await check('Решимость подписана Решимостью', () => ev(() => {
+  sv4NavGo('persona');
+  const labels = [...document.querySelectorAll('.sv4-page .sv4-vitals .sv4-v-l')].map(e => e.textContent.trim());
+  if (labels.includes('Упорство')) return 'на сводке Решимость подписана «Упорство»: ' + labels.join(', ');
+  if (!labels.includes('Решимость')) return 'на сводке нет Решимости: ' + labels.join(', ');
+  sv4NavGo('print');
+  if (!/Решимость:/.test(document.querySelector('.sv4-print-page').textContent)) return 'на листе печати нет Решимости';
+  return true;
+}));
+
+await check('трекер: БВ из Выносливости, инициатива итоговая', async () => {
+  await clearEnc();
+  return ev(() => {
+    const keep = JSON.stringify({ s: state.stats, b: state.sheet.statAdvBought });
+    try {
+      state.stats['В'] = 34; state.stats['СВ'] = 57;          // бонусы 3 и 5 — не перепутать
+      state.sheet.statAdvBought['И'] = 7;                    // итог ≠ базе
+      const c = sheetCalc();
+      encAddSelf();
+      // encList отдаёт только сумму «гасит»; сами числа лежат в сохранённой схватке
+      const me = JSON.parse(localStorage.getItem('wfrp4_encounter_v1')).list.find(x => x.name === state.name);
+      if (me.tb !== Math.floor(c.totals['В'] / 10)) return `БВ ${me.tb}, ждали ${Math.floor(c.totals['В'] / 10)} (воля дала бы ${Math.floor(c.totals['СВ'] / 10)})`;
+      if (me.init !== c.totals['И']) return `инициатива ${me.init}, итоговая ${c.totals['И']}`;
+      return true;
+    } finally {
+      const k = JSON.parse(keep); state.stats = k.s; state.sheet.statAdvBought = k.b;
+      encList().forEach(x => encRemove(x.id));
+    }
+  });
+});
+
+await check('зоны попадания по книге', () => ev(() => {
+  const zone = d => CRIT_TABLES.loc.find(r => d >= r[0] && d <= r[1])[3];
+  const want = { 1: 'head', 9: 'head', 10: 'larm', 24: 'larm', 25: 'rarm', 44: 'rarm',
+                 45: 'body', 79: 'body', 80: 'lleg', 89: 'lleg', 90: 'rleg', 100: 'rleg' };
+  const bad = Object.keys(want).filter(d => zone(+d) !== want[d]);
+  return bad.length ? 'не та зона на ' + bad.map(d => d + '→' + zone(+d)).join(', ') : true;
+}));
+
+await check('горение: 1d10 +1 за пункт сверх первого − БВ', async () => {
+  await clearEnc();
+  return ev(() => {
+    const rnd = Math.random;
+    try {
+      const id = encAdd('Факел', 30, 40, true, 3, 0, 0);
+      for (let i = 0; i < 3; i++) encCond(id, 'Горящий', 1);
+      Math.random = () => 0.95;                               // d10 = 10
+      encTickApply();
+      const lost = 40 - encList().find(x => x.id === id).hp;
+      if (lost !== 9) return `снято ${lost}, по книге 10 + 2 − 3 = 9`;
+      const id2 = encAdd('Искра', 30, 40, true, 5, 0, 0);
+      encCond(id2, 'Горящий', 1);
+      Math.random = () => 0;                                  // d10 = 1
+      encTickApply();
+      const lost2 = 40 - encList().find(x => x.id === id2).hp;
+      return lost2 === 1 ? true : `при 1 − 5 снято ${lost2}, минимум по книге 1`;
+    } finally { Math.random = rnd; encList().forEach(x => encRemove(x.id)); }
+  });
+});
+
+await check('дубль на провале сотворения — без бонуса', () => ev(() => {
+  const keep = JSON.stringify(state.sheet), rnd = Math.random;
+  try {
+    state.sheet.spells = [{ name: 'Проба', cn: 2, range: '', target: '', duration: '' }];
+    state.sheet.langMagick = 20; state.sheet.channelled = 0;
+    const seq = [0.325, 0.5]; Math.random = () => seq.length ? seq.shift() : 0.5;  // 33, затем малая ошибка
+    rollCastingTest(0, 0);
+    const fail = state.sheet.miscastLog.find(e => e.type === 'cast').text;
+    if (/выбери бонус/.test(fail)) return 'провалу с дублем предложен бонус критического сотворения';
+    state.sheet.langMagick = 80;
+    seq.push(0.325, 0.5);
+    rollCastingTest(0, 0);
+    const ok = state.sheet.miscastLog.find(e => e.type === 'cast').text;
+    return /критическое сотворение/.test(ok) ? true : 'успех с дублем не назван критическим';
+  } finally { Math.random = rnd; state.sheet = JSON.parse(keep); }
+}));
+
+// ── правила из книги: проверки, бой, магия, вера ───────────────────────────
+// Math.random подменяем последовательностью: d100 = floor(x·100) + 1.
+const withRolls = (fn, arg) => ev(({ src, arg }) => {
+  const rnd = Math.random;
+  try { return (new Function('arg', 'seq', src))(arg, (...ds) => {
+    const q = ds.map(d => (d - 1) / 100 + 0.001);
+    Math.random = () => q.length ? q.shift() : 0.5;
+  }); } finally { Math.random = rnd; }
+}, { src: 'return (' + fn.toString() + ')(arg, seq)', arg });
+
+await check('01–05 всегда успех, 96–00 всегда провал', () => ev(() => {
+  const a = testOutcome(1, 3), b = testOutcome(120, 97), c = testOutcome(40, 1);
+  if (!a.ok || a.sl < 1) return `03 против 1: ${a.ok ? 'успех' : 'провал'} ${a.sl}, по книге успех с SL ≥ +1`;
+  if (b.ok || b.sl > -1) return `97 против 120: ${b.ok ? 'успех' : 'провал'} ${b.sl}, по книге провал с SL ≤ −1`;
+  if (c.double) return '01 посчитан дублем — по книге дубль это 11, 22 … 00';
+  if (!testOutcome(50, 100).double) return '00 не посчитан дублем';
+  return true;
+}));
+
+await check('бросок на бланке: 97 при цели 110 — провал', () => withRolls(() => {
+  seq(97);
+  rollCheck('Проба', 110, 0);
+  const out = document.querySelector('#roll-modal .sv4-roll-outcome').textContent;
+  return /Провал/.test(out) ? true : 'на карточке «' + out + '»';
+}));
+
+await check('ничья по SL: верх у большего значения', async () => {
+  await withRolls(() => { seq(23); rollCheck('Проба', 55, 0); });
+  await ev(() => document.querySelector('#roll-modal [data-call="opposed"]').click());
+  await p.waitForTimeout(200);
+  return withRolls(() => {
+    seq(13);                                  // 45 против 13 — тоже +3 SL
+    document.getElementById('opp-val').value = 45;
+    document.getElementById('opp-go').click();
+    const out = document.querySelector('#roll-modal .sv4-roll-outcome').textContent;
+    return /Верх твой/.test(out) ? true : 'при равных SL и 55 > 45 сказано «' + out + '»';
+  });
+});
+
+await check('каналирование по книге', () => withRolls(() => {
+  const keep = JSON.stringify(state.sheet);
+  try {
+    state.sheet.channelSkill = 50; state.sheet.miscastLog = [];
+    state.sheet.channelled = 2; seq(57);     // простой провал: −0 → сумма та же, ошибки нет
+    rollChannelling(0);
+    if (state.sheet.miscastLog.some(e => e.type !== 'channel')) return 'простой провал каналирования дал ошибку';
+    if (state.sheet.channelled !== 2) return 'после простого провала накоплено ' + state.sheet.channelled;
+    seq(60, 50);                              // провал на 0 — заминка
+    rollChannelling(0);
+    if (!state.sheet.miscastLog.some(e => e.type === 'major')) return 'заминка каналирования не дала крупную ошибку';
+    state.sheet.miscastLog = []; seq(33, 50); // успех на дубле — критическая концентрация
+    rollChannelling(0);
+    if (state.sheet.channelled < 99) return 'крит каналирования не дал полного запаса';
+    return true;
+  } finally { state.sheet = JSON.parse(keep); }
+}));
+
+await check('сотворение после каналирования', () => withRolls(() => {
+  const keep = JSON.stringify(state.sheet);
+  try {
+    state.sheet.spells = [{ name: 'Проба', cn: 5, range: '', target: '', duration: '' }];
+    state.sheet.langMagick = 50; state.sheet.miscastLog = [];
+    state.sheet.channelled = 3; seq(31);     // SL +2, накоплено 3 < ЗС 5
+    rollCastingTest(0, 0);
+    if (!/Не сотворено/.test(state.sheet.miscastLog.find(e => e.type === 'cast').text))
+      return 'накопленное сложилось с SL сотворения — по книге так не бывает';
+    state.sheet.channelled = 5; seq(47);     // накоплено ≥ ЗС: хватает успеха
+    rollCastingTest(0, 0);
+    if (/Не сотворено/.test(state.sheet.miscastLog.find(e => e.type === 'cast').text)) return 'при накопленном ≥ ЗС успех не сотворил заклинание';
+    state.sheet.miscastLog = []; state.sheet.channelled = 5; seq(82, 50);
+    rollCastingTest(0, 0);                   // провал после каналирования — малая ошибка
+    return state.sheet.miscastLog.some(e => e.type === 'minor') ? true : 'провал после каналирования прошёл без ошибки';
+  } finally { state.sheet = JSON.parse(keep); }
+}));
+
+await check('гнев богов — от заминки, а не от любого дубля', () => withRolls(() => {
+  const keep = JSON.stringify(state.sheet);
+  try {
+    state.sheet.blessings = [{ name: 'Проба', range: '', target: '', duration: '' }];
+    state.sheet.praySkill = 60; state.sheet.sin = 0; state.sheet.wrathLog = [];
+    seq(33);                                  // успех на дубле
+    rollPrayTest(0, 'blessing', 0);
+    if (state.sheet.wrathLog.some(e => e.type === 'wrath')) return 'успех на дубле вызвал гнев';
+    seq(77, 50);                              // провал на дубле — заминка
+    rollPrayTest(0, 'blessing', 0);
+    return state.sheet.wrathLog.some(e => e.type === 'wrath') ? true : 'заминка молитвы не вызвала гнев';
+  } finally { state.sheet = JSON.parse(keep); }
+}));
+
+await check('удар: зона по перевёрнутому броску, крит на дубле, пат', async () => {
+  await clearEnc();
+  return withRolls(() => {
+    const keep = JSON.stringify(state.sheet);
+    try {
+      state.sheet.advantage = 0;
+      state.sheet.weapons = [{ name: 'Кинжал', group: 'Основное', damage: '+РС+2' }];
+      const T = attackTarget(0).value;
+      if (T < 25) return 'навык слишком мал для проверки: ' + T;
+      seq(12, 50);                              // 12 → зона 21, левая рука
+      attackWith(0);
+      let card = document.querySelector('#roll-modal .sv4-roll-card').textContent;
+      if (!/Левая рука/.test(card)) return 'бросок 12 (зона 21) не дал левую руку: ' + card.slice(0, 120);
+      seq(22, 50);                              // успех на дубле — крит
+      attackWith(0);
+      card = document.querySelector('#roll-modal .sv4-roll-card').textContent;
+      if (!/Крит!/.test(card)) return 'успех на 22 не назван критом';
+      // зону крита бросают заново (с. 135): удар в левую руку, крит — в голову
+      seq(22, 5, 5, 5, 5);
+      attackWith(0);
+      card = document.querySelector('#roll-modal .sv4-roll-card').textContent;
+      if (!/критическую рану — Голова/.test(card)) return 'зона крита взята из броска атаки: ' + card.slice(0, 160);
+      // Защита равна навыку, SL равны — по книге пат, удар не проходит
+      encAdd('Двойник', 30, 20, true, 0, 0, T);
+      seq(13, 14);
+      attackWith(0);
+      document.querySelector('#ordo-dlg .ordo-dlg-btn[data-i="0"]').click();
+      card = document.querySelector('#roll-modal .sv4-roll-card');
+      return /Мимо/.test(card.textContent) ? true : 'при равных SL и значениях удар прошёл';
+    } finally { state.sheet = JSON.parse(keep); encList().forEach(x => encRemove(x.id)); }
+  });
+});
+
+await check('преимущество: уклонение и хладнокровие тоже', () => ev(() =>
+  advantageApplies('Уклонение') && advantageApplies('Хладнокровие') && !advantageApplies('Обаяние')
+    ? true : 'преимущество не на тех проверках'));
+
+await check('сон — проверка навыка, а не характеристики', () => withRolls(() => {
+  const keep = JSON.stringify(state.sheet);
+  try {
+    state.sheet.skillAdv = Object.assign({}, state.sheet.skillAdv, { 'стойкость': 10 });
+    seq(99);
+    sv2RestSleep();
+    const t = document.querySelector('#roll-modal .sv4-roll-target').textContent;
+    const want = sheetSkillValue('стойкость') + 20;
+    return t.indexOf('≤ ' + want) >= 0 ? true : `цель «${t}», по навыку ${want}`;
+  } finally { state.sheet = JSON.parse(keep); }
+}));
+
+// ── данные по книге (рус. перевод) ─────────────────────────────────────────
+await check('схемы карьер сняты с книги', () => ev(() => {
+  // «Схема улучшений» солдата (с. 81) и агитатора (с. 45) — сверено по картинке
+  const want = { 'Солдат': { plus: ['ББ', 'В', 'СВ'], t2: 'ДБ', t3: 'И', t4: 'Х' },
+                 'Агитатор': { plus: ['ДБ', 'Инт', 'Х'], t2: 'Пр', t3: 'ББ', t4: 'И' },
+                 'Маг': { plus: ['ББ', 'Инт', 'СВ'], t2: 'Пр', t3: 'И', t4: 'Х' } };
+  const bad = Object.keys(want).filter(n => JSON.stringify(CAREER_SCHEMES[n]) !== JSON.stringify(want[n]));
+  return bad.length ? 'не по книге: ' + bad.join(', ') : true;
+}));
+
+await check('карьеры: статусы, навыки, таланты по книге', () => ev(() => {
+  const t = (c, i) => DATA.careers[c].tiers[i];
+  const has = (s, x) => s.split(/,(?![^()]*\))/).map(v => v.trim()).includes(x);
+  const bad = [];
+  if (t('Шпион', 0).status !== 'медный 3') bad.push('Осведомитель — медь 3 (с. 54)');
+  if (has(t('Горожанин', 0).skills, 'стойкость')) bad.push('Горожанин 1 без стойкости');
+  if (has(t('Купец', 0).skills, 'лазание')) bad.push('Купец 1 без лазания');
+  if (!has(t('Попрошайка', 1).skills, 'торговля')) bad.push('Попрошайка 2 с торговлей');
+  if (!has(t('Охранник', 0).skills, 'интуиция')) bad.push('Охранник 1 с интуицией');
+  if (has(t('Инженер', 0).skills, 'лечение')) bad.push('Инженер 1 без лечения');
+  if (!has(t('Эмиссар', 0).skills, 'интуиция')) bad.push('Эмиссар 1 с интуицией');
+  if (!has(t('Скупщик краденого', 0).talents, 'бродячий кот')) bad.push('Скупщик 1 с бродячим котом');
+  return bad.length ? bad.join('; ') : true;
+}));
+
+await check('случайные таблицы пронумерованы как в книге', () => ev(() => {
+  // с. 20–21 и 24: номера на кубе должны вести к тем же строкам, что в книге
+  const tal = r => DATA.random_talents.find(x => inRange(r, x.roll)).talent;
+  const car = (race, r) => DATA.random_careers.find(x => x[race] && inRange(r, x[race])).career;
+  const bad = [];
+  if (tal(2) !== 'Обострённое восприятие (любое)') bad.push('талант 02');
+  if (tal(36) !== 'Фортуна') bad.push('талант 36');
+  if (tal(99) !== 'Прирождённый воин') bad.push('талант 99');
+  if (car('human', 1) !== 'Аптекарь') bad.push('карьера человека 01');
+  if (car('human', 15) !== 'Агитатор') bad.push('карьера человека 15');
+  if (car('dwarf', 98) !== 'Убийца чудовищ') bad.push('карьера гнома 98');
+  return bad.length ? 'не как в книге: ' + bad.join(', ') : true;
+}));
+
+await check('максимумы талантов по книге', () => ev(() => {
+  // гл. IV, с. 97–112: Sniper — 4, Night Vision — бонус инициативы,
+  // Magnum Opus — без предела, Jump Up — один раз
+  const m = n => (DATA.all_talents.find(t => t.name === n) || {}).max;
+  const want = { 'Снайпер': '4', 'Сумеречное зрение': 'рейтинг инициативы', 'Magnum opus': 'нет', 'Подскок': '1' };
+  const bad = Object.keys(want).filter(n => m(n) !== want[n]);
+  return bad.length ? 'не по книге: ' + bad.map(n => n + ' ' + m(n)).join(', ') : true;
+}));
+
+await check('снаряжение: доступность и цены по книге', () => ev(() => {
+  // гл. XI, с. 246–249: «скудная» в приложении — «редкое», «редкая» — «раритет»;
+  // рапира, шпага и кольчужный жилет — Scarce, мечелом стоит 1 зк 2/6
+  const all = [...WEAPONS_CATALOG, ...ARMOR_CATALOG];
+  const f = n => all.find(x => x.name === n) || {};
+  const words = new Set(['—', 'распр.', 'редкое', 'редкая', 'раритет', 'экзотическое']);
+  const odd = all.filter(x => !words.has(x.avail)).map(x => x.name + ' ' + x.avail);
+  const want = [['Рапира', 'avail', 'редкое'], ['Шпага', 'avail', 'редкое'],
+                ['Кольчужный жилет', 'avail', 'редкая'], ['Мечелом', 'price', '1КР 2/6']];
+  const bad = want.filter(([n, k, v]) => f(n)[k] !== v).map(([n, k]) => n + ' ' + f(n)[k]);
+  return odd.length || bad.length ? 'не по книге: ' + [...odd, ...bad].join(', ') : true;
+}));
+
+await check('библиотека заклинаний: все 135 из книги, по своим школам', () => ev(() => {
+  // гл. VIII, с. 198–215: в каждой школе 8 заклинаний, малых 25, тайных 23;
+  // ведовство, колдовство, демонология, некромантия и Хаос — отдельные знания
+  const n = l => SPELL_LIB.filter(s => s.l === l).length;
+  const want = { 'Малые заклинания': 25, 'Тайная магия': 23, 'Знание Теней': 8, 'Знание Металла': 8,
+                 'Знание ведовства': 6, 'Знание колдовства': 6, 'Знание некромантии': 4, 'Знание Тзинча': 1 };
+  const bad = Object.keys(want).filter(l => n(l) !== want[l]).map(l => l + ' ' + n(l));
+  if (SPELL_LIB.length !== 135) bad.push('всего ' + SPELL_LIB.length);
+  const old = state.sheet._spellLore;
+  state.sheet._spellLore = 'Тёмная магия';
+  spellPickerOpen();
+  const rows = document.querySelectorAll('#spick-list .spick-row').length;
+  document.getElementById('spell-picker').classList.remove('show');
+  state.sheet._spellLore = old;
+  if (!rows) bad.push('старая школа из досье даёт пустой список');
+  return bad.length ? bad.join(', ') : true;
+}));
+
+await check('перегруз по таблице книги, надетая броня на 1 легче', () => ev(() => {
+  // с. 244–245: до 2× предела −1 Движение (не ниже 3) и −10, до 3× −2 и −20,
+  // больше — стоишь; надетое весит на 1 меньше
+  const keep = JSON.stringify(state.sheet);
+  try {
+    const lim = sheetCalc().encMax;
+    const load = (n, armor) => {
+      state.sheet.weapons = []; state.sheet.trappings = [{ name: 'груз', enc: n }];
+      state.sheet.armor = armor || [];
+      const h = renderTabGear();
+      return h.slice(h.indexOf('Общий вес'), h.indexOf('Общий вес') + 700);
+    };
+    if (!/запас 0/.test(load(lim - 2, [{ name: 'Кольчужная рубаха', enc: 3 }])))
+      return 'броня весом 3 посчитана не как 2';
+    if (!/Движение \d+ · −10/.test(load(lim * 2))) return 'двойной предел — не −10: ' + load(lim * 2).replace(/<[^>]+>/g, ' ').slice(0, 120);
+    if (!/−20/.test(load(lim * 2 + 1))) return 'между 2× и 3× нет −20';
+    if (!/не сдвинуться/.test(load(lim * 3 + 1))) return 'больше 3× можно идти';
+    return true;
+  } finally { state.sheet = JSON.parse(keep); }
+}));
 
 console.log(results.join('\n'));
 console.log('\nпрошло ' + pass + ', не прошло ' + fail);
