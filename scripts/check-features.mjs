@@ -3119,6 +3119,45 @@ await check('сон — проверка навыка, а не характер�
   } finally { state.sheet = JSON.parse(keep); }
 }));
 
+// ── данные по книге (рус. перевод) ─────────────────────────────────────────
+await check('схемы карьер сняты с книги', () => ev(() => {
+  // «Схема улучшений» солдата (с. 81) и агитатора (с. 45) — сверено по картинке
+  const want = { 'Солдат': { plus: ['ББ', 'В', 'СВ'], t2: 'ДБ', t3: 'И', t4: 'Х' },
+                 'Агитатор': { plus: ['ДБ', 'Инт', 'Х'], t2: 'Пр', t3: 'ББ', t4: 'И' },
+                 'Маг': { plus: ['ББ', 'Инт', 'СВ'], t2: 'Пр', t3: 'И', t4: 'Х' } };
+  const bad = Object.keys(want).filter(n => JSON.stringify(CAREER_SCHEMES[n]) !== JSON.stringify(want[n]));
+  return bad.length ? 'не по книге: ' + bad.join(', ') : true;
+}));
+
+await check('карьеры: статусы, навыки, таланты по книге', () => ev(() => {
+  const t = (c, i) => DATA.careers[c].tiers[i];
+  const has = (s, x) => s.split(/,(?![^()]*\))/).map(v => v.trim()).includes(x);
+  const bad = [];
+  if (t('Шпион', 0).status !== 'медный 3') bad.push('Осведомитель — медь 3 (с. 54)');
+  if (has(t('Горожанин', 0).skills, 'стойкость')) bad.push('Горожанин 1 без стойкости');
+  if (has(t('Купец', 0).skills, 'лазание')) bad.push('Купец 1 без лазания');
+  if (!has(t('Попрошайка', 1).skills, 'торговля')) bad.push('Попрошайка 2 с торговлей');
+  if (!has(t('Охранник', 0).skills, 'интуиция')) bad.push('Охранник 1 с интуицией');
+  if (has(t('Инженер', 0).skills, 'лечение')) bad.push('Инженер 1 без лечения');
+  if (!has(t('Эмиссар', 0).skills, 'интуиция')) bad.push('Эмиссар 1 с интуицией');
+  if (!has(t('Скупщик краденого', 0).talents, 'бродячий кот')) bad.push('Скупщик 1 с бродячим котом');
+  return bad.length ? bad.join('; ') : true;
+}));
+
+await check('случайные таблицы пронумерованы как в книге', () => ev(() => {
+  // с. 20–21 и 24: номера на кубе должны вести к тем же строкам, что в книге
+  const tal = r => DATA.random_talents.find(x => inRange(r, x.roll)).talent;
+  const car = (race, r) => DATA.random_careers.find(x => x[race] && inRange(r, x[race])).career;
+  const bad = [];
+  if (tal(2) !== 'Обострённое восприятие (любое)') bad.push('талант 02');
+  if (tal(36) !== 'Фортуна') bad.push('талант 36');
+  if (tal(99) !== 'Прирождённый воин') bad.push('талант 99');
+  if (car('human', 1) !== 'Аптекарь') bad.push('карьера человека 01');
+  if (car('human', 15) !== 'Агитатор') bad.push('карьера человека 15');
+  if (car('dwarf', 98) !== 'Убийца чудовищ') bad.push('карьера гнома 98');
+  return bad.length ? 'не как в книге: ' + bad.join(', ') : true;
+}));
+
 console.log(results.join('\n'));
 console.log('\nпрошло ' + pass + ', не прошло ' + fail);
 console.log('ошибок JS за прогон: ' + errs.length);
