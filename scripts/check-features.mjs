@@ -1775,50 +1775,51 @@ await check('отдых считает деньги так же, как блан
 }));
 
 // ── навыки: базовые против профессиональных ────────────────────────────────
-await check('базовых навыков двадцать шесть', () => ev(() =>
-  DATA.common_skills.length === 26 && DATA.prof_skills.length === 19));
+await check('базовых навыков двадцать пять, продвинутых двадцать (с. 84)', () => ev(() =>
+  DATA.common_skills.length === 25 && DATA.prof_skills.length === 20));
 
-await check('плавание базовое, как гребля', () => ev(() => {
-  // Обоими правит сила, оба базовые по книге. Плавание лежало в
-  // профессиональных — значит начиналось с нуля вместо значения силы.
-  const c = n => DATA.common_skills.find(s => s.name === n);
-  const sw = c('Плавание'), row = c('Гребля');
+await check('плавание продвинутое, гребля базовая (с. 84, 95)', () => ev(() => {
+  // Книга: «Плавание (S) Продвинутое». Здесь раньше закреплялось обратное —
+  // по памяти, «в книге 26 базовых»; в перечне на с. 84 их двадцать пять.
+  const sw = DATA.prof_skills.find(s => s.name === 'Плавание');
+  const row = DATA.common_skills.find(s => s.name === 'Гребля');
   return !!sw && !!row && sw.stat === 'С' && row.stat === 'С' &&
-         !DATA.prof_skills.some(s => s.name === 'Плавание');
+         !DATA.common_skills.some(s => s.name === 'Плавание');
 }));
 
-await check('плавание есть на бланке без покупки', async () => {
+await check('плавание не выдаётся каждому как базовое', async () => {
   await ev(() => sv4NavGo('skills'));
   await p.waitForTimeout(150);
   return ev(() => {
-    // Случайному персонажу плавание могло достаться от народа или карьеры,
-    // поэтому сверяем не абсолют, а правило: итог = сила + шаги.
-    const sk = compileSkills().find(s => s.name === 'Плавание');
+    // Если плавание на бланке есть — от народа, карьеры или покупки, — оно не
+    // базовое, а итог по-прежнему сила + шаги.
+    const sk = compileSkills().find(s => s.name.toLowerCase() === 'плавание');
+    if (!sk) return true;
+    if (sk.isCommon) return 'плавание помечено базовым';
     const strength = sheetCalc().totals['С'] || 0;
-    if (!sk) return 'плавания нет на бланке';
-    if (!sk.isCommon) return 'плавание не помечено базовым';
-    return sk.value === strength + (sk.adv || 0)
-      ? true
-      : `итог ${sk.value}, а сила ${strength} плюс шаги ${sk.adv}`;
+    return sk.value === strength + (sk.adv || 0) ? true : `итог ${sk.value}, а сила ${strength} плюс шаги ${sk.adv}`;
   });
 });
 
 await check('купленное плавание не пропало у старых досье', () => ev(() => {
   // Досье из версии, где плавание было профессиональным: шаги лежат в
-  // extraSkills. migrateState обязан свернуть их в общий навык, а не потерять.
+  // extraSkills. Сворачивать их теперь некуда — плавание снова продвинутое, —
+  // но бланк обязан их видеть, а не потерять.
   // Считаем прирост, а не абсолют: у случайного персонажа плавание уже могло
   // быть от народа или карьеры, и тогда абсолютное число ничего не докажет.
   state.sheet.extraSkills = state.sheet.extraSkills || [];
-  const was = (compileSkills().find(s => s.name === 'Плавание') || {}).adv || 0;
-  const wasFolded = state.sheet.skillAdv['плавание'] || 0;
+  const was = (compileSkills().find(s => s.name.toLowerCase() === 'плавание') || {}).adv || 0;
   state.sheet.extraSkills.push({ name: 'Плавание', stat: 'С', adv: 7 });
   migrateState();
-  const left = state.sheet.extraSkills.some(s => s.name === 'Плавание');
-  const folded = (state.sheet.skillAdv['плавание'] || 0) - wasFolded;
-  const now = (compileSkills().find(s => s.name === 'Плавание') || {}).adv || 0;
-  return (!left && folded === 7 && now - was === 7)
+  const now = (compileSkills().find(s => s.name.toLowerCase() === 'плавание') || {}).adv || 0;
+  // Досье 1.13–1.16 держат шаги в skillAdv — их бланк тоже должен видеть
+  state.sheet.skillAdv['плавание'] = (state.sheet.skillAdv['плавание'] || 0) + 3;
+  const withOld = (compileSkills().find(s => s.name.toLowerCase() === 'плавание') || {}).adv || 0;
+  state.sheet.skillAdv['плавание'] -= 3;
+  state.sheet.extraSkills = state.sheet.extraSkills.filter(s => s.name !== 'Плавание');
+  return (now - was === 7 && withOld - now === 3)
     ? true
-    : `осталось в extraSkills: ${left}, свёрнуто +${folded}, на бланке +${now - was} (ждали +7)`;
+    : `на бланке +${now - was} из extraSkills (ждали +7), +${withOld - now} из skillAdv (ждали +3)`;
 }));
 
 // ── целостность справочника: ссылки обязаны разрешаться ────────────────────
@@ -1846,7 +1847,7 @@ await check('необученные общие навыки свёрнуты, н
     const rows = [...document.querySelectorAll('.sv4-sk-common tbody tr')];
     return { all: rows.length, shown: rows.filter(r => r.offsetParent).length };
   });
-  if (n.all !== 26) return 'общих навыков в таблице ' + n.all + ', а в книге 26';
+  if (n.all !== 25) return 'общих навыков в таблице ' + n.all + ', а в книге 25 (с. 84)';
   if (n.shown >= n.all) return 'свёрнуто ничего';
   // Имя берём из самой таблицы: у случайного персонажа обученным может
   // оказаться любой навык, и жёстко названный сюда не годится.
@@ -1874,7 +1875,7 @@ await check('необученные общие навыки свёрнуты, н
     skillsToggleAll();
     return shown;
   });
-  return opened === 26 ? true : 'после «показать все» видно ' + opened;
+  return opened === 25 ? true : 'после «показать все» видно ' + opened;
 });
 
 await check('названия талантов показываются с заглавной', () => ev(() => {

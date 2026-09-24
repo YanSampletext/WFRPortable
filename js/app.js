@@ -388,7 +388,7 @@ function compileSkills(){
   const calc = sheetCalc();
   const skMap = {};
 
-  // Все 26 базовых навыков сразу — они есть у каждого, всегда видны
+  // Все 25 базовых навыков сразу — они есть у каждого, всегда видны (книга, с. 84)
   DATA.common_skills.forEach(cs => {
     skMap[cs.name.toLowerCase()] = {
       name: cs.name,
@@ -420,8 +420,9 @@ function compileSkills(){
   // Также пометим карьерные без шагов как «доступные карьерные»
   const c = state.career ? DATA.careers[state.career] : null;
   if(c){
-    const tier = c.tiers[(state.sheet.tier||1) - 1] || c.tiers[0];
-    const careerSkillNames = (tier.skills || '').split(/,\s*/).map(s=>s.trim()).filter(Boolean);
+    // Карьерные — умения текущей ступени и всех ниже (книга, с. 35), как в
+    // магазине: иначе бланк и магазин расходились, чья это «карьера».
+    const careerSkillNames = careerSkillsUpTo(state.career, state.sheet.tier || 1);
     careerSkillNames.forEach(name => {
       const k = name.toLowerCase();
       if(!skMap[k]){
