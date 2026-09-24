@@ -232,12 +232,13 @@
     if (lines.length) notify('Конец раунда: ' + lines.join(', '));
   };
 
-  // Урон по книге: из него вычитаются бонус выносливости и класс брони.
-  // Возвращает, сколько ран сняли на самом деле.
+  // Урон по книге: из него вычитаются бонус выносливости и класс брони, но
+  // попадание снимает не меньше 1 раны (с. 122). Возвращает, сколько сняли.
   window.encDamage = function (id, raw) {
     var p = byId(id); if (!p) return 0;
     var soak = (p.tb || 0) + (p.ap || 0);
-    var lost = Math.max(0, (parseInt(raw, 10) || 0) - soak);
+    var dmg = parseInt(raw, 10) || 0;
+    var lost = dmg > 0 ? Math.max(1, dmg - soak) : 0;
     p.hp = Math.max(0, p.hp - lost);
     save(); refresh();
     return lost;

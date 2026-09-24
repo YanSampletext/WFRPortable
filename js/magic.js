@@ -132,13 +132,7 @@ function arcTableLookup(table, r){
   return '—';
 }
 
-// SL по WFRP4: разница десятков цели и броска (00/100 учитывается как 100).
-function arcSL(target, rollVal){
-  const t = Math.floor(target/10);
-  const rr = Math.floor((rollVal===100?100:rollVal)/10);
-  return t - rr;
-}
-function arcIsDouble(r){ return r===100 ? false : (r%11===0); } // 11,22,...,99
+// Исход и SL — общей testOutcome (app.js); здесь только куб единиц (00 → 0)
 function arcUnitsDigit(r){ return (r===100?0:r)%10; }
 
 // Магия, вера, скверна и время между приключениями
@@ -172,6 +166,17 @@ function prayDifficulty(i, kind){
 }
 
 // ===================== ПРОВЕРКА СОТВОРЕНИЯ =====================
+// Каналирование по книге (с. 195) — длительная проверка концентрации: когда
+// накоплено не меньше ЗС заклинания, его творят, «считая ЗС равным 0».
+// Критическая концентрация даёт то же без счёта — ставим полный запас.
+const CHANNEL_FULL = 99;
+function channelText(n){ return n >= CHANNEL_FULL ? 'хватит на любое заклинание' : n + ' SL'; }
+// Таланты, снимающие малую ошибку крита, — под именем книги и под старым
+// именем справочника приложения.
+function hasTalent(){
+  return [].some.call(arguments, n => talentLevel(n) > 0);
+}
+
 function rollCastingTest(idx, mod){
   const sp = (state.sheet.spells||[])[idx];
   if(!sp){ notify('Не выбрано заклинание.'); return; }
@@ -181,30 +186,36 @@ function rollCastingTest(idx, mod){
   const target = base + dif;
   const cn = parseInt(sp.cn)||0;
   const r = rollD100();
-  const sl = arcSL(target, r);
-  const success = r <= target;
-  // каналированное добавляется к SL (упрощённо: суммируем накопленное)
-  const effSL = sl + (parseInt(state.sheet.channelled)||0);
-  const cast = success && effSL >= cn;
+  const o = testOutcome(target, r);
+  const ch = parseInt(state.sheet.channelled)||0;
+  const ready = ch > 0 && ch >= cn;             // накоплено на это заклинание
+  const cast = o.ok && o.sl >= (ready ? 0 : cn);
   let lines = [];
-  lines.push(`<span class="ic">${ICONS.dice}</span> d100 = <b>${r}</b> против ${target}${arcDifNote(dif)} → ${success?'успех':'провал'}, SL ${sl>=0?'+':''}${sl}`);
-  if(state.sheet.channelled>0) lines.push(`Каналировано: +${state.sheet.channelled} SL → итог SL ${effSL>=0?'+':''}${effSL}`);
-  lines.push(cast ? `<span class="ic">${ICONS.check}</span> Заклинание сотворено (нужно ЗС ${cn}).` : `<span class="ic">${ICONS.cross}</span> Не сотворено (нужно SL ≥ ЗС ${cn}).`);
-  // дубли → критическое сотворение / ошибка
+  lines.push(`<span class="ic">${ICONS.dice}</span> d100 = <b>${r}</b> против ${target}${arcDifNote(dif)} → ${o.ok?'успех':'провал'}, SL ${slSigned(o)}`);
+  if(ch > 0) lines.push(ready
+    ? `Каналировано (${channelText(ch)}) — ЗС считается равным 0.`
+    : `Каналировано ${ch} SL из ${cn} — мало, ЗС обычное.`);
+  lines.push(cast ? `<span class="ic">${ICONS.check}</span> Заклинание сотворено${ready ? '' : ` (нужно ЗС ${cn})`}.` : `<span class="ic">${ICONS.cross}</span> Не сотворено${o.ok ? ` (нужно SL ≥ ЗС ${cn})` : ''}.`);
   let auto = null;
-  // Бонус критического сотворения бывает только при успехе. Провал с дублем —
-  // просто малая ошибка; раньше и ему предлагалось выбрать бонус.
-  if(arcIsDouble(r) && success){
-    lines.push(`<span class="ic">${ICONS.bolt}</span> <b>Дубль (${r})</b> — критическое сотворение: бросок по «малым ошибкам» (если нет «Инстинктивного понимания»), но выбери бонус: крит. заклинание / полная мощь / неудержимая сила.`);
+  if(o.ok && o.double){
+    // Критическое сотворение (с. 192): бонус на выбор; малая ошибка — если
+    // нет «Инстинктивного понимания».
+    const safe = hasTalent('инстинктивное понимание');
+    lines.push(`<span class="ic">${ICONS.bolt}</span> <b>Дубль (${r})</b> — критическое сотворение: выбери бонус — крит. заклинание / полная мощь / неудержимая сила.` + (safe ? ' «Инстинктивное понимание» гасит ошибку.' : ' Бросок по «малым ошибкам».'));
+    if(!safe) auto = 'minor';
+  } else if(!o.ok && o.double){
+    // Заминка при сотворении (с. 194) — малая ошибка
+    lines.push(`<span class="ic">${ICONS.bolt}</span> <b>Дубль (${r}) на провале</b> — заминка: малая ошибка.`);
     auto = 'minor';
-  } else if(arcIsDouble(r)){
-    lines.push(`<span class="ic">${ICONS.bolt}</span> <b>Дубль (${r}) на провале</b> — малая ошибка.`);
+  } else if(!o.ok && ch > 0){
+    // С. 195: провал после каналирования — накопленное выплёскивается
+    lines.push(`<span class="ic">${ICONS.warn}</span> Провал после каналирования — накопленное выплеснулось: малая ошибка.`);
     auto = 'minor';
   } else if(state.sheet.nearCorruption && arcUnitsDigit(r)===8){
     lines.push(`<span class="ic">${ICONS.warn}</span> Рядом с искажающим влиянием и «8» на единицах — малая ошибка.`);
     auto = 'minor';
   }
-  // сотворение тратит накопленную ману
+  // сотворение тратит накопленное — и удачное, и проваленное
   state.sheet.channelled = 0;
   state.sheet.miscastLog = state.sheet.miscastLog || [];
   state.sheet.miscastLog.unshift({type:'cast', roll:r, text: lines.join(' · ')});
@@ -221,19 +232,31 @@ function rollChannelling(mod){
   const dif = parseInt(mod)||0;
   const target = base + dif;
   const r = rollD100();
-  const sl = arcSL(target, r);
-  const success = r <= target;
-  let add = success ? Math.max(0, sl) : 0;
-  if(success) state.sheet.channelled = (parseInt(state.sheet.channelled)||0) + add;
-  let txt = `<span class="ic">${ICONS.dice}</span> Концентрация d100 = ${r} против ${target}${arcDifNote(dif)} → ${success?'успех':'провал'}, SL ${sl>=0?'+':''}${sl}. Накоплено каналированием: <b>${state.sheet.channelled||0}</b>.`;
-  let auto=null;
-  if(!success){ txt += ' Провал — малая ошибка, накопленное теряется.'; state.sheet.channelled=0; auto='minor'; }
-  else if(arcIsDouble(r)){ txt += ' Дубль — малая ошибка.'; auto='minor'; }
+  const o = testOutcome(target, r);
+  let ch = parseInt(state.sheet.channelled)||0;
+  let auto = null, note = '';
+  // Книга, с. 195. Заминка — проваленная проверка с дублем или с 0 на кубе
+  // единиц (00, 99, 90, 88…): крупная ошибка. Раньше любой провал давал
+  // малую ошибку и обнулял накопленное, а заминка была малой.
+  const fumble = !o.ok && (o.double || arcUnitsDigit(r) === 0);
+  if(o.ok && o.double){
+    ch = CHANNEL_FULL;
+    const safe = hasTalent('эфирная гармония', 'эфирный унисон');
+    note = ' Критическая концентрация — в следующем раунде можно творить независимо от накопленного.' + (safe ? '' : ' Малая ошибка (нет «Эфирной гармонии»).');
+    if(!safe) auto = 'minor';
+  } else {
+    // длительная проверка: SL складываются как выпали, сумма не ниже 0 (с. 118)
+    if(ch < CHANNEL_FULL) ch = Math.max(0, ch + o.sl);
+    if(fumble){ note = ' Заминка — крупная ошибка.'; auto = 'major'; }
+  }
+  state.sheet.channelled = ch;
+  const txt = `<span class="ic">${ICONS.dice}</span> Концентрация d100 = ${r} против ${target}${arcDifNote(dif)} → ${o.ok?'успех':'провал'}, SL ${slSigned(o)}. Накоплено: <b>${channelText(ch)}</b>.` + note;
   state.sheet.miscastLog = state.sheet.miscastLog || [];
   state.sheet.miscastLog.unshift({type:'channel', roll:r, text:txt});
   if(state.sheet.miscastLog.length>12) state.sheet.miscastLog.pop();
   autosave();
   if(auto==='minor') rollMinorMiscast(true);
+  else if(auto==='major') rollMajorMiscast(true);
   else renderSheet();
 }
 
@@ -267,12 +290,13 @@ function rollPrayTest(idx, kind, mod){
   const dif = parseInt(mod)||0;
   const target = base + dif;
   const r = rollD100();
-  const sl = arcSL(target, r);
-  const success = r <= target;
+  const o = testOutcome(target, r);
+  const success = o.ok;
   const sin = parseInt(state.sheet.sin)||0;
-  let lines = [`<span class="ic">${ICONS.dice}</span> Молитва d100 = <b>${r}</b> против ${target}${arcDifNote(dif)} → ${success?'успех':'провал'}, SL ${sl>=0?'+':''}${sl}` + (it?` — ${it.name}`:'')];
-  // Гнев: дубль (заминка) ИЛИ единицы ≤ грех
-  const triggerWrath = arcIsDouble(r) || (sin>0 && arcUnitsDigit(r) <= sin);
+  let lines = [`<span class="ic">${ICONS.dice}</span> Молитва d100 = <b>${r}</b> против ${target}${arcDifNote(dif)} → ${success?'успех':'провал'}, SL ${slSigned(o)}` + (it?` — ${it.name}`:'')];
+  // Гнев (с. 177): заминка — провал на дубле — или единицы не больше греха,
+  // «даже если проверка прошла успешно». Успех на дубле гнева не зовёт.
+  const triggerWrath = (!success && o.double) || (sin>0 && arcUnitsDigit(r) <= sin);
   // Обратные кавычки, а не обычные: в обычных подстановка не работает, и в
   // журнал веры уходило буквальное «${ICONS.check}».
   if(success) lines.push(`<span class="ic">${ICONS.check}</span> Благословение/чудо проявляется (каждые +2 SL — усиление: цель/дистанция/длительность).`);
@@ -384,7 +408,7 @@ function renderTabArcane(){
     <div class="sv4-row" style="gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">
       <button class="btn btn-sm" onclick="rollChannelling()"><span class="ic">${ICONS.dice}</span> Каналировать (концентрация)</button>
       <button class="btn btn-sm" onclick="channelDifficulty()" title="каналирование с выбором сложности">± сложность</button>
-      <span class="muted" style="font-size:12px;">накоплено: <b style="color:var(--gold2);">${s.channelled||0}</b> SL</span>
+      <span class="muted" style="font-size:12px;">накоплено: <b style="color:var(--gold2);">${channelText(s.channelled||0)}</b></span>
       ${(s.channelled||0)>0?`<button class="sv4-cond-btn" onclick="state.sheet.channelled=0;autosave();renderSheet();" title="сбросить">×</button>`:''}
       <span style="flex:1;"></span>
       <button class="btn btn-sm" onclick="rollMinorMiscast()"><span class="ic">${ICONS.dice}</span> Малая ошибка</button>

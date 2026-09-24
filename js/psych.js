@@ -40,9 +40,11 @@ function fumbleRoll(){
 }
 
 /* ═══ Психология (гл. V): страх, ужас, бешенство ═══ */
+// Хладнокровие — навык с бланка; в бою к психологическим проверкам идёт и
+// преимущество, +10 за пункт (с. 127).
 function psyCoolTarget(){
-  const c = sheetCalc();
-  return (c.totals['СВ']||0) + (typeof skillAdvancesTotal==='function' ? (skillAdvancesTotal('хладнокровие')||0) : 0);
+  const adv = (state.sheet && state.sheet.advantage) || 0;
+  return sheetSkillValue('хладнокровие') + (adv > 0 ? adv * 10 : 0);
 }
 function psyState(){ state.sheet.psych = state.sheet.psych || {fearRank:0, fearSL:0, fearActive:false, frenzy:false}; return state.sheet.psych; }
 function psyFearStart(){
@@ -57,8 +59,8 @@ function psyFearRoll(){
   const p = psyState(); if(!p.fearActive) return;
   const target = psyCoolTarget();
   const d = Math.floor(Math.random()*100)+1;
-  const sl = Math.trunc(target/10)-Math.trunc(d/10);
-  p.fearSL = Math.max(0, p.fearSL + sl);
+  const sl = testOutcome(target, d).sl;
+  p.fearSL = Math.max(0, p.fearSL + sl);          // длительная: не ниже 0 (с. 118)
   const done = p.fearSL >= p.fearRank;
   if(done) p.fearActive = false;
   if(typeof showRollResult==='function')
@@ -77,8 +79,8 @@ function _psyTerrorRoll(r){
   if(r<=0) return;
   const target = psyCoolTarget();
   const d = Math.floor(Math.random()*100)+1;
-  const sl = Math.trunc(target/10)-Math.trunc(d/10);
-  if(d <= target){
+  const o = testOutcome(target, d), sl = o.sl;
+  if(o.ok){
     if(typeof showRollResult==='function') showRollResult('Ужас: хладнокровие', target, d, 'Устоял', 'success', '+'+sl+' SL — ужас не берёт');
   } else {
     const broken = r + Math.max(0, -sl);
@@ -98,7 +100,7 @@ function psyFrenzy(){
   }
   const c = sheetCalc(); const target = c.totals['СВ']||0;
   const d = Math.floor(Math.random()*100)+1;
-  if(d <= target){
+  if(testOutcome(target, d).ok){
     p.frenzy = true;
     if(typeof showRollResult==='function') showRollResult('Бешенство: сила воли', target, d, 'БЕШЕНСТВО!', 'crit-success', '+1 БС · иммунитет к психологии · только атака');
   } else {

@@ -560,8 +560,10 @@ await check('encDamage гасит стойкостью и бронёй', () => e
   encList().forEach(x => encRemove(x.id));
   const id = encAdd('Латник', 20, 15, true, 4, 3);   // гасит 7
   const lost = encDamage(id, 10);
-  const none = encDamage(id, 5);                     // меньше защиты — ноль
-  return lost === 3 && none === 0 && encList()[0].hp === 12;
+  // Меньше защиты — всё равно 1 рана: «если остаётся 1 или менее, противник
+  // теряет только 1 рану» (книга, с. 122). Раньше здесь ждали ноль.
+  const least = encDamage(id, 5);
+  return lost === 3 && least === 1 && encList()[0].hp === 11;
 }));
 
 await check('«+ Я» берёт стойкость и броню с бланка', () => ev(() => {
@@ -2295,10 +2297,11 @@ await check('растянутая копит уровни успеха попы�
   for (let i = 0; i < 5; i++) extRoll('extT');
   const e = state.sheet.extended[0];
   if (e.tries.length !== 5) return 'попыток записано ' + e.tries.length;
-  const sum = e.tries.reduce((a, t) => a + t.sl, 0);
-  if (e.acc !== sum) return 'накоплено ' + e.acc + ', а сумма попыток ' + sum;
+  // Книга, с. 118: складываются как выпали, но сумма ниже 0 начинается с 0
+  const sum = e.tries.reduce((a, t) => Math.max(0, a + t.sl), 0);
+  if (e.acc !== sum) return 'накоплено ' + e.acc + ', а по попыткам ' + sum;
   // Каждая попытка обязана считаться по той же формуле, что и весь бланк
-  const bad = e.tries.filter(t => t.sl !== Math.trunc(t.target / 10) - Math.trunc(t.d / 10));
+  const bad = e.tries.filter(t => t.sl !== testOutcome(t.target, t.d).sl);
   return bad.length ? 'уровни успеха посчитаны иначе, чем на бланке' : true;
 }));
 
@@ -2385,10 +2388,12 @@ await check('встречная сравнивает уровни успеха �
       d: parseInt(s.querySelector('.opp-die').textContent, 10),
       t: parseInt(s.querySelector('.opp-vs').textContent.replace(/[^\d]/g, ''), 10)
     }));
-    const sl = nums.map(x => Math.trunc(x.t / 10) - Math.trunc(x.d / 10));
+    const sl = nums.map(x => testOutcome(x.t, x.d).sl);
     const diff = sl[0] - sl[1];
     const said = (document.querySelector('#roll-modal .sv4-roll-outcome') || {}).textContent || '';
-    const want = diff > 0 ? 'Верх твой' : diff < 0 ? 'Верх за противником' : 'Ничья';
+    // Ничья по SL решается большим значением (книга, с. 117)
+    const want = diff > 0 || (diff === 0 && nums[0].t > nums[1].t) ? 'Верх твой'
+               : diff < 0 || (diff === 0 && nums[0].t < nums[1].t) ? 'Верх за противником' : 'Полная ничья';
     if (said.indexOf(want) < 0) return 'сказано «' + said + '», а разница ' + diff;
     if (nums[1].t !== 45) return 'противник бросает против ' + nums[1].t + ', а задали 45';
     const log = state.sheet.rollLog;
@@ -2979,6 +2984,139 @@ await check('дубль на провале сотворения — без бо
     const ok = state.sheet.miscastLog.find(e => e.type === 'cast').text;
     return /критическое сотворение/.test(ok) ? true : 'успех с дублем не назван критическим';
   } finally { Math.random = rnd; state.sheet = JSON.parse(keep); }
+}));
+
+// ── правила из книги: проверки, бой, магия, вера ───────────────────────────
+// Math.random подменяем последовательностью: d100 = floor(x·100) + 1.
+const withRolls = (fn, arg) => ev(({ src, arg }) => {
+  const rnd = Math.random;
+  try { return (new Function('arg', 'seq', src))(arg, (...ds) => {
+    const q = ds.map(d => (d - 1) / 100 + 0.001);
+    Math.random = () => q.length ? q.shift() : 0.5;
+  }); } finally { Math.random = rnd; }
+}, { src: 'return (' + fn.toString() + ')(arg, seq)', arg });
+
+await check('01–05 всегда успех, 96–00 всегда провал', () => ev(() => {
+  const a = testOutcome(1, 3), b = testOutcome(120, 97), c = testOutcome(40, 1);
+  if (!a.ok || a.sl < 1) return `03 против 1: ${a.ok ? 'успех' : 'провал'} ${a.sl}, по книге успех с SL ≥ +1`;
+  if (b.ok || b.sl > -1) return `97 против 120: ${b.ok ? 'успех' : 'провал'} ${b.sl}, по книге провал с SL ≤ −1`;
+  if (c.double) return '01 посчитан дублем — по книге дубль это 11, 22 … 00';
+  if (!testOutcome(50, 100).double) return '00 не посчитан дублем';
+  return true;
+}));
+
+await check('бросок на бланке: 97 при цели 110 — провал', () => withRolls(() => {
+  seq(97);
+  rollCheck('Проба', 110, 0);
+  const out = document.querySelector('#roll-modal .sv4-roll-outcome').textContent;
+  return /Провал/.test(out) ? true : 'на карточке «' + out + '»';
+}));
+
+await check('ничья по SL: верх у большего значения', async () => {
+  await withRolls(() => { seq(23); rollCheck('Проба', 55, 0); });
+  await ev(() => document.querySelector('#roll-modal [data-call="opposed"]').click());
+  await p.waitForTimeout(200);
+  return withRolls(() => {
+    seq(13);                                  // 45 против 13 — тоже +3 SL
+    document.getElementById('opp-val').value = 45;
+    document.getElementById('opp-go').click();
+    const out = document.querySelector('#roll-modal .sv4-roll-outcome').textContent;
+    return /Верх твой/.test(out) ? true : 'при равных SL и 55 > 45 сказано «' + out + '»';
+  });
+});
+
+await check('каналирование по книге', () => withRolls(() => {
+  const keep = JSON.stringify(state.sheet);
+  try {
+    state.sheet.channelSkill = 50; state.sheet.miscastLog = [];
+    state.sheet.channelled = 2; seq(57);     // простой провал: −0 → сумма та же, ошибки нет
+    rollChannelling(0);
+    if (state.sheet.miscastLog.some(e => e.type !== 'channel')) return 'простой провал каналирования дал ошибку';
+    if (state.sheet.channelled !== 2) return 'после простого провала накоплено ' + state.sheet.channelled;
+    seq(60, 50);                              // провал на 0 — заминка
+    rollChannelling(0);
+    if (!state.sheet.miscastLog.some(e => e.type === 'major')) return 'заминка каналирования не дала крупную ошибку';
+    state.sheet.miscastLog = []; seq(33, 50); // успех на дубле — критическая концентрация
+    rollChannelling(0);
+    if (state.sheet.channelled < 99) return 'крит каналирования не дал полного запаса';
+    return true;
+  } finally { state.sheet = JSON.parse(keep); }
+}));
+
+await check('сотворение после каналирования', () => withRolls(() => {
+  const keep = JSON.stringify(state.sheet);
+  try {
+    state.sheet.spells = [{ name: 'Проба', cn: 5, range: '', target: '', duration: '' }];
+    state.sheet.langMagick = 50; state.sheet.miscastLog = [];
+    state.sheet.channelled = 3; seq(31);     // SL +2, накоплено 3 < ЗС 5
+    rollCastingTest(0, 0);
+    if (!/Не сотворено/.test(state.sheet.miscastLog.find(e => e.type === 'cast').text))
+      return 'накопленное сложилось с SL сотворения — по книге так не бывает';
+    state.sheet.channelled = 5; seq(47);     // накоплено ≥ ЗС: хватает успеха
+    rollCastingTest(0, 0);
+    if (/Не сотворено/.test(state.sheet.miscastLog.find(e => e.type === 'cast').text)) return 'при накопленном ≥ ЗС успех не сотворил заклинание';
+    state.sheet.miscastLog = []; state.sheet.channelled = 5; seq(82, 50);
+    rollCastingTest(0, 0);                   // провал после каналирования — малая ошибка
+    return state.sheet.miscastLog.some(e => e.type === 'minor') ? true : 'провал после каналирования прошёл без ошибки';
+  } finally { state.sheet = JSON.parse(keep); }
+}));
+
+await check('гнев богов — от заминки, а не от любого дубля', () => withRolls(() => {
+  const keep = JSON.stringify(state.sheet);
+  try {
+    state.sheet.blessings = [{ name: 'Проба', range: '', target: '', duration: '' }];
+    state.sheet.praySkill = 60; state.sheet.sin = 0; state.sheet.wrathLog = [];
+    seq(33);                                  // успех на дубле
+    rollPrayTest(0, 'blessing', 0);
+    if (state.sheet.wrathLog.some(e => e.type === 'wrath')) return 'успех на дубле вызвал гнев';
+    seq(77, 50);                              // провал на дубле — заминка
+    rollPrayTest(0, 'blessing', 0);
+    return state.sheet.wrathLog.some(e => e.type === 'wrath') ? true : 'заминка молитвы не вызвала гнев';
+  } finally { state.sheet = JSON.parse(keep); }
+}));
+
+await check('удар: зона по перевёрнутому броску, крит на дубле, пат', async () => {
+  await clearEnc();
+  return withRolls(() => {
+    const keep = JSON.stringify(state.sheet);
+    try {
+      state.sheet.advantage = 0;
+      state.sheet.weapons = [{ name: 'Кинжал', group: 'Основное', damage: '+РС+2' }];
+      const T = attackTarget(0).value;
+      if (T < 25) return 'навык слишком мал для проверки: ' + T;
+      seq(12, 50);                              // 12 → зона 21, левая рука
+      attackWith(0);
+      let card = document.querySelector('#roll-modal .sv4-roll-card').textContent;
+      if (!/Левая рука/.test(card)) return 'бросок 12 (зона 21) не дал левую руку: ' + card.slice(0, 120);
+      seq(22, 50);                              // успех на дубле — крит
+      attackWith(0);
+      card = document.querySelector('#roll-modal .sv4-roll-card').textContent;
+      if (!/Крит!/.test(card)) return 'успех на 22 не назван критом';
+      // Защита равна навыку, SL равны — по книге пат, удар не проходит
+      encAdd('Двойник', 30, 20, true, 0, 0, T);
+      seq(13, 14);
+      attackWith(0);
+      document.querySelector('#ordo-dlg .ordo-dlg-btn[data-i="0"]').click();
+      card = document.querySelector('#roll-modal .sv4-roll-card');
+      return /Мимо/.test(card.textContent) ? true : 'при равных SL и значениях удар прошёл';
+    } finally { state.sheet = JSON.parse(keep); encList().forEach(x => encRemove(x.id)); }
+  });
+});
+
+await check('преимущество: уклонение и хладнокровие тоже', () => ev(() =>
+  advantageApplies('Уклонение') && advantageApplies('Хладнокровие') && !advantageApplies('Обаяние')
+    ? true : 'преимущество не на тех проверках'));
+
+await check('сон — проверка навыка, а не характеристики', () => withRolls(() => {
+  const keep = JSON.stringify(state.sheet);
+  try {
+    state.sheet.skillAdv = Object.assign({}, state.sheet.skillAdv, { 'стойкость': 10 });
+    seq(99);
+    sv2RestSleep();
+    const t = document.querySelector('#roll-modal .sv4-roll-target').textContent;
+    const want = sheetSkillValue('стойкость') + 20;
+    return t.indexOf('≤ ' + want) >= 0 ? true : `цель «${t}», по навыку ${want}`;
+  } finally { state.sheet = JSON.parse(keep); }
 }));
 
 console.log(results.join('\n'));

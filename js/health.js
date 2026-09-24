@@ -13,15 +13,16 @@ function sv2HealBy(n, label){
 }
 function sv2RestSleep(){
   const calc = sheetCalc();
-  const target = (calc.totals['В']||0) + 20;
+  // средняя (+20) проверка навыка «стойкость» (Endurance), с. 141
+  const target = sheetSkillValue('стойкость') + 20;
   const d = Math.floor(Math.random()*100)+1;
-  const sl = Math.trunc(target/10) - Math.trunc(d/10);
-  if(d <= target){
+  const o = testOutcome(target, d), sl = o.sl;
+  if(o.ok){
     const healed = Math.max(1, sl + calc.RVb);
     if(typeof showRollResult==='function') showRollResult('Сон: выносливость', target, d, 'Успех', 'success', '+'+sl+' ст.усп. → лечит '+healed);
     sv2HealBy(healed, '🌙 Сон (d100='+d+', SL +'+sl+' + БВ '+calc.RVb+')');
   } else {
-    if(typeof showRollResult==='function') showRollResult('Сон: выносливость', target, d, 'Провал', 'fail', sl+' ст.усп. — раны не лечатся');
+    if(typeof showRollResult==='function') showRollResult('Сон: выносливость', target, d, 'Провал', 'fail', slSigned(o)+' ст.усп. — раны не лечатся');
     const box=document.getElementById('rest-verdict');
     if(box) box.innerHTML = `<p style="font-size:12px;color:var(--text3);margin:8px 0 0;">Сон беспокойный (d100=${d} против ${target}) — раны этой ночью не заживают.</p>`;
   }

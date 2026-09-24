@@ -105,6 +105,23 @@ if (id) {
     tryIt(() => extRoll(state.sheet.extended[0].id, 0));
     tryIt(() => encAddCharacter());
   });
+  // Диалоги, в заголовки и кнопки которых попадают имена: досье, участника
+  // схватки, оружия. При пустой схватке удар диалога не открывает, поэтому
+  // сперва ставим персонажа в схватку.
+  await call(id => {
+    renderRoster();
+    const m = document.querySelector('[data-id="' + id + '"] [data-action="menu"]');
+    if (m) m.click();
+  }, id);
+  await call(() => {
+    ordoDialogClose();
+    encList().forEach(x => encRemove(x.id));
+    encAddSelf();
+    const me = encList()[0];
+    if (me) encCondPick(me.id);
+  });
+  await call(() => { ordoDialogClose(); attackWith(0, 0); });
+  await call(() => { ordoDialogClose(); encList().forEach(x => encRemove(x.id)); });
 }
 const hits = await p.evaluate(() => [...window.__hits].sort((a, b) => a - b));
 ok(hits.length === 0, `ни одно из ${paths.length} значений не исполнилось` +

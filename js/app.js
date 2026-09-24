@@ -213,6 +213,24 @@ function roll(n, sides){
 }
 function rollD100(){ return Math.floor(Math.random()*100) + 1; }
 
+// Исход проверки по книге (с. 114–116) — один на все экраны, где бросают.
+// Успех — бросок не выше цели, но 01–05 всегда успех, а 96–00 всегда провал.
+// SL — десятки цели минус десятки броска; на автоуспехе не меньше +1, на
+// автопровале не больше −1. Дубль — одинаковые цифры десятков и единиц:
+// 11, 22 … 99 и 00 (то есть 100); 01 дублем не считается.
+function testOutcome(target, d){
+  let sl = Math.trunc(target / 10) - Math.trunc(d / 10);
+  let ok = d <= target;
+  if(d <= 5){ ok = true; sl = Math.max(sl, 1); }
+  else if(d >= 96){ ok = false; sl = Math.min(sl, -1); }
+  return { ok, sl, double: d === 100 || d % 11 === 0 };
+}
+// SL со знаком, как пишет книга: провал с равными десятками — «−0».
+function slSigned(o){
+  if(o.ok) return '+' + o.sl;
+  return o.sl === 0 ? '−0' : String(o.sl).replace('-', '−');
+}
+
 function inRange(roll, range){
   if(!range) return false;
   // диапазон вида "01-03" или "100" или "97-100"
@@ -357,6 +375,15 @@ function statFor(name){
    Возвращает массив:
      { name, stat, adv, value, sources: ['народ','карьера',...], isCommon: bool }
 */
+// Значение навыка с бланка: характеристика плюс все шаги. Проверки вроде
+// «выносливости» после сна или на заражение — это навык (с. 141, 147), а не
+// голая характеристика, как бросалось раньше.
+function sheetSkillValue(name){
+  const n = String(name).toLowerCase();
+  const row = compileSkills().find(r => String(r.name).toLowerCase() === n);
+  return row ? (row.value || 0) : 0;
+}
+
 function compileSkills(){
   const calc = sheetCalc();
   const skMap = {};
@@ -839,7 +866,7 @@ function deleteCharacter(id, ev, skipConfirm){
   if(!skipConfirm){
     ordoConfirm({
       title: 'Изъять дело из архива?',
-      text: `«${escHtml(p.name || 'Безымянный')}» будет удалён безвозвратно.`,
+      text: `«${p.name || 'Безымянный'}» будет удалён безвозвратно.`,
       yes: 'Удалить', no: 'Оставить', danger: true,
       onYes: () => deleteCharacter(id, null, true)
     });

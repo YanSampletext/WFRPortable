@@ -1,4 +1,9 @@
 /* ═══ Диалоги в стиле имперского дела вместо нативных confirm/prompt ═══ */
+// Заголовок, текст и подписи кнопок — всегда текст, а не разметка: в них
+// попадают имена персонажей, участников схватки и оружия, а они приходят и из
+// чужих файлов досье. Экранирует сам диалог, чтобы не помнить об этом в
+// каждом вызове. escHtml живёт в sheet-render.js и к первому клику уже есть.
+function _ordoT(v){ return escHtml(v == null ? '' : v); }
 function ordoDialogClose(){
   const d = document.getElementById('ordo-dlg');
   if(d){ d.classList.remove('show'); d.innerHTML = ''; }
@@ -24,11 +29,11 @@ function ordoConfirm(opts){
   const no  = o.no  || 'Отмена';
   _ordoDialogShell(`
     <div class="ordo-dlg-seal">✠</div>
-    <div class="ordo-dlg-title">${o.title || 'Подтверждение'}</div>
-    <div class="ordo-dlg-text">${o.text || ''}</div>
+    <div class="ordo-dlg-title">${_ordoT(o.title || 'Подтверждение')}</div>
+    <div class="ordo-dlg-text">${_ordoT(o.text || '')}</div>
     <div class="ordo-dlg-btns">
-      <button class="ordo-dlg-btn ${o.danger ? 'danger' : 'gold'}" id="ordo-dlg-yes">${yes}</button>
-      <button class="ordo-dlg-btn" onclick="ordoDialogClose()">${no}</button>
+      <button class="ordo-dlg-btn ${o.danger ? 'danger' : 'gold'}" id="ordo-dlg-yes">${_ordoT(yes)}</button>
+      <button class="ordo-dlg-btn" onclick="ordoDialogClose()">${_ordoT(no)}</button>
     </div>`);
   const yb = document.getElementById('ordo-dlg-yes');
   yb.onclick = () => { ordoDialogClose(); if(typeof o.onYes === 'function') o.onYes(); };
@@ -39,11 +44,11 @@ function ordoChoice(opts){
   const o = opts || {}; const list = o.options || [];
   _ordoDialogShell(`
     <div class="ordo-dlg-seal">✠</div>
-    <div class="ordo-dlg-title">${o.title || 'Выбор'}</div>
-    <div class="ordo-dlg-text">${o.text || ''}</div>
+    <div class="ordo-dlg-title">${_ordoT(o.title || 'Выбор')}</div>
+    <div class="ordo-dlg-text">${_ordoT(o.text || '')}</div>
     <div class="ordo-dlg-btns col">
-      ${list.map((x,i)=>`<button class="ordo-dlg-btn ${x.danger?'danger':(i===0?'gold':'')}" data-i="${i}">${x.label}</button>`).join('')}
-      <button class="ordo-dlg-btn ghost" onclick="ordoDialogClose()">${o.cancel || 'Отмена'}</button>
+      ${list.map((x,i)=>`<button class="ordo-dlg-btn ${x.danger?'danger':(i===0?'gold':'')}" data-i="${i}">${_ordoT(x.label)}</button>`).join('')}
+      <button class="ordo-dlg-btn ghost" onclick="ordoDialogClose()">${_ordoT(o.cancel || 'Отмена')}</button>
     </div>`);
   document.querySelectorAll('#ordo-dlg .ordo-dlg-btn[data-i]').forEach(btn => {
     btn.onclick = () => {
@@ -58,10 +63,10 @@ function ordoAlert(opts){
   const o = opts || {};
   _ordoDialogShell(`
     <div class="ordo-dlg-seal">✠</div>
-    <div class="ordo-dlg-title">${o.title || 'Сообщение'}</div>
-    <div class="ordo-dlg-text">${o.text || ''}</div>
+    <div class="ordo-dlg-title">${_ordoT(o.title || 'Сообщение')}</div>
+    <div class="ordo-dlg-text">${_ordoT(o.text || '')}</div>
     <div class="ordo-dlg-btns">
-      <button class="ordo-dlg-btn gold" onclick="ordoDialogClose()">${o.ok || 'Понятно'}</button>
+      <button class="ordo-dlg-btn gold" onclick="ordoDialogClose()">${_ordoT(o.ok || 'Понятно')}</button>
     </div>`);
 }
 /* Выбор числа кнопками (без клавиатуры) — для рангов страха/ужаса */
@@ -72,8 +77,8 @@ function ordoNumber(opts){
   for(let i = min; i <= max; i++) btns += `<button class="ordo-dlg-num" data-v="${i}">${i}</button>`;
   _ordoDialogShell(`
     <div class="ordo-dlg-seal">✠</div>
-    <div class="ordo-dlg-title">${o.title || 'Значение'}</div>
-    <div class="ordo-dlg-text">${o.text || ''}</div>
+    <div class="ordo-dlg-title">${_ordoT(o.title || 'Значение')}</div>
+    <div class="ordo-dlg-text">${_ordoT(o.text || '')}</div>
     <div class="ordo-dlg-nums">${btns}</div>
     <div class="ordo-dlg-btns"><button class="ordo-dlg-btn ghost" onclick="ordoDialogClose()">Отмена</button></div>`);
   document.querySelectorAll('#ordo-dlg .ordo-dlg-num').forEach(btn => {
@@ -85,8 +90,8 @@ function ordoInput(opts){
   const o = opts || {};
   _ordoDialogShell(`
     <div class="ordo-dlg-seal">✠</div>
-    <div class="ordo-dlg-title">${o.title || 'Ввод'}</div>
-    <div class="ordo-dlg-text">${o.text || ''}</div>
+    <div class="ordo-dlg-title">${_ordoT(o.title || 'Ввод')}</div>
+    <div class="ordo-dlg-text">${_ordoT(o.text || '')}</div>
     <input id="ordo-dlg-input" class="ordo-dlg-input" value="${escAttr(o.value||'')}" />
     <div class="ordo-dlg-btns">
       <button class="ordo-dlg-btn gold" id="ordo-dlg-ok">Готово</button>

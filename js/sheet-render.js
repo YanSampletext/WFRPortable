@@ -241,8 +241,12 @@ function addXP(delta){
 // Названия, к которым по книге применяется преимущество: бой и оружейные навыки
 function advantageApplies(name){
   const n = String(name || '').toLowerCase();
+  // Книга, с. 127: боевые и психологические проверки — рукопашная, уклонение,
+  // стрельба и хладнокровие против врагов. После боя преимущество и так
+  // сбрасывается, поэтому вне схватки прибавлять тут нечего.
   return n === 'бб' || n === 'дб' ||
-         n.startsWith('рукопашный бой') || n.startsWith('стрельба');
+         n.startsWith('рукопашный бой') || n.startsWith('стрельба') ||
+         n.startsWith('уклонение') || n.startsWith('хладнокровие');
 }
 
 // mod — сложность проверки из книги, от +60 до −30. Без неё бросок считается
@@ -262,31 +266,22 @@ function rollCheck(name, target, mod){
   const dif = parseInt(mod) || 0;
   target = base + advBonus + dif;
   const d = Math.floor(Math.random()*100) + 1; // 1..100
-  let outcome, cls, slvl = 0;
-  // Уровни успеха/провала: разница десятков
-  const diff = target - d;
-  slvl = Math.trunc(target/10) - Math.trunc(d/10);
-  const crit = (d % 11 === 0) || d === 1 || d === 100; // дубли = критич.
-  if(d === 1){ outcome = 'Критический успех!'; cls='crit-success'; }
-  else if(d === 100){ outcome = 'Критический провал!'; cls='crit-fail'; }
-  else if(d <= target){
-    outcome = crit ? 'Критический успех!' : 'Успех';
-    cls = crit ? 'crit-success' : 'success';
-  } else {
-    outcome = crit ? 'Критический провал!' : 'Провал';
-    cls = crit ? 'crit-fail' : 'fail';
-  }
-  // Минус типографский: во всех книжных таблицах приложения он такой, и «−4»
-  // под подписью «Трудная −20» не должно вдруг писаться другим знаком.
-  const slText = (d<=target ? '+' + slvl : String(slvl).replace('-', '−')) + ' ст.усп.';
-  if(navigator.vibrate) navigator.vibrate(d<=target?[20]:[40,30,40]);
+  // Исход по книге: 01–05 и 96–00 решают сами, SL — разница десятков.
+  // Дубль на успехе — крит, на провале — заминка (опциональное правило, с. 117).
+  const o = testOutcome(target, d);
+  const outcome = o.ok ? (o.double ? 'Критический успех!' : 'Успех')
+                       : (o.double ? 'Критический провал!' : 'Провал');
+  const cls = o.ok ? (o.double ? 'crit-success' : 'success')
+                   : (o.double ? 'crit-fail' : 'fail');
+  const slText = slSigned(o) + ' ст.усп.';
+  if(navigator.vibrate) navigator.vibrate(o.ok?[20]:[40,30,40]);
   showRollResult(name, target, d, outcome, cls, slText, { base, adv: advBonus, dif });
 }
 function rollLogRows(){
   const log = (state.sheet && state.sheet.rollLog) || [];
   if(!log.length) return '<p class="muted" style="padding:6px 2px;">Бросков пока нет. Тапни характеристику или навык, чтобы бросить d100.</p>';
   return log.map(r => {
-    const ok = r.d <= r.target;
+    const ok = typeof r.target === 'number' && testOutcome(r.target, r.d).ok;
     const col = /Крит.*успех/.test(r.outcome) ? 'var(--green2)' : /Крит.*провал/.test(r.outcome) ? 'var(--blood2)' : (ok?'var(--gold2)':'var(--text3)');
     const tm = new Date(r.t||Date.now());
     const hh = String(tm.getHours()).padStart(2,'0')+':'+String(tm.getMinutes()).padStart(2,'0');
@@ -387,7 +382,7 @@ function showRollResult(name, target, d, outcome, cls, slText, meta){
     <div class="sv4-roll-btns">
       <button class="sv4-roll-close" onclick="document.getElementById('roll-modal').classList.remove('show')">Закрыть</button>
       <button class="sv4-roll-again" data-call="roll" data-v="${escAttr(name)}" data-n="${base}" data-d="${dif}"><span class="ic">${ICONS.dice}</span> Ещё раз</button>
-      ${meta ? `<button class="sv4-roll-again" data-call="opposed" data-v="${escAttr(name)}" data-n="${target}" data-r="${d}" data-s="${Math.trunc(target/10) - Math.trunc(d/10)}">⚔ Встречная</button>` : ''}
+      ${meta ? `<button class="sv4-roll-again" data-call="opposed" data-v="${escAttr(name)}" data-n="${target}" data-r="${d}" data-s="${testOutcome(target, d).sl}">⚔ Встречная</button>` : ''}
     </div>
   </div>`;
   modal.classList.add('show');
