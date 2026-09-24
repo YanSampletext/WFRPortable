@@ -3093,6 +3093,11 @@ await check('удар: зона по перевёрнутому броску, к
       attackWith(0);
       card = document.querySelector('#roll-modal .sv4-roll-card').textContent;
       if (!/Крит!/.test(card)) return 'успех на 22 не назван критом';
+      // зону крита бросают заново (с. 135): удар в левую руку, крит — в голову
+      seq(22, 5, 5, 5, 5);
+      attackWith(0);
+      card = document.querySelector('#roll-modal .sv4-roll-card').textContent;
+      if (!/критическую рану — Голова/.test(card)) return 'зона крита взята из броска атаки: ' + card.slice(0, 160);
       // Защита равна навыку, SL равны — по книге пат, удар не проходит
       encAdd('Двойник', 30, 20, true, 0, 0, T);
       seq(13, 14);
@@ -3166,6 +3171,19 @@ await check('максимумы талантов по книге', () => ev(() =
   const want = { 'Снайпер': '4', 'Сумеречное зрение': 'рейтинг инициативы', 'Magnum opus': 'нет', 'Подскок': '1' };
   const bad = Object.keys(want).filter(n => m(n) !== want[n]);
   return bad.length ? 'не по книге: ' + bad.map(n => n + ' ' + m(n)).join(', ') : true;
+}));
+
+await check('снаряжение: доступность и цены по книге', () => ev(() => {
+  // гл. XI, с. 246–249: «скудная» в приложении — «редкое», «редкая» — «раритет»;
+  // рапира, шпага и кольчужный жилет — Scarce, мечелом стоит 1 зк 2/6
+  const all = [...WEAPONS_CATALOG, ...ARMOR_CATALOG];
+  const f = n => all.find(x => x.name === n) || {};
+  const words = new Set(['—', 'распр.', 'редкое', 'редкая', 'раритет', 'экзотическое']);
+  const odd = all.filter(x => !words.has(x.avail)).map(x => x.name + ' ' + x.avail);
+  const want = [['Рапира', 'avail', 'редкое'], ['Шпага', 'avail', 'редкое'],
+                ['Кольчужный жилет', 'avail', 'редкая'], ['Мечелом', 'price', '1КР 2/6']];
+  const bad = want.filter(([n, k, v]) => f(n)[k] !== v).map(([n, k]) => n + ' ' + f(n)[k]);
+  return odd.length || bad.length ? 'не по книге: ' + [...odd, ...bad].join(', ') : true;
 }));
 
 console.log(results.join('\n'));

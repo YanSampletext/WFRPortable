@@ -55,8 +55,8 @@ const WEAPONS_CATALOG = [
   {name:'Кавалерийское копьё', kind:'melee', group:'Кавалерийское', price:'1КР', weight:'3', weight_num:3, avail:'раритет', reach:'оч.длинное', damage:'+РС+6', qualities:'пронзающее, сокрушающее'},
   {name:'Кавалерийский молот', kind:'melee', group:'Кавалерийское', price:'3КР', weight:'3', weight_num:3, avail:'редкое', reach:'длинное', damage:'+РС+5', qualities:'ошеломляющее', two_handed:true},
   // Фехтовальное
-  {name:'Рапира', kind:'melee', group:'Фехтовальное', price:'5КР', weight:'1', weight_num:1, avail:'скудное', reach:'длинное', damage:'+РС+4', qualities:'быстрое, пронзающее'},
-  {name:'Шпага', kind:'melee', group:'Фехтовальное', price:'5КР', weight:'1', weight_num:1, avail:'скудное', reach:'среднее', damage:'+РС+3', qualities:'быстрое, пронзающее, точное, щадящее'},
+  {name:'Рапира', kind:'melee', group:'Фехтовальное', price:'5КР', weight:'1', weight_num:1, avail:'редкое', reach:'длинное', damage:'+РС+4', qualities:'быстрое, пронзающее'},
+  {name:'Шпага', kind:'melee', group:'Фехтовальное', price:'5КР', weight:'1', weight_num:1, avail:'редкое', reach:'среднее', damage:'+РС+3', qualities:'быстрое, пронзающее, точное, щадящее'},
   // Кулачное
   {name:'Безоружная атака', kind:'melee', group:'Кулачное', price:'—', weight:'0', weight_num:0, avail:'—', reach:'компактное', damage:'+РС+0', qualities:'щадящее'},
   {name:'Кастет', kind:'melee', group:'Кулачное', price:'2/6', weight:'0', weight_num:0, avail:'распр.', reach:'компактное', damage:'+РС+2', qualities:'—'},
@@ -66,7 +66,7 @@ const WEAPONS_CATALOG = [
   {name:'Цеп/плеть', kind:'melee', group:'Цепы', price:'2КР', weight:'1', weight_num:1, avail:'редкое', reach:'среднее', damage:'+РС+5', qualities:'огибающее, оттесняющее'},
   // Парирующее
   {name:'Дага', kind:'melee', group:'Парирующее', price:'1КР', weight:'0', weight_num:0, avail:'раритет', reach:'оч.короткое', damage:'+РС+2', qualities:'защитное'},
-  {name:'Мечелом', kind:'melee', group:'Парирующее', price:'1КР', weight:'1', weight_num:1, avail:'редкое', reach:'короткое', damage:'+РС+3', qualities:'защитное, мечелом'},
+  {name:'Мечелом', kind:'melee', group:'Парирующее', price:'1КР 2/6', weight:'1', weight_num:1, avail:'редкое', reach:'короткое', damage:'+РС+3', qualities:'защитное, мечелом'},
   // Древковое
   {name:'Алебарда', kind:'melee', group:'Древковое', price:'2КР', weight:'3', weight_num:3, avail:'распр.', reach:'длинное', damage:'+РС+4', qualities:'защитное, пронзающее, разрубающее', two_handed:true},
   {name:'Копьё', kind:'melee', group:'Древковое', price:'15ш', weight:'2', weight_num:2, avail:'распр.', reach:'оч.длинное', damage:'+РС+4', qualities:'пронзающее', two_handed:true},
@@ -122,7 +122,7 @@ const ARMOR_CATALOG = [
   {name:'Кожаная шапочка', price:'8ш', weight:'0', weight_num:0, avail:'распр.', zones:'голова', ap:1, qualities:'неполная', note:'мягкая кожа'},
   {name:'Кожаная кираса', price:'18ш', weight:'2', weight_num:2, avail:'редкая', zones:'торс', ap:2, qualities:'уязвимые места', note:'варёная кожа'},
   {name:'Кольчужная рубаха', price:'3КР', weight:'3', weight_num:3, avail:'распр.', zones:'руки, торс', ap:2, qualities:'гибкая', note:'−10 к скрытности'},
-  {name:'Кольчужный жилет', price:'2КР', weight:'2', weight_num:2, avail:'скудная', zones:'торс', ap:2, qualities:'гибкая', note:'−10 к скрытности'},
+  {name:'Кольчужный жилет', price:'2КР', weight:'2', weight_num:2, avail:'редкая', zones:'торс', ap:2, qualities:'гибкая', note:'−10 к скрытности'},
   {name:'Кольчужные чулки', price:'2КР', weight:'3', weight_num:3, avail:'редкая', zones:'ноги', ap:2, qualities:'гибкая', note:'−10 к скрытности'},
   {name:'Кольчужный капюшон', price:'1КР', weight:'2', weight_num:2, avail:'редкая', zones:'голова', ap:2, qualities:'гибкая, неполная', note:'−10 к наблюдательности, −10 к скрытности'},
   {name:'Латная кираса', price:'10КР', weight:'3', weight_num:3, avail:'редкая', zones:'торс', ap:2, qualities:'непробиваемая, уязвимые места', note:'−10 к скрытности'},
