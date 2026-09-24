@@ -1662,7 +1662,8 @@ function renderTabGear(){
     const calcW = sheetCalc();
     let carried = 0;
     (state.sheet.weapons||[]).forEach(w => carried += (parseInt(w.enc)||0));
-    (state.sheet.armor||[]).forEach(a => carried += (parseInt(a.enc)||0));
+    // надетое весит на 1 меньше (с. 244): броня в листе — та, что надета
+    (state.sheet.armor||[]).forEach(a => carried += Math.max(0, (parseInt(a.enc)||0) - 1));
     (state.sheet.trappings||[]).forEach(t => carried += (parseInt(t.enc)||0));
     const eMax = calcW.encMax||0;
     const baseMove = calcW.move||0;
@@ -1671,13 +1672,17 @@ function renderTabGear(){
     let barColor = 'var(--green,#3a8a55)';
     if(over > 0) barColor = 'var(--red,#c0392b)';
     else if(eMax>0 && carried >= eMax*0.8) barColor = 'var(--gold2)';
+    // Перегруз по таблице с. 245: до двойного предела −1 к Движению (не ниже 3)
+    // и −10 к проворству, до тройного −2 (не ниже 2) и −20, дальше — ни шагу.
     let statusLine;
     if(over <= 0){
       statusLine = `<span style="color:var(--text3);">запас ${eMax-carried}</span>`;
-    } else if(carried < eMax*2){
-      statusLine = `<span style="color:var(--red,#c0392b);font-weight:600;">Перегруз +${over} · Движение −${over} (${Math.max(0,baseMove-over)})</span>`;
+    } else if(carried <= eMax*3){
+      const lvl = carried <= eMax*2 ? 1 : 2;
+      const mv = Math.min(baseMove, Math.max(lvl===1 ? 3 : 2, baseMove-lvl));
+      statusLine = `<span style="color:var(--red,#c0392b);font-weight:600;">Перегруз +${over} · Движение ${mv} · −${lvl*10} к проворству</span>`;
     } else {
-      statusLine = `<span style="color:var(--red,#c0392b);font-weight:700;">Критический перегруз — обездвижен</span>`;
+      statusLine = `<span style="color:var(--red,#c0392b);font-weight:700;">Больше тройного предела — не сдвинуться с места</span>`;
     }
     const hasBugai = calcW.encMax > (calcW.RSb||0)+(calcW.RVb||0);
     h += `<div class="sv4-block">
@@ -1690,7 +1695,7 @@ function renderTabGear(){
       <div style="height:8px;border-radius:4px;background:rgba(255,255,255,.08);margin-top:8px;overflow:hidden;">
         <div style="height:100%;width:${pct}%;background:${barColor};transition:width .2s;"></div>
       </div>
-      <p class="muted" style="font-size:10px;margin-top:6px;">Предел = РС + РВ${hasBugai?` + Бугай (+${calcW.encMax-((calcW.RSb||0)+(calcW.RVb||0))})`:''}. Сверх предела: −1 к Движению за каждый пункт; при удвоенном пределе — обездвижен.</p>
+      <p class="muted" style="font-size:10px;margin-top:6px;">Предел = РС + РВ${hasBugai?` + Бугай (+${calcW.encMax-((calcW.RSb||0)+(calcW.RVb||0))})`:''}. Надетая броня — на 1 легче. До двойного предела: −1 Движение (не ниже 3), −10 проворство; до тройного: −2 (не ниже 2), −20; больше — стоишь на месте.</p>
     </div>`;
   }
   return h;

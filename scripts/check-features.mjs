@@ -3204,6 +3204,27 @@ await check('библиотека заклинаний: все 135 из книг
   return bad.length ? bad.join(', ') : true;
 }));
 
+await check('перегруз по таблице книги, надетая броня на 1 легче', () => ev(() => {
+  // с. 244–245: до 2× предела −1 Движение (не ниже 3) и −10, до 3× −2 и −20,
+  // больше — стоишь; надетое весит на 1 меньше
+  const keep = JSON.stringify(state.sheet);
+  try {
+    const lim = sheetCalc().encMax;
+    const load = (n, armor) => {
+      state.sheet.weapons = []; state.sheet.trappings = [{ name: 'груз', enc: n }];
+      state.sheet.armor = armor || [];
+      const h = renderTabGear();
+      return h.slice(h.indexOf('Общий вес'), h.indexOf('Общий вес') + 700);
+    };
+    if (!/запас 0/.test(load(lim - 2, [{ name: 'Кольчужная рубаха', enc: 3 }])))
+      return 'броня весом 3 посчитана не как 2';
+    if (!/Движение \d+ · −10/.test(load(lim * 2))) return 'двойной предел — не −10: ' + load(lim * 2).replace(/<[^>]+>/g, ' ').slice(0, 120);
+    if (!/−20/.test(load(lim * 2 + 1))) return 'между 2× и 3× нет −20';
+    if (!/не сдвинуться/.test(load(lim * 3 + 1))) return 'больше 3× можно идти';
+    return true;
+  } finally { state.sheet = JSON.parse(keep); }
+}));
+
 console.log(results.join('\n'));
 console.log('\nпрошло ' + pass + ', не прошло ' + fail);
 console.log('ошибок JS за прогон: ' + errs.length);
