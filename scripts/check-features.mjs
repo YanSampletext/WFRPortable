@@ -3159,6 +3159,15 @@ await check('случайные таблицы пронумерованы как
   return bad.length ? 'не как в книге: ' + bad.join(', ') : true;
 }));
 
+await check('максимумы талантов по книге', () => ev(() => {
+  // гл. IV, с. 97–112: Sniper — 4, Night Vision — бонус инициативы,
+  // Magnum Opus — без предела, Jump Up — один раз
+  const m = n => (DATA.all_talents.find(t => t.name === n) || {}).max;
+  const want = { 'Снайпер': '4', 'Сумеречное зрение': 'рейтинг инициативы', 'Magnum opus': 'нет', 'Подскок': '1' };
+  const bad = Object.keys(want).filter(n => m(n) !== want[n]);
+  return bad.length ? 'не по книге: ' + bad.map(n => n + ' ' + m(n)).join(', ') : true;
+}));
+
 console.log(results.join('\n'));
 console.log('\nпрошло ' + pass + ', не прошло ' + fail);
 console.log('ошибок JS за прогон: ' + errs.length);
