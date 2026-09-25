@@ -21,15 +21,6 @@
     return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
   }
 
-  function download(text, name) {
-    var url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = name;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
   // ── выгрузка ────────────────────────────────────────────────────────────────
   // Сборка конверта отделена от скачивания: проверить содержимое файла можно
   // без того, чтобы притворяться браузерным диалогом сохранения.
@@ -43,7 +34,7 @@
     var text = archiveJson();
     var n = JSON.parse(text).chars.length;
     if (!n) { notify('Архив пуст — нечего сохранять.'); return; }
-    download(text, 'ordo-arhiv-' + stamp() + '.json');
+    downloadFile(text, 'ordo-arhiv-' + stamp() + '.json');
     notify('Архив выгружен: досье ' + n + '.');
   };
 

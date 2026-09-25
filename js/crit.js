@@ -51,15 +51,7 @@ function critShowResult(z, w){
   if(log.length>20) log.length=20;
   if(typeof autosave==='function') autosave();
   // показать модалку
-  let modal = document.getElementById('crit-modal');
-  // Подложка закрывается только по клику по себе. Раньше она гасла от любого
-  // клика внутри, и карточку приходилось защищать event.stopPropagation() —
-  // а это глушит и делегирование: кнопку с data-call ловит обработчик на
-  // документе, и она молча перестаёт работать. На карточке броска так и
-  // случилось с «Ещё раз».
-  if(!modal){ modal=document.createElement('div'); modal.id='crit-modal'; modal.className='sv4-roll-modal';
-    modal.onclick=(e)=>{ if(e.target===modal) modal.classList.remove('show'); };
-    document.body.appendChild(modal); }
+  const modal = cardModal('crit-modal');
   const condTxt = Object.keys(conds).length ? Object.entries(conds).map(([k,v])=>v+'× '+k).join(', ') : '—';
   modal.innerHTML = `<div class="sv4-roll-card ${w.lethal?'crit-fail':''}">
     <div class="sv4-roll-skill">${escHtml(z.label)} · d100=${z.d}/${w.d}</div>
@@ -68,7 +60,7 @@ function critShowResult(z, w){
     <p style="font-size:12px;color:var(--text2);margin:10px 4px;text-align:left;line-height:1.45;">${escHtml(w.effect)}</p>
     <div style="font-size:11px;color:var(--gold2);margin:6px 4px;">Состояния к наложению: ${escHtml(condTxt)}</div>
     <div class="sv4-row" style="gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px;">
-      ${Object.keys(conds).length?`<button class="btn btn-sm btn-gold" onclick="critApplyConds(0);this.closest('.sv4-roll-modal').classList.remove('show')">✓ Наложить состояния</button>`:''}
+      <button class="btn btn-sm btn-gold" onclick="critApplyConds(0);this.closest('.sv4-roll-modal').classList.remove('show')">✓ ${Object.keys(conds).length?'Наложить состояния и раны':'Записать крит и раны'}</button>
       ${w.lethal?`<button class="btn btn-sm btn-red" onclick="sv2DeathCheck&&sv4NavGo('health');this.closest('.sv4-roll-modal').classList.remove('show')">☠ К проверке смерти</button>`:''}
       <button class="btn btn-sm" onclick="this.closest('.sv4-roll-modal').classList.remove('show')">Закрыть</button>
     </div>
@@ -76,16 +68,21 @@ function critShowResult(z, w){
   modal.classList.add('show');
   if(_sheetTab==='crit') renderSheet();
 }
+// Записать крит в лист: состояния, раны, счётчик критов и травмы. Крит без
+// состояний («Дрожь в руке», «Вывих сустава») записывается так же: раньше
+// кнопка появлялась только при состояниях, и такие криты не снимали ран и не
+// попадали в счётчик для проверки смерти.
 function critApplyConds(logIdx){
   const entry = (state.sheet.critLog||[])[logIdx];
   if(!entry || entry.applied) return;
-  Object.entries(entry.conds).forEach(([cn,v])=>{
+  Object.entries(entry.conds||{}).forEach(([cn,v])=>{
     state.sheet.conditions = state.sheet.conditions || {};
     state.sheet.conditions[cn] = (state.sheet.conditions[cn]||0) + v;
   });
   // вычесть раны
-  if(entry.wounds>0 && state.sheet.currentHP!=null){
-    state.sheet.currentHP = Math.max(0, state.sheet.currentHP - entry.wounds);
+  if(entry.wounds>0){
+    const hp = (state.sheet.currentHP != null) ? state.sheet.currentHP : (sheetCalc().maxHP || 0);
+    state.sheet.currentHP = Math.max(0, hp - entry.wounds);
   }
   // увеличить счётчик крит-ран для проверки смерти
   state.sheet.critWounds = (state.sheet.critWounds||0) + 1;
@@ -102,7 +99,7 @@ function critApplyConds(logIdx){
   });
   entry.applied = true;
   if(typeof autosave==='function') autosave();
-  notify('Состояния наложены, раны вычтены');
+  notify('Крит записан: раны вычтены' + (Object.keys(entry.conds||{}).length ? ', состояния наложены' : ''));
   // по книге: после боя с критом — очень лёгкая (+60) проверка В на малую инфекцию
   setTimeout(()=>{ try{ ordoConfirm({
     title: 'Крит получен',
@@ -143,7 +140,7 @@ function renderTabCrit(){
         <div class="sv4-crit-head"><b>${escHtml(e.zone)}: ${escHtml(e.name)}</b> <span class="muted">раны ${e.wounds}</span></div>
         <div class="sv4-crit-eff">${escHtml(e.effect)}</div>
         <div class="sv4-crit-cond">Состояния: ${escHtml(condTxt)}</div>
-        ${(Object.keys(e.conds||{}).length && !e.applied)?`<button class="btn btn-sm btn-gold" onclick="critApplyConds(${i})">✓ Наложить</button>`:(e.applied?`<span class="muted" style="font-size:11px;">наложено ✓</span>`:'')}
+        ${e.applied?`<span class="muted" style="font-size:11px;">записано ✓</span>`:`<button class="btn btn-sm btn-gold" onclick="critApplyConds(${i})">✓ Записать</button>`}
       </div>`;
     });
   }

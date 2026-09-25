@@ -92,93 +92,10 @@ function talentCorruptionThresholdBonus(talents){
   return talentLevel('духовная чистота', talents);
 }
 
-let state = {
-  step: 1,
-  race: null,
-  cls: null,
-  career: null,
-  rolls: {},         // {stat: 2d10_value}
-  stats: {},         // final stat values
-  // === Блокировки повторных бросков после "Согласиться" (по правилам книги) ===
-  raceAccepted: false,    // согласился с народом по броску
-  careerAccepted: false,  // согласился с карьерой по броску
-  statsAccepted: false,   // согласился с характеристиками по броску
-  // === Один случайный бросок на шаг (нельзя «перебрасывать до удачного») ===
-  raceRolled: false,      // случайный бросок народа уже сделан
-  careerRolled: false,    // случайный бросок карьеры уже сделан
-  statsRolled: false,     // характеристики уже брошены «все разом»
-  raceXpAwarded: false,   // XP за народ уже начислен (защита от повтора)
-  raceXpAmount: 0,        // сколько XP начислено за случайный народ (+20) — для отката при ручной смене
-  careerXpAwarded: false, // XP за карьеру уже начислен
-  careerXpAmount: 0,      // сколько именно XP начислено за случайную карьеру (для отката)
-  statsXpAwarded: false,  // XP за характеристики уже начислен
-  statsXpAmount: 0,       // сколько XP начислено за характеристики (+50/+25) — для отката при сбросе
-  fate: 0,
-  resilience: 0,
-  extraFate: 0,
-  extraRes: 0,
-  raceSkillsBig: [],   // 3 navыки по 5 шагов
-  raceSkillsSm: [],    // 3 navыки по 3 шага
-  raceTalentChoices: {}, // for "X или Y"
-  randomTalents: [],   // случайные таланты
-  careerSkills: {},    // {skill: adv}
-  careerTalentLvl: null, // имя выбранного таланта для +1
-  careerStatAdv: {},   // {stat: adv} 5 шагов между 3 доступными
-  xpGained: 0,
-  pendingRandom: null, // {type: 'race'|'career'|'stats', ...} — ждёт «Согласиться»
-  // финал
-  name: '', age: '', height: '', hair:'', eyes:'',
-  motivation: '', ambitionShort:'', ambitionLong:'',
-  // === Поля интерактивного листа (шаг 8) ===
-  sheet: {
-    tier: 1,                       // текущая ступень карьеры (1..4)
-    currentHP: null,               // текущее здоровье; null = равно max
-    spentXP: 0,                    // потрачено опыта
-    currentLuck: null,             // текущая удача (если null — = судьба)
-    resolveCurrent: null,          // текущая решимость
-    weapons: [],                   // [{name, group, dmg, range, qualities}]
-    // Броня: zones — массив ['head','body','larm','rarm','lleg','rleg','shield']
-    armours: [],                   // [{name, zones:[], ap, qualities, weight}]
-    extraSkills: [],               // [{name, stat, adv}] — профессиональные/добавленные
-    skillAdv: {},                  // {skill_name: adv} — для общих навыков, шаги в листе
-    extraTalents: [],              // [{name, level, hint}]
-    items: [],                     // [{name, qty, weight}]
-    money: { gc: 0, ss: 0, bp: 0 },
-    psychology: '',
-    corruption: 0,
-    advantage: 0,
-    mutations: '',
-    // === Магия (гл. VIII) ===
-    spells: [],            // [{name, cn, range, target, duration, effect, memorized}]
-    langMagick: 0,         // итог навыка «язык (магик)» — для проверки сотворения
-    channelSkill: 0,       // итог навыка «концентрация» — для каналирования
-    channelled: 0,         // накоплено SL каналированием (сбрасывается при сотворении)
-    nearCorruption: false, // рядом с искажающим влиянием (любая 8 на единицах → малая ошибка)
-    miscastLog: [],        // журнал ошибок [{type, roll, text}]
-    // === Вера (гл. VII) ===
-    blessings: [],         // [{name, range, target, duration, effect}]
-    miracles: [],          // [{name, range, target, duration, effect}]
-    praySkill: 0,          // итог навыка «молитва»
-    sin: 0,                // очки греха (усиливают Гнев Богов на +10 каждое)
-    wrathLog: [],          // журнал гнева
-    // === Между приключениями (гл. VI) ===
-    endeavoursUsed: 0,     // потрачено усилий (макс 3 без последствий — 1/неделю)
-    downtimeLog: [],       // журнал отыгранных усилий [{kind, text, reward, applied}]
-    notes: '',
-    teamName: '',
-    teamShort: '',
-    teamLong: '',
-    starterImported: false,        // флаг: стартовое имущество уже импортировано
-    moneyRolled: false,            // флаг: стартовые монеты уже брошены (1 раз по книге)
-    // === XP-магазин / журнал ===
-    statAdvBought: {},             // {stat: количество купленных шагов СВЕРХ карьерных}
-    skillAdvBought: {},            // {skill_lowercase: куплено шагов}
-    talentBought: [],              // [{name, level}] купленные таланты
-    careerTier1Done: true,         // отметка завершения 1-й ступени (по умолчанию true т.к. она создаётся)
-    tierCompleteOverride: false,   // ручной GM-оверрайд завершения ступени
-    careerLog: [],                 // [{from, to, cost, completed}] журнал смен карьеры/ступеней
-  },
-};
+// Открытое досье. Полную схему держит freshState (roster.js), а заполняет
+// state init.js при запуске. Здесь была вторая, устаревшая копия схемы —
+// с armours и items, которых бланк давно не знает.
+let state = { step: 1, sheet: {} };
 
 // Уведомления копятся в общем столбике под шапкой, а не наслаиваются друг на друга
 function notify(msg){
@@ -208,6 +125,19 @@ function syncOrdoBars(){
 window.addEventListener('resize', syncOrdoBars);
 window.addEventListener('orientationchange', () => setTimeout(syncOrdoBars, 150));
 
+// Отдать файл на скачивание. Ссылку отзываем не сразу: WebView начинает
+// загрузку уже после click(), и отозванная сразу ссылка давала пустой файл
+// или ничего. Одна функция на выгрузку досье, архива и бланка — раньше их было
+// три, и отзывала с задержкой только одна.
+function downloadFile(text, name){
+  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 function roll(n, sides){
   let s = 0; for(let i=0;i<n;i++) s += Math.floor(Math.random()*sides)+1; return s;
 }
@@ -225,10 +155,27 @@ function testOutcome(target, d){
   else if(d >= 96){ ok = false; sl = Math.min(sl, -1); }
   return { ok, sl, double: d === 100 || d % 11 === 0 };
 }
+// Число со знаком и типографским минусом: «+2», «−1». Одно на удар,
+// встречную и растянутую проверку — у каждой была своя копия.
+function signedNum(n){ return n < 0 ? '−' + Math.abs(n) : '+' + n; }
 // SL со знаком, как пишет книга: провал с равными десятками — «−0».
 function slSigned(o){
   if(o.ok) return '+' + o.sl;
   return o.sl === 0 ? '−0' : String(o.sl).replace('-', '−');
+}
+
+// Список из книги «через запятую». Запятая внутри скобок — не разделитель:
+// «Знание (местность, реки)» это один навык. Один разбор на мастер создания,
+// магазин и стартовое имущество — раньше их было пять, двух разных видов.
+function splitList(s){
+  return String(s || '').split(/,(?![^()]*\))/).map(x => x.trim()).filter(Boolean);
+}
+
+// Народ → как он записан в списке «народы» у карьеры
+const PEOPLE_NAME = { human:'человек', dwarf:'гном', halfling:'полурослик', helf:'высший эльф', welf:'лесной эльф' };
+function careerOpenTo(careerName, raceId){
+  const peoples = ((DATA.careers[careerName] || {}).peoples || '').toLowerCase();
+  return peoples.includes(PEOPLE_NAME[raceId]);
 }
 
 function inRange(roll, range){
@@ -608,6 +555,9 @@ function updateSkillAdv(input){
   ((state.sheet&&state.sheet.extraSkills)||[]).forEach(es => {
     if(es.name && es.name.toLowerCase()===lower) fixed += (es.adv||0);
   });
+  // Купленное в магазине поле тоже показывает: не вычтешь — первая же правка
+  // запишет его ещё раз как «ручное», и шаги удвоятся.
+  fixed += (state.sheet.skillAdvBought && state.sheet.skillAdvBought[lower]) || 0;
   if(!state.sheet.skillAdv) state.sheet.skillAdv = {};
   // Ручные шаги = введённый итог МИНУС фиксированные (присваиваем, а не прибавляем)
   const manual = v - fixed;
@@ -662,23 +612,6 @@ function removeExtraTalent(name){
 // В режиме 'character' показываются шаги 8 и 9 без шагов 1-7
 
 let appMode = 'landing'; // 'landing', 'creation', 'character'
-
-// Шаги для каждого режима
-const CREATION_STEPS = [
-  {n:1, name:'Народ'},
-  {n:2, name:'Карьера'},
-  {n:3, name:'Статы'},
-  {n:4, name:'Судьба'},
-  {n:5, name:'Навыки'},
-  {n:6, name:'Имущество'},
-  {n:7, name:'Штрихи'},
-  // Шаг 8 (Бланк) — это уже готовый персонаж, не часть полосы создания
-];
-
-const CHARACTER_STEPS = [
-  {n:8, name:'Бланк'},
-  {n:9, name:'Магазин XP'},
-];
 
 function renderSteps(){
   // ленту из девяти шагов заменили индикатор «Шаг N из 7» и заголовок экрана
@@ -807,15 +740,8 @@ function showApp(mode){
   document.getElementById('view-app').style.display = 'block';
 }
 
-function handleCreate(){
-  Object.assign(state, freshState());
-  migrateState();
-  showApp('creation');
-  renderSteps();
-  goStep(1);
-}
-
-function openCharacter(id){
+// Открыть досье из архива на нужном шаге: 8 — бланк, 9 — магазин опыта.
+function openCharacter(id, step){
   const roster = loadRoster();
   const p = roster.find(x => x.id === id);
   if(!p){ notify('Персонаж не найден.'); return; }
@@ -829,26 +755,12 @@ function openCharacter(id){
     appMode = 'character';
   }
   renderSteps();
-  goStep(8);
+  goStep(step || 8);
 }
 
-function openCharacterShop(id){
-  const roster = loadRoster();
-  const p = roster.find(x => x.id === id);
-  if(!p){ notify('Персонаж не найден.'); return; }
-  Object.assign(state, freshState());
-  Object.assign(state, JSON.parse(JSON.stringify(p)));
-  migrateState();
-  if(appMode === 'landing'){
-    showApp('character');
-  } else {
-    appMode = 'character';
-  }
-  renderSteps();
-  goStep(9);
-}
+function openCharacterShop(id){ openCharacter(id, 9); }
 
-// startNewCharacter вызывается из галереи (шаг 0)
+// Новое досье: с лендинга, из архива и из меню — один вход
 function startNewCharacter(){
   Object.assign(state, freshState());
   migrateState();

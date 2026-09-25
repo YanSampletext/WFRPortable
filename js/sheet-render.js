@@ -291,7 +291,7 @@ function rollLogRows(){
     if(r.dif && typeof difficultyNote === 'function') mods.push(difficultyNote(r.dif));
     if(r.adv) mods.push('преим. +' + r.adv);
     return `<div class="sv4-rolllog-row">
-      <div class="sv4-rolllog-main"><b>${escHtml(r.name||'')}</b> <span class="muted">≤${r.target}${mods.length?' · '+escHtml(mods.join(' · ')):''}</span></div>
+      <div class="sv4-rolllog-main"><b>${escHtml(r.name||'')}</b> <span class="muted">${r.target > 0 ? '≤' + r.target : ''}${mods.length?' · '+escHtml(mods.join(' · ')):''}</span></div>
       <div class="sv4-rolllog-die" style="color:${col}">${r.d}</div>
       <div class="sv4-rolllog-out" style="color:${col}">${escHtml(r.outcome||'')} <span class="muted">${escHtml(r.sl||'')}</span></div>
       <div class="sv4-rolllog-tm muted">${hh}</div>
@@ -306,6 +306,8 @@ function rollLogCopy(){
   const txt = log.map(r => {
     const mods = (r.dif && typeof difficultyNote === 'function' ? ', ' + difficultyNote(r.dif) : '')
                + (r.adv ? ', преим. +' + r.adv : '');
+    // у броска кубов цели нет: там «d100» и «≤» были бы неправдой
+    if(!(r.target > 0)) return `${r.name}: ${r.d}${r.outcome ? ' (' + r.outcome + ')' : ''}`;
     return `${r.name}: d100=${r.d} (≤${r.target}${mods}) → ${r.outcome} ${r.sl||''}`;
   }).join('\n');
   if(navigator.clipboard) navigator.clipboard.writeText(txt).then(()=>notify('Журнал скопирован'),()=>notify('Не удалось скопировать'));
@@ -328,6 +330,23 @@ function renderTabRollLog(){
     <div id="rolllog-body" class="sv4-rolllog">${rollLogRows()}</div>
   </div>`;
 }
+// Подложка для карточки (бросок, крит, заминка). Закрывается только по
+// клику по себе: раньше она гасла от любого клика внутри, карточку защищали
+// event.stopPropagation(), а с ним обрубалось делегирование — кнопки с
+// data-call ловит обработчик на документе, и «Ещё раз» не делала ничего.
+// Создавалась она в шести местах одинаковым кодом.
+function cardModal(id){
+  let modal = document.getElementById(id);
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = id;
+    modal.className = 'sv4-roll-modal';
+    modal.addEventListener('click', e => { if(e.target === modal) modal.classList.remove('show'); });
+    document.body.appendChild(modal);
+  }
+  return modal;
+}
+
 // meta — откуда взялась цель: { base, adv, dif }. Приходит от rollCheck;
 // проверки сна, болезней и психологии зовут без неё, и тогда карточка ведёт
 // себя как прежде, без строки сложности.
@@ -350,19 +369,7 @@ function showRollResult(name, target, d, outcome, cls, slText, meta){
       if(lb) lb.innerHTML = rollLogRows();
     }
   }catch(e){}
-  let modal = document.getElementById('roll-modal');
-  if(!modal){
-    modal = document.createElement('div');
-    modal.id = 'roll-modal';
-    modal.className = 'sv4-roll-modal';
-    // Закрываем только по клику по самой подложке. Раньше она гасла от любого
-    // клика внутри, и карточка защищалась event.stopPropagation() — а вместе
-    // со всплытием обрубалось делегирование: кнопки с data-call ловит
-    // обработчик на документе, и «Ещё раз» не делала ничего вовсе. Ту же
-    // ловушку уже находили в справочнике, здесь она осталась незамеченной.
-    modal.onclick = (e) => { if(e.target === modal) modal.classList.remove('show'); };
-    document.body.appendChild(modal);
-  }
+  const modal = cardModal('roll-modal');
   // Строка про цель — она же кнопка смены сложности: менять её хочется ровно
   // тогда, когда на неё смотришь, и отдельная кнопка рядом была бы третьей в
   // ряду из двух.
@@ -490,22 +497,6 @@ function sv2RemInjury(i){
   autosave();
   renderTabHealth();
 }
-function sv2AddDisease(){
-  const inp = document.getElementById('dis-input');
-  const v = (inp.value||'').trim();
-  if(!v) return;
-  if(!state.sheet.diseases) state.sheet.diseases = [];
-  state.sheet.diseases.push(v);
-  inp.value = '';
-  autosave();
-  renderTabHealth();
-}
-function sv2RemDisease(i){
-  state.sheet.diseases.splice(i,1);
-  autosave();
-  renderTabHealth();
-}
-
 // Бейдж бонусов таланта
 function talentBadgeFor(talentName, level){
   const eff = TALENT_EFFECTS && TALENT_EFFECTS[(talentName||'').toLowerCase()];
@@ -514,8 +505,9 @@ function talentBadgeFor(talentName, level){
   if(eff.stat && eff.amount) parts.push(`+${eff.amount} ${eff.stat}`);
   if(eff.move) parts.push(`+${eff.move} скор.`);
   if(eff.hpPerRV){
-    const rv = Math.floor(((state.stats['В']||0)+((state.sheet.statAdvBought&&state.sheet.statAdvBought['В'])||0))/10);
-    parts.push(`+${level*rv} HP`);
+    // тот же бонус и тот же предел уровня, что и в расчёте ран
+    const rv = sheetCalc().RVb;
+    parts.push(`+${talentHpBonus(rv)} HP`);
   }
   if(eff.encumbrance) parts.push(`+${level*eff.encumbrance} вес`);
   if(eff.resolveMax) parts.push(`+${level} реш.`);
@@ -557,6 +549,11 @@ function renderSheet(){
   const maxHP = calc.maxHP || 0;
   if(state.sheet.currentHP === null || state.sheet.currentHP === undefined) state.sheet.currentHP = maxHP;
   if(state.sheet.currentHP > maxHP) state.sheet.currentHP = maxHP;
+  // Удача в начале равна Судьбе, Решимость — Упорству (книга, с. 34). Пустое
+  // значение в досье это и значит, но бланк показывал его нулём, и новый
+  // персонаж начинал с «Удача 0/2», пока не нажмёшь «Восполнить».
+  if(state.sheet.currentLuck == null) state.sheet.currentLuck = calc.fortuneMax;
+  if(state.sheet.resolveCurrent == null) state.sheet.resolveCurrent = calc.upor;
 
   const xpAvail = (state.xpGained||0) - (state.sheet.spentXP||0);
   const inRoster = !!(state.id && loadRoster().find(p => p.id === state.id));
@@ -637,7 +634,7 @@ function renderSheet(){
   autosave();
 }
 
-// === Боковая навигация: открыть/закрыть/перейти ===
+// === Переход по вкладкам бланка ===
 // Безопасный доступ к DOM-элементу (защита от null-падений)
 function byId(id){ return document.getElementById(id); }
 
@@ -686,27 +683,20 @@ function renderTabMore(){
       ${tile("sv4DoAction('gallery')",ICONS.home,'В архив','на главную')}
       ${tile("openSupport()",ICONS.coins,'Поддержать','автору на кости')}
     </div>
-    <input type="file" id="import-file" accept=".json" style="display:none" onchange="importSheet(this)" />
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="importToRoster(this)" />
     <button class="btn btn-sm" style="margin-top:14px;border-color:var(--blood2);color:var(--blood2);" onclick="sv4DoAction('delete')">✕ Удалить персонажа из архива</button>
   </div>`;
   return h;
 }
 
-function sv4NavClose(){
-  const n = byId('sv4-nav'), b = byId('sv4-nav-bd');
-  if(n) n.classList.remove('open');
-  if(b) b.classList.remove('open');
-}
 function sv4NavGo(tabId){
   _sheetTab = tabId;
-  sv4NavClose();
   renderSheet();
   if(typeof navEnter === 'function') navEnter('tab', tabId);
   if(typeof navGoingBack === 'function' && navGoingBack()) return;
   setTimeout(() => window.scrollTo({ top: 0, behavior: 'instant' }), 10);
 }
 function sv4DoAction(action){
-  sv4NavClose();
   switch(action){
     case 'shop': goStep(9); break;
     case 'save':
@@ -802,22 +792,9 @@ function renderTabPersona(){
   const apByZone = { 'голова':0, 'тело':0, 'праваярука':0, 'леваярука':0, 'праваянога':0, 'леваянога':0 };
   (state.sheet.armor||[]).forEach(a => {
     const ap = parseInt(a.ap)||0;
-    const z = (a.zones||'').toLowerCase();
-    if(z.includes('голов')) apByZone['голова'] += ap;
-    if(z.includes('тел') || z.includes('торс') || z.includes('груд')) apByZone['тело'] += ap;
-    // руки
-    const hasLeftArm = z.includes('лев') && z.includes('рук');
-    const hasRightArm = z.includes('прав') && z.includes('рук');
-    if(hasLeftArm) apByZone['леваярука'] += ap;
-    if(hasRightArm) apByZone['праваярука'] += ap;
-    if(z.includes('рук') && !hasLeftArm && !hasRightArm){ apByZone['леваярука'] += ap; apByZone['праваярука'] += ap; }
-    // ноги
-    const hasLeftLeg = z.includes('лев') && z.includes('ног');
-    const hasRightLeg = z.includes('прав') && z.includes('ног');
-    if(hasLeftLeg) apByZone['леваянога'] += ap;
-    if(hasRightLeg) apByZone['праваянога'] += ap;
-    if(z.includes('ног') && !hasLeftLeg && !hasRightLeg){ apByZone['леваянога'] += ap; apByZone['праваянога'] += ap; }
+    armorZoneSet(a.zones).forEach(k => { apByZone[k] += ap; });
   });
+
 
   let h = '';
   // Hero card
@@ -944,7 +921,7 @@ function renderTabPersona(){
       <div class="sv4-v-ico">${ICONS.star}</div>
       <div class="sv4-v-v">${state.sheet.resolveCurrent||0}<span class="max">/${calc.upor}</span></div>
     </div>
-    <div class="sv4-vit ${corr>=corrThr?'danger':''}" onclick="sv4NavGo('health')">
+    <div class="sv4-vit ${corr>corrThr?'danger':''}" onclick="sv4NavGo('health')">
       <div class="sv4-v-l">Скверна</div>
       <div class="sv4-v-ico">${ICONS.skull}</div>
       <div class="sv4-v-v">${corr}<span class="max">/${corrThr}</span></div>
@@ -1305,31 +1282,17 @@ function renderTabHealthInner(){
     <button class="sv4-btn-mini" onclick="sv2AddInjury()">+</button>
   </div></div>`;
   h += `<div class="sv4-block">
-    <div class="sv4-block-title">Болезни</div>`;
-  state.sheet.diseases.forEach((d,i) => {
-    h += `<div class="sv4-row">
-      <input class="sv4-text" value="${escAttr(d)}" onchange="state.sheet.diseases[${i}]=this.value;autosave();" />
-      <button class="sv4-cond-btn" onclick="sv2RemDisease(${i})">×</button>
-    </div>`;
-  });
-  h += `<div class="sv4-row">
-    <input id="dis-input" class="sv4-text" placeholder="болезнь / симптомы / длительность (Enter)" onkeydown="if(event.key==='Enter'){sv2AddDisease();}" />
-    <button class="sv4-btn-mini" onclick="sv2AddDisease()">+</button>
-  </div></div>`;
-  h += `<div class="sv4-block">
     <div class="sv4-block-title">Скверна и мутации</div>
     <div class="sv4-row" style="align-items:center;">
       <span>Пункты скверны:</span>
-      <input type="number" min="0" value="${corr}" class="sv4-mini ${corr>=corrThr?'danger':'gold'}" style="width:60px;" onchange="state.sheet.corruption=Math.max(0,parseInt(this.value)||0);autosave();renderTabHealth();" />
+      <input type="number" min="0" value="${corr}" class="sv4-mini ${corr>corrThr?'danger':'gold'}" style="width:60px;" onchange="state.sheet.corruption=Math.max(0,parseInt(this.value)||0);autosave();renderTabHealth();" />
       <span class="muted">/ порог</span>
       <b style="color:var(--gold2);">${corrThr}</b>
     </div>
-    ${corr>=corrThr && corrThr>0 ? `<div class="sv4-row" style="margin-top:6px;align-items:center;flex-wrap:wrap;gap:6px;">
-      <span class="danger" style="font-size:12px;"><span class="ic">${ICONS.warn}</span> Скверна достигла порога — испытание скверны (мутация):</span>
-      <button class="btn btn-sm btn-gold" onclick="rollMutation('phys')"><span class="ic">${ICONS.dice}</span> Физическая</button>
-      <button class="btn btn-sm btn-gold" onclick="rollMutation('ment')"><span class="ic">${ICONS.dice}</span> Ментальная</button>
-      <span class="muted" style="font-size:11px;">бросок вычитает порог (${corrThr}) из скверны</span>
-    </div>` : `<p class="muted" style="font-size:11px;margin-top:4px;">При скверне ≥ порога делается испытание скверны: проверка стойкости, провал = мутация и сброс скверны.</p>`}
+    ${corr>corrThr ? `<div class="sv4-row" style="margin-top:6px;align-items:center;flex-wrap:wrap;gap:6px;">
+      <span class="danger" style="font-size:12px;"><span class="ic">${ICONS.warn}</span> Порча выше порога — испытание: серьёзная (+0) проверка выносливости.</span>
+      <button class="btn btn-sm btn-gold" onclick="corruptionTest()"><span class="ic">${ICONS.dice}</span> Испытание порчи</button>
+    </div>` : `<p class="muted" style="font-size:11px;margin-top:4px;">Когда порчи станет больше порога, нужна проверка выносливости (+0); провал — мутация и минус бонус силы воли порчи (с. 143).</p>`}
     <textarea class="sv4-text" rows="3" placeholder="Мутации, проявления Хаоса..." onchange="state.sheet.mutations=this.value;autosave();">${escHtml(state.sheet.mutations||'')}</textarea>
   </div>`;
   return h;
@@ -1420,7 +1383,8 @@ function renderTabTalents(){
     const q = search.toLowerCase();
     filtered = filtered.filter(t => t.name.toLowerCase().includes(q) || (t.hint||'').toLowerCase().includes(q));
   }
-  if(filter !== 'all') filtered = filtered.filter(t => t.src === filter);
+  if(filter !== 'all') filtered = filtered.filter(t => String(t.src).startsWith(filter));
+  const talInfo = n => (DATA.all_talents||[]).find(x => x.name.toLowerCase() === String(n).toLowerCase()) || {};
 
   let h = `<div class="sv4-search-bar">
     <div class="sv4-search">
@@ -1431,7 +1395,6 @@ function renderTabTalents(){
       <option value="all" ${filter==='all'?'selected':''}>Все источники</option>
       <option value="народ" ${filter==='народ'?'selected':''}>Народ</option>
       <option value="карьера" ${filter==='карьера'?'selected':''}>Карьера</option>
-      <option value="родной" ${filter==='родной'?'selected':''}>Родной</option>
       <option value="ручн." ${filter==='ручн.'?'selected':''}>Ручные</option>
     </select>
   </div>`;
@@ -1454,8 +1417,8 @@ function renderTabTalents(){
         }
       } else {
         bodyHtml = `${t.hint ? `<p>${escHtml(t.hint)}</p>` : '<p class="muted">— описание не подгружено.</p>'}
-          ${t.checks ? `<p><b>Проверки:</b> ${escHtml(t.checks)}</p>` : ''}
-          ${t.max ? `<p><b>Макс. уровень:</b> ${escHtml(String(t.max))}</p>` : ''}`;
+          ${talInfo(t.name).checks ? `<p><b>Проверки:</b> ${escHtml(talInfo(t.name).checks)}</p>` : ''}
+          ${talInfo(t.name).max ? `<p><b>Макс. уровень:</b> ${escHtml(String(talInfo(t.name).max))}</p>` : ''}`;
       }
       h += `<div class="sv4-tal-full">
         <div class="sv4-tal-head">
@@ -1588,16 +1551,8 @@ function renderTabGear(){
     h += `<p class="muted" style="font-size:12px;">— брони нет · да хранит тебя Сигмар —</p>`;
   } else {
     state.sheet.armor.forEach((a,i) => {
-      const z = (a.zones||'').toLowerCase();
-      const has = (key) => {
-        if(key==='голова') return z.includes('голов');
-        if(key==='тело') return z.includes('тел')||z.includes('торс')||z.includes('груд');
-        if(key==='праваярука') return (z.includes('прав')&&z.includes('рук')) || (z.includes('рук')&&!z.includes('лев')&&!z.includes('прав'));
-        if(key==='леваярука') return (z.includes('лев')&&z.includes('рук')) || (z.includes('рук')&&!z.includes('лев')&&!z.includes('прав'));
-        if(key==='праваянога') return (z.includes('прав')&&z.includes('ног')) || (z.includes('ног')&&!z.includes('лев')&&!z.includes('прав'));
-        if(key==='леваянога') return (z.includes('лев')&&z.includes('ног')) || (z.includes('ног')&&!z.includes('лев')&&!z.includes('прав'));
-        return false;
-      };
+      const zs = armorZoneSet(a.zones);
+      const has = (key) => zs.has(key);
       const zoneChk = (key, label) =>
         `<label class="sv4-zone-chk ${has(key)?'on':''}"><input type="checkbox" ${has(key)?'checked':''} onchange="sv2ArmorZoneToggle(${i},'${key}',this.checked)" />${label}</label>`;
       h += `<div class="sv4-armor-item">
@@ -1797,7 +1752,7 @@ function renderTabPrint(){
   return h;
 }
 
-// Хелпер для quickPay
+// Быстрая оплата / получение из UI кошелька. sign = +1 (зачислить) или -1 (списать).
 function quickPayUI(sign){
   const amt = parseInt(document.getElementById('pay-amount').value,10)||0;
   const cur = document.getElementById('pay-currency').value||'bp';
@@ -1816,6 +1771,18 @@ function quickPayUI(sign){
   document.getElementById('pay-amount').value = '';
 }
 
+// Запись каталога → строка бланка. Одна на добавление вручную и на стартовое
+// имущество: раньше перевод был переписан в трёх местах.
+function joinQualities(q){ return typeof q === 'string' ? q : (q || []).join(', '); }
+function weaponFromCatalog(w){
+  return { name: w.name, group: w.group || '', range: w.reach || '', damage: w.damage || '',
+           qualities: joinQualities(w.qualities), enc: (w.weight_num != null ? w.weight_num : 1) };
+}
+function armorFromCatalog(a){
+  return { name: a.name, zones: joinQualities(a.zones), ap: a.ap || 0,
+           qualities: joinQualities(a.qualities), enc: (a.weight_num != null ? a.weight_num : 1) };
+}
+
 // Добавление оружия/брони/предметов через каталог
 function sv2AddWeapon(){
   const name = (document.getElementById('new-weapon-name').value||'').trim();
@@ -1823,16 +1790,7 @@ function sv2AddWeapon(){
   let w = { name, group:'', range:'', damage:'', qualities:'', enc:1 };
   if(typeof WEAPONS_CATALOG !== 'undefined'){
     const found = findInCatalog(WEAPONS_CATALOG, name);
-    if(found){
-      w = {
-        name: found.name,
-        group: found.group||'',
-        range: found.reach||'',
-        damage: found.damage||'',
-        qualities: typeof found.qualities==='string' ? found.qualities : (found.qualities||[]).join(', '),
-        enc: (found.weight_num!=null ? found.weight_num : 1)
-      };
-    }
+    if(found) w = weaponFromCatalog(found);
   }
   state.sheet.weapons.push(w);
   document.getElementById('new-weapon-name').value = '';
@@ -1861,15 +1819,7 @@ function sv2AddArmor(){
   let a = { name, zones:'', ap:0, qualities:'', enc:1 };
   if(typeof ARMOR_CATALOG !== 'undefined'){
     const found = findInCatalog(ARMOR_CATALOG, name);
-    if(found){
-      a = {
-        name: found.name,
-        zones: typeof found.zones==='string' ? found.zones : (found.zones||[]).join(', '),
-        ap: found.ap||0,
-        qualities: typeof found.qualities==='string' ? found.qualities : (found.qualities||[]).join(', '),
-        enc: (found.weight_num!=null ? found.weight_num : 1)
-      };
-    }
+    if(found) a = armorFromCatalog(found);
   }
   state.sheet.armor.push(a);
   document.getElementById('new-armor-name').value = '';
@@ -1885,22 +1835,29 @@ function sv2AddTrapping(){
   renderSheet();
 }
 
+// Какие зоны закрывает броня: строка «руки, торс» → ключи зон. Одна
+// функция на сводку брони, галочки в имуществе и их переключение — раньше
+// разбор был написан трижды.
+function armorZoneSet(zones){
+  const z = String(zones || '').toLowerCase();
+  const set = new Set();
+  if(z.includes('голов')) set.add('голова');
+  if(z.includes('тел')||z.includes('торс')||z.includes('груд')) set.add('тело');
+  const side = (part) => {
+    const l = z.includes('лев') && z.includes(part), r = z.includes('прав') && z.includes(part);
+    return { l: l || (z.includes(part) && !l && !r), r: r || (z.includes(part) && !l && !r) };
+  };
+  const arm = side('рук'), leg = side('ног');
+  if(arm.l) set.add('леваярука'); if(arm.r) set.add('праваярука');
+  if(leg.l) set.add('леваянога'); if(leg.r) set.add('праваянога');
+  return set;
+}
+
 // Переключение зоны защиты брони через чекбоксы
-const ZONE_NAMES = { 'голова':'голова', 'тело':'тело', 'праваярука':'правая рука', 'леваярука':'левая рука', 'праваянога':'правая нога', 'леваянога':'левая нога' };
 function sv2ArmorZoneToggle(i, key, on){
   const a = state.sheet.armor[i];
   if(!a) return;
-  // Текущий набор зон → нормализуем в множество ключей
-  let set = new Set();
-  const z = (a.zones||'').toLowerCase();
-  if(z.includes('голов')) set.add('голова');
-  if(z.includes('тел')||z.includes('торс')||z.includes('груд')) set.add('тело');
-  if(z.includes('прав')&&z.includes('рук')) set.add('праваярука');
-  if(z.includes('лев')&&z.includes('рук')) set.add('леваярука');
-  if(z.includes('рук')&&!z.includes('лев')&&!z.includes('прав')){ set.add('праваярука'); set.add('леваярука'); }
-  if(z.includes('прав')&&z.includes('ног')) set.add('праваянога');
-  if(z.includes('лев')&&z.includes('ног')) set.add('леваянога');
-  if(z.includes('ног')&&!z.includes('лев')&&!z.includes('прав')){ set.add('праваянога'); set.add('леваянога'); }
+  const set = armorZoneSet(a.zones);
   // Меняем
   if(on) set.add(key); else set.delete(key);
   // Собираем строку обратно
@@ -1938,37 +1895,17 @@ function sv2AddStarterGear(){
   str += (tier.trappings || '');
   if(!str.trim()){ notify('У ступени нет снаряжения.'); return; }
 
-  const parts = str.split(/,(?![^()]*\))/).map(s => s.trim()).filter(Boolean);
+  const parts = splitList(str);
   let nw=0, na=0, ni=0;
   parts.forEach(part => {
     // Оружие
     const w = (typeof findInCatalog==='function') ? findInCatalog(WEAPONS_CATALOG, part) : null;
-    if(w){
-      state.sheet.weapons.push({
-        name: w.name, group: w.group||'', range: w.reach||'',
-        damage: w.damage||'',
-        qualities: typeof w.qualities==='string'?w.qualities:(w.qualities||[]).join(', '),
-        enc: (w.weight_num!=null?w.weight_num:1)
-      });
-      nw++; return;
-    }
+    if(w){ state.sheet.weapons.push(weaponFromCatalog(w)); nw++; return; }
     // Броня
     const a = (typeof findInCatalog==='function') ? findInCatalog(ARMOR_CATALOG, part) : null;
-    if(a){
-      state.sheet.armor.push({
-        name: a.name,
-        zones: typeof a.zones==='string'?a.zones:(a.zones||[]).join(', '),
-        ap: a.ap||0,
-        qualities: typeof a.qualities==='string'?a.qualities:(a.qualities||[]).join(', '),
-        enc: (a.weight_num!=null?a.weight_num:1)
-      });
-      na++; return;
-    }
+    if(a){ state.sheet.armor.push(armorFromCatalog(a)); na++; return; }
     // Прочее (с разбором количества)
-    let qty=1, name=part;
-    const m = part.match(/^(\d+(?:d\d+)?)\s+(.+)$/);
-    if(m){ name = m[2]; if(/^\d+$/.test(m[1])) qty = parseInt(m[1],10)||1; else name = part; }
-    state.sheet.trappings.push({ name: name, enc: 0, desc: '' });
+    state.sheet.trappings.push({ name: part, enc: 0, desc: '' });
     ni++;
   });
   notify(`Добавлено: ${nw} оружия, ${na} брони, ${ni} предметов.`);
@@ -2012,9 +1949,7 @@ function _tierJustSwitch(nt, ot){
 // тегами. Кавычки экранируют оба: escHtml задуман для текста, но если его
 // однажды по ошибке поставят в атрибут, дыры из этого не выйдет. Пусть
 // правильность держится на самой функции, а не на внимательности.
-function escAttr(s){ return String(s == null ? '' : s)
-  .replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
-  .replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(s){ return escHtml(s); }
 function escHtml(s){ return String(s == null ? '' : s)
   .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
   .replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
@@ -2057,21 +1992,4 @@ function addMoneyBP(amountBP){
   if(!state.sheet.money) state.sheet.money = {gc:0, ss:0, bp:0};
   const have = moneyToBP(state.sheet.money);
   state.sheet.money = bpToMoney(have + Math.floor(amountBP||0));
-}
-// Быстрая оплата / получение из UI кошелька. sign = +1 (зачислить) или -1 (списать).
-function quickPay(sign){
-  const amt = parseInt(document.getElementById('pay-amount').value, 10) || 0;
-  const cur = document.getElementById('pay-currency').value || 'bp';
-  if(amt <= 0){ notify('Введи сумму.'); return; }
-  let bp = amt;
-  if(cur==='ss') bp = amt*12;
-  else if(cur==='gc') bp = amt*240;
-  if(sign < 0){
-    if(!payMoneyBP(bp)){ notify('Не хватает денег! Нужно ' + bp + ' бп.'); return; }
-    notify(`Списано ${amt} ${cur==='gc'?'КР':cur==='ss'?'шил.':'бп'}.`);
-  } else {
-    addMoneyBP(bp);
-    notify(`Получено ${amt} ${cur==='gc'?'КР':cur==='ss'?'шил.':'бп'}.`);
-  }
-  renderSheet();
 }

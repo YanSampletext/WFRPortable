@@ -2,12 +2,14 @@
 //
 // MainActivity зовёт window.ordoShortcut('dice'), когда приложение открыли
 // с ярлыка. Java не знает, дожила ли страница до готовности, поэтому зовёт
-// дважды с запасом — значит, повтор надо гасить здесь. Отрабатываем ровно
-// один раз на запуск.
+// дважды с запасом (через 0,4 и 1,5 с) — повтор надо гасить здесь. Гасим по
+// времени: раньше ярлык срабатывал один раз за весь запуск, и если приложение
+// уже было открыто, второй ярлык не делал ничего.
 (function () {
   'use strict';
 
-  var done = false;
+  var REPEAT_MS = 3000;   // больше разрыва между двумя вызовами из Java
+  var lastAt = 0;
 
   var GO = {
     // Кубы и схватка живут во вкладках бланка — без открытого досье туда незачем
@@ -21,10 +23,11 @@
   }
 
   window.ordoShortcut = function (what) {
-    if (done) return;
     var go = GO[what];
     if (!go) return;
-    done = true;
+    var now = Date.now();
+    if (now - lastAt < REPEAT_MS) return;
+    lastAt = now;
 
     if (typeof go.step === 'number') { goStep(go.step); return; }
 

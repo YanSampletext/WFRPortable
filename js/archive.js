@@ -137,12 +137,7 @@
   function exportOne(id) {
     var p = charById(id);
     if (!p) return;
-    var blob = new Blob([JSON.stringify(p, null, 2)], { type: 'application/json' });
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'dosye-' + (p.name || 'bez-imeni').replace(/\s+/g, '-') + '.json';
-    a.click();
-    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    downloadFile(JSON.stringify(p, null, 2), 'dosye-' + (p.name || 'bez-imeni').replace(/\s+/g, '-') + '.json');
     notify('Досье выгружено.');
   }
 

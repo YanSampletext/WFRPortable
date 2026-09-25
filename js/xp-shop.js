@@ -45,7 +45,7 @@ function careerSkillsUpTo(career, tier){
   const c = DATA.careers[career]; if(!c) return [];
   const seen = new Set();
   return c.tiers.slice(0, tier)
-    .flatMap(t => (t.skills||'').split(/,(?![^()]*\))/).map(s=>s.trim()).filter(Boolean))
+    .flatMap(t => splitList(t.skills))
     .filter(s => !seen.has(s.toLowerCase()) && seen.add(s.toLowerCase()));
 }
 // Входит ли навык в карьеру. «Знание (любое)» в карьере покрывает любое знание.
@@ -58,8 +58,9 @@ function isCareerSkill(name){
   });
 }
 
-// Сколько уже сделано шагов развития характеристики (куплено за опыт).
-// При создании шаги не даются, поэтому считаем только купленное.
+// Сколько уже сделано шагов развития характеристики: пять стартовых шагов
+// карьеры при создании плюс купленное за опыт. Стартовые тоже считаются —
+// цена следующего шага идёт по его номеру.
 function statAdvancesTotal(s){
   return ((state.careerStatAdv && state.careerStatAdv[s]) || 0) + (state.sheet.statAdvBought[s] || 0);
 }
@@ -179,7 +180,8 @@ function renderShop(){
   // По книге (с. 35) умения улучшаются все, что на уровне карьеры и ниже,
   // а таланты — только текущего уровня.
   const tierSkills = careerSkillsUpTo(state.career, state.sheet.tier || 1);
-  const tierTalents = (tier.talents || '').split(/,(?![^()]*\))/).map(s=>s.trim()).filter(Boolean);
+  const shopTotals = sheetCalc().totals;
+  const tierTalents = splitList(tier.talents);
 
   // ===== Покупка характеристик =====
   html += `<div class="panel"><div class="panel-title">Характеристики (покупка шагов развития)</div>`;
@@ -224,8 +226,7 @@ function renderShop(){
     const cost = advCostFor(done + inCart).skill;
     const can  = avail >= cost;
     const stat = statFor(skName);
-    const statVal = (state.stats[stat]||0) + statAdvancesTotal(stat);
-    const totalSkill = statVal + done;
+    const totalSkill = (shopTotals[stat]||0) + done;   // как на бланке, с талантами
     html += `<div class="shop-card${inCart?' incart':''}">
       <div class="sc-head"><b style="font-size:12px;">${skName}</b><span>${stat}</span></div>
       <div class="sc-val">${totalSkill}</div>
@@ -346,7 +347,7 @@ function careerTierCompletion(career, tierIdx){
   res.skillsOk = res.skillsDone >= res.skillsNeed;
 
   // 2) Хотя бы 1 талант этой ступени (купленные + взятый при создании)
-  const tierTalents = (tier.talents||'').split(/,(?![^()]*\))/).map(s=>s.trim().toLowerCase()).filter(Boolean);
+  const tierTalents = splitList(tier.talents).map(s => s.toLowerCase());
   const ownedTalents = new Set();
   (state.sheet.talentBought||[]).forEach(t => ownedTalents.add((t.name||'').toLowerCase()));
   (state.sheet.extraTalents||[]).forEach(t => ownedTalents.add((t.name||'').toLowerCase()));
@@ -421,8 +422,8 @@ function renderCareerChange(c, tierIdx){
         ${sameClassCareers.map(n => `<option value="${escAttr(n)}">${n}</option>`).join('')}
       </select>
       <select id="shop-same-class-tier" style="margin:4px;">
-        <option value="same">та же ступень (${tierIdx+1})</option>
-        <option value="1">с 1-й ступени</option>
+        <option value="same"${completed?'':' disabled'}>та же ступень (${tierIdx+1})${completed?'':' — после завершения'}</option>
+        <option value="1"${completed?'':' selected'}>с 1-й ступени</option>
       </select>
       <button class="btn btn-sm ${can?'btn-gold':''}" ${can?'':'disabled'} onclick="changeCareer('same-class', ${cost})">Сменить за ${cost} XP</button>
     </div>`;
@@ -567,6 +568,8 @@ function changeCareer(mode, cost){
   let toCareer = state.career;
   let toTier   = state.sheet.tier;
   let completed = careerTierCompletion(state.career, tierIdx).ok || !!state.sheet.tierCompleteOverride;
+  const fromCls = state.cls;   // для отмены: класс меняется раньше снимка
+  let toCls = state.cls;
 
   if(mode === 'next'){
     toTier = state.sheet.tier + 1;
@@ -576,23 +579,27 @@ function changeCareer(mode, cost){
     if(!sel || !sel.value){ notify('Выбери карьеру.'); return; }
     toCareer = sel.value;
     toTier = (tsel.value === '1') ? 1 : state.sheet.tier;
+    // Книга, с. 39: на ту же ступень другой карьеры класса — только если
+    // текущая ступень завершена (и с согласия мастера), иначе с первой.
+    if(toTier > 1 && !completed){ notify('На ту же ступень другой карьеры — только после завершения текущей. Без этого — с 1-й ступени.'); return; }
   } else if(mode === 'new-class'){
     const csel = document.getElementById('shop-new-class');
     const sel  = document.getElementById('shop-new-career');
     if(!csel.value || !sel.value){ notify('Выбери класс и карьеру.'); return; }
-    state.cls = csel.value;
+    toCls = csel.value;
     toCareer = sel.value;
     toTier = 1;
   }
 
   // Снимок для отмены — пока карьера ещё прежняя
   if(typeof xpRemember === 'function'){
-    xpRemember({ kind:'career', cost, career: state.career, cls: state.cls,
+    xpRemember({ kind:'career', cost, career: state.career, cls: fromCls,
                  tier: state.sheet.tier, tier1Done: state.sheet.careerTier1Done,
                  override: state.sheet.tierCompleteOverride,
                  toName: `${toCareer} · ${toTier}` });
   }
   state.sheet.spentXP = (state.sheet.spentXP || 0) + cost;
+  state.cls = toCls;
   state.career = toCareer;
   state.sheet.tier = toTier;
   state.sheet.careerTier1Done = false;       // (устар. флаг — оставлен для совместимости)

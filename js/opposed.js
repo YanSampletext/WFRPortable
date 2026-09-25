@@ -15,7 +15,6 @@
 
   // Исход считаем той же функцией, что и бланк (testOutcome): своя формула
   // развела бы два экрана в разные стороны.
-  function signed(n) { return (n < 0 ? '−' + Math.abs(n) : '+' + n); }
 
   window.opposedFrom = function (name, target, d, sl) {
     target = parseInt(target, 10) || 0;
@@ -42,7 +41,7 @@
       '<div class="ordo-dlg-seal">✠</div>' +
       '<div class="ordo-dlg-title">Встречная проверка</div>' +
       '<div class="ordo-dlg-text">' + escHtml(name) + ': d100 = <b>' + d + '</b> против ≤' + target +
-        ' → ' + (testOutcome(target, d).ok ? 'успех' : 'провал') + ', ' + signed(sl) + ' ст.усп.' +
+        ' → ' + (testOutcome(target, d).ok ? 'успех' : 'провал') + ', ' + signedNum(sl) + ' ст.усп.' +
         '<br>Против чего бросает противник?</div>' +
       quick +
       '<input id="opp-val" class="ordo-dlg-input" type="number" inputmode="numeric" ' +
@@ -94,7 +93,7 @@
         name: 'Встречная: ' + name + ' (противник ≤' + foeTarget + ', d100=' + dd + ')',
         target: target, d: d,
         outcome: outcome,
-        sl: signed(diff) + ' ст.усп. разницы',
+        sl: signedNum(diff) + ' ст.усп. разницы',
         t: Date.now()
       });
       if (state.sheet.rollLog.length > 30) state.sheet.rollLog.length = 30;
@@ -109,31 +108,24 @@
              '<div class="opp-who">' + title + '</div>' +
              '<div class="opp-die">' + d + '</div>' +
              '<div class="opp-vs">≤ ' + target + '</div>' +
-             '<div class="opp-sl">' + signed(sl) + ' ст.усп.</div>' +
+             '<div class="opp-sl">' + signedNum(sl) + ' ст.усп.</div>' +
            '</div>';
   }
 
   function show(name, target, d, sl, foeTarget, dd, dsl, diff, outcome, cls) {
-    var modal = document.getElementById('roll-modal');
-    if (!modal) {
-      modal = document.createElement('div');
-      modal.id = 'roll-modal';
-      modal.className = 'sv4-roll-modal';
-      modal.onclick = function (e) { if (e.target === modal) modal.classList.remove('show'); };
-      document.body.appendChild(modal);
-    }
+    var modal = cardModal('roll-modal');
     modal.innerHTML =
       '<div class="sv4-roll-card ' + cls + '">' +
         '<div class="sv4-roll-skill">' + escHtml(name) + '</div>' +
         '<div class="sv4-roll-target">встречная проверка</div>' +
         '<div class="opp-pair">' +
           side('ты', target, d, sl) +
-          '<div class="opp-mid">' + signed(diff) + '</div>' +
+          '<div class="opp-mid">' + signedNum(diff) + '</div>' +
           side('противник', foeTarget, dd, dsl) +
         '</div>' +
         '<div class="sv4-roll-outcome">' + outcome + '</div>' +
         '<div class="sv4-roll-sl">' + (diff !== 0
-          ? 'разница ' + signed(diff) + ' ст.усп.'
+          ? 'разница ' + signedNum(diff) + ' ст.усп.'
           : target !== foeTarget
             ? 'SL равны — верх у большего значения'
             : 'SL и значения равны — пат или переброс, решает мастер') + '</div>' +

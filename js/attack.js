@@ -144,12 +144,10 @@
     var slPlus = Math.max(0, sl);
     var raw = (dmg.value === null) ? null : dmg.value + slPlus;
 
-    logRoll(w, sk, target, d, hit, opp ? signedSL(sl) : slSigned(me), opp, dif);
+    logRoll(w, sk, target, d, hit, opp ? signedNum(sl) : slSigned(me), opp, dif);
     showAttack(w, sk, target, d, hit, sl, dmg, raw, targetId, opp, dif, me);
     if (navigator.vibrate) navigator.vibrate(hit ? [20] : [40, 30, 40]);
   }
-
-  function signedSL(n) { return n >= 0 ? '+' + n : String(n).replace('-', '−'); }
 
   function logRoll(w, sk, target, d, hit, slTxt, opp, dif) {
     if (!state || !state.sheet) return;
@@ -193,7 +191,7 @@
              '<div class="muted">' + escHtml(w.effect) + '</div></div>';
     }
     if (opp && opp.ok && opp.double) {
-      out += '<div class="atk-line"><b>Крит защищающегося!</b> Ты получаешь критическую рану — брось на вкладке «Криты».</div>';
+      out += '<div class="atk-line"><b>Крит защищающегося!</b> Ты получаешь критическую рану — брось на вкладке «Бой».</div>';
     }
     if (!me.ok && me.double) {
       out += '<div class="atk-line"><b>Заминка</b> — бросок по таблице «Ой!».</div>';
@@ -233,21 +231,7 @@
       ? '<button class="sv4-roll-again" onclick="sv2AdvDelta(1);notify(\'Преимущество +1\')">+1 преим.</button>'
       : '';
 
-    var modal = document.getElementById('roll-modal');
-    if (!modal) {
-      modal = document.createElement('div');
-      modal.id = 'roll-modal';
-      modal.className = 'sv4-roll-modal';
-      // Закрываем только по клику по самой подложке. Раньше подложка гасла от
-      // любого клика внутри, и карточка защищалась event.stopPropagation() —
-      // а вместе со всплытием обрубалось делегирование: кнопки с data-call
-      // ловит обработчик на документе, до него событие не доходило, и «Ещё
-      // раз» не делала ничего. То же самое уже находили в справочнике.
-      modal.addEventListener('click', function (e) {
-        if (e.target === modal) modal.classList.remove('show');
-      });
-      document.body.appendChild(modal);
-    }
+    var modal = cardModal('roll-modal');
     modal.innerHTML =
       '<div class="sv4-roll-card ' + (hit ? 'success' : 'fail') + '">' +
         '<div class="sv4-roll-skill">' + escHtml(w.name || 'Удар') + '</div>' +
@@ -259,7 +243,7 @@
           ? '<div class="atk-opp">защита ' + opp.target + ' → бросок ' + opp.d +
             ' (' + slSigned(opp) + ')' + (sl === 0 ? ' · равные SL: верх у большего значения' : '') + '</div>'
           : '') +
-        '<div class="sv4-roll-sl">' + (opp ? signedSL(sl) + ' ст.усп. разницы' : slSigned(me) + ' ст.усп.') + '</div>' +
+        '<div class="sv4-roll-sl">' + (opp ? signedNum(sl) + ' ст.усп. разницы' : slSigned(me) + ' ст.усп.') + '</div>' +
         '<div class="atk-dmg">' + body + critLines(me, d, opp) + '</div>' +
         // Атака — самый частый бросок в бою, и боевых талантов с условиями
         // больше всего. Карточка у удара своя, так что напоминание надо

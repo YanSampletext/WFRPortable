@@ -301,9 +301,31 @@ await check('openSupport не уводит из приложения', () => ev(
 
 // ── back-nav.js ─────────────────────────────────────────────────────────────
 await check('аппаратное «назад» закрывает меню', () => ev(() => new Promise(res => {
+  document.querySelectorAll('.sv4-roll-modal.show').forEach(m => m.classList.remove('show'));
   drawerOpen();
   setTimeout(() => { history.back(); setTimeout(() => res(!drawerIsOpen()), 350); }, 120);
 })));
+
+await check('«назад» сначала закрывает карточку броска, экран остаётся', () => ev(() => new Promise(res => {
+  goStep(8); sv4NavGo('skills');
+  rollCheck('ББ', 40, 0);
+  setTimeout(() => {
+    history.back();
+    setTimeout(() => {
+      const open = document.getElementById('roll-modal').classList.contains('show');
+      res(!open && _sheetTab === 'skills' ? true : 'карточка ' + (open ? 'осталась' : 'закрыта') + ', вкладка ' + _sheetTab);
+    }, 350);
+  }, 120);
+})));
+
+await check('«Встречная» и сложность с карточки открываются поверх неё', () => ev(() => {
+  rollCheck('ББ', 40, 0);
+  document.querySelector('#roll-modal [data-call="opposed"]').click();
+  const top = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+  const ok = !!(top && top.closest('#ordo-dlg'));
+  ordoDialogClose(); document.getElementById('roll-modal').classList.remove('show');
+  return ok || 'диалог встречной под карточкой броска';
+}));
 
 // ── ad-slot.js ──────────────────────────────────────────────────────────────
 await check('adSlotSet показывает и убирает баннер', () => ev(() => {
@@ -688,16 +710,27 @@ await check('снятое увечье тоже записывается', () =>
 
 await check('болезнь записывается сразу', () => ev(() => {
   state.sheet.diseases = []; autosave();
-  sv4NavGo('health');
-  const inp = document.getElementById('dis-input');
-  if (!inp) return 'поля болезни нет на вкладке';
-  inp.value = 'Гнойная рана';
-  sv2AddDisease();
+  diseaseAdd('Гнойные раны');
   const saved = JSON.parse(localStorage.getItem('wfrp4_roster_v1') || '[]')
     .find(x => x.id === state.id);
   const ok = !!saved && (saved.sheet.diseases || []).length === 1;
-  sv2RemDisease(0);
+  diseaseDel(0);
   return ok;
+}));
+
+await check('болезнь строкой из старого досье становится записью', () => ev(() => {
+  // один массив раньше вели два блока: строки и записи вперемешку
+  state.sheet.diseases = ['Крысиная лихорадка', 'своя хворь'];
+  migrateState();
+  const [a, b] = state.sheet.diseases;
+  const imp = sanitizeCharacter(Object.assign(JSON.parse(JSON.stringify(state)),
+    { sheet: Object.assign({}, state.sheet, { diseases: ['Чёрная чума'] }) }));
+  state.sheet.diseases = [];
+  if (!a || a.name !== 'Крысиная лихорадка' || a.inc !== '3d10+5 дн') return 'известная: ' + JSON.stringify(a);
+  if (!b || b.name !== 'своя хворь' || b.phase !== 'болезнь') return 'своя: ' + JSON.stringify(b);
+  if ((imp.sheet.diseases[0] || {}).name !== 'Чёрная чума') return 'импорт потерял строку';
+  sv4NavGo('health');
+  return !document.getElementById('dis-input') || 'старое поле болезней ещё на вкладке';
 }));
 
 await check('переполнение памяти не выдаётся за сохранение', () => ev(() => {
@@ -1763,15 +1796,30 @@ await check('размен монет ничего не теряет', () => ev((
   return true;
 }));
 
-await check('отдых считает деньги так же, как бланк', () => ev(() => {
-  // Две независимые пары функций — расхождение между ними означало бы, что
-  // трата в отдыхе и трата на бланке дают разный кошелёк
-  for (const t of [1, 12, 240, 999, 4321]) {
-    const a = JSON.stringify(bpToMoney(t)), b = JSON.stringify(dtBpToMoney(t));
-    if (a !== b) return 'расходятся на ' + t + ' бп: ' + a + ' против ' + b;
-    if (dtMoneyToBp(bpToMoney(t)) !== t) return 'обратный счёт разошёлся на ' + t;
-  }
+await check('отдых считает деньги тем же кошельком, что и бланк', () => ev(() => {
+  // Раньше у отдыха была своя пара функций пересчёта монет. Теперь пара одна,
+  // и второй появиться не должно — иначе трата в отдыхе и на бланке могут разойтись
+  if (typeof dtMoneyToBp !== 'undefined' || typeof dtBpToMoney !== 'undefined')
+    return 'у отдыха снова свой пересчёт денег';
   return true;
+}));
+
+await check('между приключениями: доход, трата и отмена меняют кошелёк бланка', () => ev(() => {
+  const keep = JSON.stringify(state.sheet);
+  try {
+    state.sheet.money = { gc: 1, ss: 0, bp: 0 };                  // 240 бп
+    state.sheet.downtimeLog = [];
+    dtPush('Доход', 'т', { type: 'money', money: { gc: 0, ss: 5, bp: 6 } });   // +66
+    dtApply(state.sheet.downtimeLog[0].id);
+    if (moneyToBP(state.sheet.money) !== 306) return 'доход: ' + JSON.stringify(state.sheet.money);
+    dtPush('Тренировка', 'т', { type: 'spend', money: { gc: 0, ss: 0, bp: 7 } });
+    dtApply(state.sheet.downtimeLog[0].id);
+    if (moneyToBP(state.sheet.money) !== 299) return 'трата: ' + JSON.stringify(state.sheet.money);
+    dtUndo(state.sheet.downtimeLog[1].id);                        // отменяем доход
+    if (JSON.stringify(state.sheet.money) !== JSON.stringify({ gc: 0, ss: 19, bp: 5 }))
+      return 'отмена: ' + JSON.stringify(state.sheet.money);
+    return true;
+  } finally { state.sheet = JSON.parse(keep); renderSheet(); }
 }));
 
 // ── навыки: базовые против профессиональных ────────────────────────────────
@@ -2560,7 +2608,7 @@ const arkCards = async () => {
 await check('карточка архива показывает тот же максимум ран, что и бланк', async () => {
   const want = await ev(() => {
     localStorage.removeItem('wfrp4_roster_v1');
-    handleCreate(); _rollFullRandomCharacterDo(); state.name = 'Раненый';
+    startNewCharacter(); _rollFullRandomCharacterDo(); state.name = 'Раненый';
     state.sheet.currentHP = 4;
     saveCharacterToRoster();
     return sheetCalc().maxHP;
@@ -2577,7 +2625,7 @@ await check('карточка архива показывает тот же ма
 await check('карточка архива считает судьбу как бланк', async () => {
   const want = await ev(() => {
     localStorage.removeItem('wfrp4_roster_v1');
-    handleCreate(); _rollFullRandomCharacterDo(); state.name = 'Везунчик';
+    startNewCharacter(); _rollFullRandomCharacterDo(); state.name = 'Везунчик';
     state.extraFate = 2; state.sheet.fateSpent = 1;   // купил две, одну потратил
     saveCharacterToRoster();
     return sheetCalc().fate;
@@ -2594,7 +2642,7 @@ await check('нетронутое досье в архиве показано п
   // currentHP = null на бланке значит «полное»; карточка обязана понимать так же
   const want = await ev(() => {
     localStorage.removeItem('wfrp4_roster_v1');
-    handleCreate(); _rollFullRandomCharacterDo(); state.name = 'Свежий';
+    startNewCharacter(); _rollFullRandomCharacterDo(); state.name = 'Свежий';
     state.sheet.currentHP = null;
     saveCharacterToRoster();
     return sheetCalc().maxHP;
@@ -2608,7 +2656,7 @@ await check('нетронутое досье в архиве показано п
 await check('нулевое здоровье в архиве не прячется', async () => {
   await ev(() => {
     localStorage.removeItem('wfrp4_roster_v1');
-    handleCreate(); _rollFullRandomCharacterDo(); state.name = 'Павший';
+    startNewCharacter(); _rollFullRandomCharacterDo(); state.name = 'Павший';
     state.sheet.currentHP = 0;
     saveCharacterToRoster();
   });
@@ -2621,9 +2669,9 @@ await check('нулевое здоровье в архиве не прячетс
 await check('расчёт одной карточки не задевает другую и открытое досье', async () => {
   const want = await ev(() => {
     localStorage.removeItem('wfrp4_roster_v1');
-    handleCreate(); _rollFullRandomCharacterDo(); state.name = 'Первый';
+    startNewCharacter(); _rollFullRandomCharacterDo(); state.name = 'Первый';
     state.extraFate = 3; saveCharacterToRoster();
-    handleCreate(); _rollFullRandomCharacterDo(); state.name = 'Второй';
+    startNewCharacter(); _rollFullRandomCharacterDo(); state.name = 'Второй';
     state.extraFate = 0; saveCharacterToRoster();
     return { первый: sheetCalc(loadRoster().find(x => x.name === 'Первый')).fate,
              второй: sheetCalc(loadRoster().find(x => x.name === 'Второй')).fate,
@@ -2643,7 +2691,7 @@ await check('расчёт одной карточки не задевает др
 await check('удар идёт по специализации под группу оружия', () => ev(() => {
   // Бралась самая развитая специализация: удар кинжалом уходил по навыку
   // алебарды, и игрок промахивался вдвое реже, чем должен.
-  handleCreate(); _rollFullRandomCharacterDo(); state.name = 'Боец';
+  startNewCharacter(); _rollFullRandomCharacterDo(); state.name = 'Боец';
   state.sheet.extraSkills = [
     { name: 'Рукопашный бой (основное)', stat: 'ББ', adv: 0 },
     { name: 'Рукопашный бой (двуручное)', stat: 'ББ', adv: 40 },
@@ -2697,12 +2745,12 @@ await check('новое досье не наследует чужие раны �
   // том же сеансе, рождалось с состояниями, увечьями и бронёй первого.
   // Без случайной генерации: она выдаёт снаряжение по карьере, и броня у
   // второго досье появилась бы законно — проверка падала бы через раз не по делу.
-  handleCreate();
+  startNewCharacter();
   state.sheet.conditions['Кровоточащий'] = 2;
   state.sheet.injuries.push('сломанное ребро');
   state.sheet.armor.push({ name: 'Кольчуга' });
   state.sheet.extended.push({ id: 'a', name: 'дело', skill: 'Атлетика', value: 40, goal: 8, acc: 5, tries: [] });
-  handleCreate();
+  startNewCharacter();
   const got = [];
   if (Object.keys(state.sheet.conditions).length) got.push('состояния');
   if (state.sheet.injuries.length) got.push('увечья');
@@ -2715,7 +2763,7 @@ await check('старое досье не тащит чужое при доза�
   // Дозаполнение по схеме — путь не нового досье, а старого сохранения, где
   // поля ещё не было. Раздача по ссылке била именно здесь: открыл одно старое
   // досье, потом другое — и второму достались состояния первого.
-  handleCreate();
+  startNewCharacter();
   state.sheet = { tier: 1 };                 // как у очень старого сохранения
   migrateState();
   const first = state.sheet;
@@ -2732,7 +2780,7 @@ await check('старое досье не тащит чужое при доза�
 }));
 
 await check('эталон схемы никто не портит', () => ev(() => {
-  handleCreate();
+  startNewCharacter();
   state.sheet.conditions['Оглушённый'] = 1;
   state.sheet.rollLog.push({ name: 'проба' });
   const shared = Object.keys(SHEET_DEFAULTS).filter(k =>
@@ -2763,7 +2811,7 @@ await check('всё, что живёт на бланке, переживает �
   // Поле, забытое в схеме, импорт молча выбрасывает — так уже случилось с
   // растянутыми проверками. Складываем в каждое поле что-нибудь заметное и
   // смотрим, что вернётся.
-  handleCreate();
+  startNewCharacter();
   // sanitizeCharacter отвергает досье без народа и характеристик — это её
   // работа, а нам нужно проверить сохранность полей бланка.
   state.race = 'human'; state.stats = { 'ББ': 35 };
@@ -3223,6 +3271,133 @@ await check('перегруз по таблице книги, надетая б�
     if (!/не сдвинуться/.test(load(lim * 3 + 1))) return 'больше 3× можно идти';
     return true;
   } finally { state.sheet = JSON.parse(keep); }
+}));
+
+// ── ручной проход по коду: ошибки, найденные чтением ────────────────────────
+await ev(() => { _rollFullRandomCharacterDo(); state.name = 'Проверяемый'; saveCharacterToRoster(); goStep(8); });
+
+await check('крит без состояний тоже записывается: раны и счётчик', () => ev(() => {
+  state.sheet.critLog = [{ zone: 'Левая рука', name: 'Вывих сустава', wounds: 1,
+    effect: 'Травма «Порванная мышца (минорная)».', conds: {}, applied: false }];
+  state.sheet.currentHP = 5; state.sheet.critWounds = 0;
+  if (!/critApplyConds\(0\)/.test(renderTabCrit())) return 'нет кнопки записать';
+  critApplyConds(0); ordoDialogClose();
+  return state.sheet.currentHP === 4 && state.sheet.critWounds === 1 ? true
+    : 'раны ' + state.sheet.currentHP + ', критов ' + state.sheet.critWounds;
+}));
+
+await check('в схватку с 0 ран — с 0 ран и настоящим максимумом', () => ev(() => {
+  encList().forEach(x => encRemove(x.id));
+  state.sheet.currentHP = 0;
+  encAddSelf();
+  const me = encList()[0];
+  encList().forEach(x => encRemove(x.id));
+  state.sheet.currentHP = null;
+  return me && me.hp === 0 && me.maxHp === sheetCalc().maxHP ? true : JSON.stringify(me);
+}));
+
+await check('отмена смены класса возвращает прежний класс', () => ev(() => {
+  const was = { cls: state.cls, career: state.career };
+  state.xpGained = (state.sheet.spentXP || 0) + 1000;
+  goStep(9);
+  const cs = document.getElementById('shop-new-class');
+  cs.value = [...cs.options].map(o => o.value).find(v => v && v !== was.cls);
+  updateNewClassCareers();
+  const cc = document.getElementById('shop-new-career'); cc.value = cc.options[1].value;
+  changeCareer('new-class', 300);
+  xpUndoLast(); document.getElementById('ordo-dlg-yes').click();
+  goStep(8);
+  return state.cls === was.cls && state.career === was.career ? true
+    : 'класс ' + state.cls + ' вместо ' + was.cls;
+}));
+
+await check('правка шагов навыка не задваивает купленное в магазине', () => ev(() => {
+  state.sheet.skillAdvBought = { 'атлетика': 5 };
+  const before = compileSkills().find(r => r.name.toLowerCase() === 'атлетика').adv;
+  sv4NavGo('skills');
+  const inp = document.querySelector('input[data-sk="Атлетика"]');
+  inp.value = before + 1;
+  updateSkillAdv(inp);
+  const after = compileSkills().find(r => r.name.toLowerCase() === 'атлетика').adv;
+  state.sheet.skillAdvBought = {}; delete state.sheet.skillAdv['атлетика'];
+  return after === before + 1 ? true : 'было ' + before + ', стало ' + after;
+}));
+
+await check('Удача и Решимость нового персонажа равны максимуму', () => ev(() => {
+  state.sheet.currentLuck = null; state.sheet.resolveCurrent = null;
+  sv4NavGo('persona');
+  const c = sheetCalc();
+  return state.sheet.currentLuck === c.fortuneMax && state.sheet.resolveCurrent === c.upor
+    ? true : 'удача ' + state.sheet.currentLuck + '/' + c.fortuneMax;
+}));
+
+await check('вес и правка схемы переживают импорт; чужая схема — нет', () => ev(() => {
+  const raw = JSON.parse(JSON.stringify(state));
+  raw.weight = '80 кг';
+  raw.schemeOverride = { [state.career]: { plus: ['ББ', 'С', 'В'] },
+                         'Нет такой': { plus: ['ББ', 'С', 'В'] },
+                         [state.career + 'x']: { plus: ['<b>'] } };
+  const c = sanitizeCharacter(raw);
+  const keys = Object.keys(c.schemeOverride);
+  return c.weight === '80 кг' && keys.length === 1 && keys[0] === state.career ? true
+    : 'вес ' + c.weight + ', схемы ' + keys.join(',');
+}));
+
+await check('испытание порчи по книге: только выше порога, провал снимает бонус СВ', () => withRolls(() => {
+  const keep = JSON.stringify(state);
+  try {
+    state.race = 'human';
+    const c = sheetCalc();
+    state.sheet.corruption = c.corruptionThreshold; state.sheet.mutations = '';
+    sv4NavGo('health');
+    if (/corruptionTest\(\)/.test(document.getElementById('sheet-area').innerHTML)) return 'проверка предложена при «равно»';
+    state.sheet.corruption = c.corruptionThreshold + 3;
+    seq(99, 30, 50);                // провал выносливости, 30 — тело у человека
+    corruptionTest();
+    document.getElementById('roll-modal').classList.remove('show');
+    if (!/^• Физическая/.test(state.sheet.mutations)) return 'мутация: ' + state.sheet.mutations;
+    const want = c.corruptionThreshold + 3 - c.RSVb;
+    return state.sheet.corruption === want ? true : 'порча ' + state.sheet.corruption + ' вместо ' + want;
+  } finally { state = Object.assign(state, JSON.parse(keep)); }
+}));
+
+await check('второй ярлык при открытом приложении срабатывает', () => ev(() => {
+  // первый ярлык сейчас, второй — через минуту, как бывает за столом
+  sv4NavGo('persona'); ordoShortcut('fight');
+  const now = Date.now; Date.now = () => now() + 60000;
+  try { ordoShortcut('dice'); return _sheetTab === 'rolllog' || 'второй ярлык проигнорирован'; }
+  finally { Date.now = now; }
+}));
+
+await check('в журнале у броска кубов нет «≤null»', () => ev(() => {
+  diceRoll('1d6');
+  document.getElementById('roll-modal').classList.remove('show');
+  return !/null/.test(rollLogRows()) || 'в журнале «null»';
+}));
+
+await check('вкладка талантов показывает «Проверки» из справочника', () => ev(() => {
+  const withChecks = compileTalents().find(t => (DATA.all_talents.find(x => x.name.toLowerCase() === t.name.toLowerCase()) || {}).checks);
+  if (!withChecks) { state.sheet.extraTalents.push({ name: 'Смекалка', level: 1 }); }
+  return /Проверки:/.test(renderTabTalents()) || 'проверки не видны';
+}));
+
+await check('внешность по таблицам народа: возраст, рост, волосы, глаза', () => ev(() => {
+  const bad = [];
+  for (const r of Object.keys(DATA.races)) {
+    const a = ageRoll(r), h = heightRoll(r);
+    if (!/^\d+$/.test(a || '')) bad.push(r + ' возраст ' + a);
+    if (!/^\d+'\d+''$/.test(h || '') || +h.split("'")[1] > 11) bad.push(r + ' рост ' + h);
+    if (!DATA.appearance[r].hair.includes(lookRoll(r, 'hair'))) bad.push(r + ' волосы');
+  }
+  return bad.length ? bad.join(', ') : true;
+}));
+
+await check('зоны брони: одна разборка на сводку и галочки', () => ev(() => {
+  const z = s => [...armorZoneSet(s)].sort().join(',');
+  const cases = { 'руки, торс': 'леваярука,праваярука,тело', 'голова': 'голова',
+                  'левая нога': 'леваянога', 'ноги': 'леваянога,праваянога', '': '' };
+  const bad = Object.keys(cases).filter(k => z(k) !== cases[k]).map(k => k + ' → ' + z(k));
+  return bad.length ? bad.join('; ') : true;
 }));
 
 console.log(results.join('\n'));

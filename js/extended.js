@@ -24,7 +24,6 @@
   }
   function find(id) { return list().find(function (x) { return x.id === id; }); }
   function save() { if (typeof autosave === 'function') autosave(); }
-  function signed(n) { return (n < 0 ? '−' + Math.abs(n) : '+' + n); }
   // Накопленное показываем без плюса, но с типографским минусом: во всех
   // книжных таблицах приложения он такой, и «−4 / 8» не должно вдруг стать
   // «-4 / 8» на одном экране из десяти.
@@ -101,7 +100,7 @@
         name: e.name + ' · ' + e.skill + ' (растянутая ' + num(e.acc) + '/' + e.goal + ')',
         target: target, d: d,
         outcome: o.ok ? 'Успех' : 'Провал',
-        sl: signed(sl) + ' ст.усп.',
+        sl: signedNum(sl) + ' ст.усп.',
         t: Date.now()
       };
       if (dif) rec.dif = dif;
@@ -112,7 +111,7 @@
     save();
     if (navigator.vibrate) navigator.vibrate(sl >= 0 ? [20] : [40, 30, 40]);
     if (e.acc >= e.goal) notify('Готово: ' + e.name + ' — набрано ' + num(e.acc) + ' из ' + e.goal);
-    else notify('d100 = ' + d + ' против ≤' + target + ' → ' + signed(sl) + ' ст.усп., всего ' + num(e.acc) + ' из ' + e.goal);
+    else notify('d100 = ' + d + ' против ≤' + target + ' → ' + signedNum(sl) + ' ст.усп., всего ' + num(e.acc) + ' из ' + e.goal);
     renderSheet();
   };
 
@@ -166,7 +165,7 @@
           (e.tries && e.tries.length
             ? '<div class="ext-tries">' + e.tries.slice(-8).map(function (t) {
                 return '<span class="ext-try' + (t.sl >= 0 ? ' ok' : '') + '" title="d100=' + t.d +
-                       ' против ≤' + t.target + '">' + signed(t.sl) + '</span>';
+                       ' против ≤' + t.target + '">' + signedNum(t.sl) + '</span>';
               }).join('') + '</div>'
             : '') +
           '<div class="ext-btns">' +

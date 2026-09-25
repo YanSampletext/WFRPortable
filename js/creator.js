@@ -92,12 +92,8 @@ function selectRace(id, fromRoll){
     state.resilience = DATA.races[id].resilience;
     state.extraFate = 0; state.extraRes = DATA.races[id].extra;
     // если выбранная карьера недоступна для нового народа — сбросим
-    if(state.career){
-      const peoples = (DATA.careers[state.career]?.peoples || '').toLowerCase();
-      const map = {human:'человек', dwarf:'гном', halfling:'полурослик', helf:'высший эльф', welf:'лесной эльф'};
-      if(!peoples.includes(map[id])){
-        state.career = null; state.cls = null;
-      }
+    if(state.career && !careerOpenTo(state.career, id)){
+      state.career = null; state.cls = null;
     }
   }
   renderRaceCards();
@@ -285,10 +281,7 @@ function pickCareerFromSearch(cls, cn){
 }
 
 function raceMatch(careerName){
-  if(!state.race) return true;
-  const peoples = (DATA.careers[careerName]?.peoples || '').toLowerCase();
-  const map = {human:'человек', dwarf:'гном', halfling:'полурослик', helf:'высший эльф', welf:'лесной эльф'};
-  return peoples.includes(map[state.race]);
+  return !state.race || careerOpenTo(careerName, state.race);
 }
 
 function renderClassDetail(){
@@ -794,7 +787,7 @@ function renderRaceSkills(el){
     html += `<button class="${cls}" onclick="toggleRaceSkill('${s}', 'big')">${s}${big ? ' +5' : ''}</button>`;
   });
   html += '</div>';
-  html += `<p class="muted" style="margin-bottom:6px;">И 3 навыка по 3 шага (можно совпадать с предыдущими? — нет, лучше другие):</p>`;
+  html += `<p class="muted" style="margin-bottom:6px;">И ещё 3 других навыка по 3 шага:</p>`;
   html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;">';
   r.race_skills.forEach(s => {
     const big = state.raceSkillsBig.includes(s);
@@ -877,8 +870,8 @@ function renderCareerSkills(el){
   const c = DATA.careers[state.career];
   if(!c){ el.innerHTML = ''; return; }
   const t1 = c.tiers[0];
-  const skills = (t1.skills || '').split(/,\s*/).map(s => s.trim()).filter(Boolean);
-  const talents = (t1.talents || '').split(/,\s*/).map(s => s.trim()).filter(Boolean);
+  const skills = splitList(t1.skills);
+  const talents = splitList(t1.talents);
 
   let html = `<p class="muted" style="margin-bottom:8px;">1-я ступень — <b>${t1.name}</b> (${t1.status}). Распредели 40 шагов между 8 навыками (≤ 10 на навык).</p>`;
   // Кнопки быстрого заполнения
@@ -919,7 +912,7 @@ function renderCareerSkills(el){
 function fillCareerSkillsEqually(){
   if(!state.career) return;
   const t1 = DATA.careers[state.career].tiers[0];
-  const skills = (t1.skills || '').split(/,\s*/).map(s => s.trim()).filter(Boolean);
+  const skills = splitList(t1.skills);
   state.careerSkills = {};
   skills.forEach(s => state.careerSkills[s] = 5);
   renderSkillsArea();
@@ -1099,58 +1092,35 @@ function renderFinishing(){
   el.innerHTML = html;
 }
 
-function rollAge(){
-  const f = DATA.age_formulas[state.race];
-  const m = f.match(/(\d+)\s*\+\s*(\d+)d10/);
-  if(!m) return;
-  const base = parseInt(m[1]); const n = parseInt(m[2]);
-  state.age = String(base + roll(n, 10));
-  renderFinishing();
+// Возраст, рост, волосы и глаза по таблицам народа. Одна функция на каждое:
+// ими пользуются кнопки у полей, «Зарандомить всё» и случайный персонаж, а
+// раньше разбор формулы был переписан в каждом из трёх мест.
+function ageRoll(race){
+  const m = String(DATA.age_formulas[race] || '').match(/(\d+)\s*\+\s*(\d+)d10/);
+  return m ? String(parseInt(m[1], 10) + roll(parseInt(m[2], 10), 10)) : null;
 }
-function rollHeight(){
-  const f = DATA.height_formulas[state.race];
-  const m = f.match(/(\d+)'(\d+)''.*?(\d+)d10''/);
-  if(!m) return;
-  const ft = parseInt(m[1]); const inch = parseInt(m[2]); const n = parseInt(m[3]);
-  const add = roll(n, 10);
-  let totalInch = inch + add;
-  let totalFt = ft + Math.floor(totalInch/12);
-  totalInch = totalInch % 12;
-  state.height = `${totalFt}'${totalInch}''`;
-  renderFinishing();
+function heightRoll(race){
+  const m = String(DATA.height_formulas[race] || '').match(/(\d+)'(\d+)''.*?(\d+)d10''/);
+  if(!m) return null;
+  const inches = parseInt(m[2], 10) + roll(parseInt(m[3], 10), 10);
+  return `${parseInt(m[1], 10) + Math.floor(inches / 12)}'${inches % 12}''`;
 }
-function rollHair(){
-  const ap = DATA.appearance[state.race];
-  if(!ap) return;
-  state.hair = ap.hair[Math.floor(Math.random() * ap.hair.length)];
-  renderFinishing();
+function lookRoll(race, what){
+  const list = (DATA.appearance[race] || {})[what];
+  return list && list.length ? list[Math.floor(Math.random() * list.length)] : null;
 }
-function rollEyes(){
-  const ap = DATA.appearance[state.race];
-  if(!ap) return;
-  state.eyes = ap.eyes[Math.floor(Math.random() * ap.eyes.length)];
-  renderFinishing();
+function rollLook(race){
+  const set = (k, v) => { if(v != null) state[k] = v; };
+  set('age', ageRoll(race)); set('height', heightRoll(race));
+  set('hair', lookRoll(race, 'hair')); set('eyes', lookRoll(race, 'eyes'));
 }
+
+function rollAge(){ const v = ageRoll(state.race); if(v != null){ state.age = v; renderFinishing(); } }
+function rollHeight(){ const v = heightRoll(state.race); if(v != null){ state.height = v; renderFinishing(); } }
+function rollHair(){ const v = lookRoll(state.race, 'hair'); if(v != null){ state.hair = v; renderFinishing(); } }
+function rollEyes(){ const v = lookRoll(state.race, 'eyes'); if(v != null){ state.eyes = v; renderFinishing(); } }
 function rollAllAppearance(){
-  // rollAge сам перерисовывает; чтобы не делать 4 ререндера — делаем всё в одной функции
-  const f = DATA.age_formulas[state.race];
-  const m = f.match(/(\d+)\s*\+\s*(\d+)d10/);
-  if(m) state.age = String(parseInt(m[1]) + roll(parseInt(m[2]), 10));
-  const fh = DATA.height_formulas[state.race];
-  const mh = fh.match(/(\d+)'(\d+)''.*?(\d+)d10''/);
-  if(mh){
-    const ft = parseInt(mh[1]); const inch = parseInt(mh[2]); const n = parseInt(mh[3]);
-    const add = roll(n, 10);
-    let totalInch = inch + add;
-    let totalFt = ft + Math.floor(totalInch/12);
-    totalInch = totalInch % 12;
-    state.height = `${totalFt}'${totalInch}''`;
-  }
-  const ap = DATA.appearance[state.race];
-  if(ap){
-    state.hair = ap.hair[Math.floor(Math.random() * ap.hair.length)];
-    state.eyes = ap.eyes[Math.floor(Math.random() * ap.eyes.length)];
-  }
+  rollLook(state.race);
   renderFinishing();
   notify('Внешность сгенерирована');
 }
@@ -1225,23 +1195,7 @@ function _rollFullRandomCharacterDo(){
   state.statsXpAwarded = true; state.statsXpAmount = 50;
 
   // 5) Возраст / рост / внешность
-  const af = DATA.age_formulas[raceKey];
-  const am = af && af.match(/(\d+)\s*\+\s*(\d+)d10/);
-  if(am) state.age = String(parseInt(am[1]) + roll(parseInt(am[2]), 10));
-  const hf = DATA.height_formulas[raceKey];
-  const hm = hf && hf.match(/(\d+)'(\d+)''.*?(\d+)d10''/);
-  if(hm){
-    const ft = parseInt(hm[1]); const inch = parseInt(hm[2]); const n = parseInt(hm[3]);
-    let totalInch = inch + roll(n, 10);
-    let totalFt = ft + Math.floor(totalInch/12);
-    totalInch = totalInch % 12;
-    state.height = `${totalFt}'${totalInch}''`;
-  }
-  const ap = DATA.appearance[raceKey];
-  if(ap){
-    state.hair = ap.hair[Math.floor(Math.random()*ap.hair.length)];
-    state.eyes = ap.eyes[Math.floor(Math.random()*ap.eyes.length)];
-  }
+  rollLook(raceKey);
 
   // 6) Расовые навыки: 3 по +5 и 3 по +3 (случайно из пула народа)
   const poolRS = (DATA.races[raceKey].race_skills || []).slice();
@@ -1270,7 +1224,7 @@ function _rollFullRandomCharacterDo(){
 
   // 9) Карьерные навыки: 40 шагов по умениям 1-й ступени (<=10) + случайный талант
   const _t1 = DATA.careers[state.career].tiers[0];
-  const _cs = (_t1.skills || '').split(/,\s*/).map(x=>x.trim()).filter(Boolean);
+  const _cs = splitList(_t1.skills);
   state.careerSkills = {};
   _cs.forEach(x => state.careerSkills[x] = 0);
   if(_cs.length){
@@ -1280,7 +1234,7 @@ function _rollFullRandomCharacterDo(){
       if(state.careerSkills[x] < 10){ state.careerSkills[x]++; _left--; }
     }
   }
-  const _ct = (_t1.talents || '').split(/,\s*/).map(x=>x.trim()).filter(Boolean);
+  const _ct = splitList(_t1.talents);
   state.careerTalentLvl = _ct.length ? _ct[Math.floor(Math.random()*_ct.length)] : null;
 
   // 10) XP за согласие со всеми бросками
