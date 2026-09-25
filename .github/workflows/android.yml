@@ -125,7 +125,9 @@ jobs:
           SRC=$(find android/app/build/outputs/apk/release -name '*.apk' | head -1)
           SUFFIX=""
           if [ "$HAS_SIGNING_KEY" != "true" ]; then SUFFIX="-unsigned"; fi
-          DEST="dosye-ordo-${VERSION}${SUFFIX}.apk"
+          # Имя ветки может содержать «/» (claude/…) — в имени файла это папка
+          SAFE="${VERSION//\//-}"
+          DEST="dosye-ordo-${SAFE}${SUFFIX}.apk"
           cp "$SRC" "$DEST"
           echo "path=$DEST" >> "$GITHUB_OUTPUT"
           echo "Собрано: $DEST ($(du -h "$DEST" | cut -f1))"
