@@ -9,7 +9,6 @@
 
 // ===================== ROSTER (галерея персонажей) =====================
 const ROSTER_KEY = 'wfrp4_roster_v1';
-const STATE_KEY  = 'wfrp4_currentstate_v1'; // отдельно от STORAGE_KEY (старая совместимость)
 
 function loadRoster(){
   try{

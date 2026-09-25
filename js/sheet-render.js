@@ -1797,7 +1797,7 @@ function renderTabPrint(){
   return h;
 }
 
-// Хелпер для quickPay
+// Быстрая оплата / получение из UI кошелька. sign = +1 (зачислить) или -1 (списать).
 function quickPayUI(sign){
   const amt = parseInt(document.getElementById('pay-amount').value,10)||0;
   const cur = document.getElementById('pay-currency').value||'bp';
@@ -1886,7 +1886,6 @@ function sv2AddTrapping(){
 }
 
 // Переключение зоны защиты брони через чекбоксы
-const ZONE_NAMES = { 'голова':'голова', 'тело':'тело', 'праваярука':'правая рука', 'леваярука':'левая рука', 'праваянога':'правая нога', 'леваянога':'левая нога' };
 function sv2ArmorZoneToggle(i, key, on){
   const a = state.sheet.armor[i];
   if(!a) return;
@@ -2012,9 +2011,7 @@ function _tierJustSwitch(nt, ot){
 // тегами. Кавычки экранируют оба: escHtml задуман для текста, но если его
 // однажды по ошибке поставят в атрибут, дыры из этого не выйдет. Пусть
 // правильность держится на самой функции, а не на внимательности.
-function escAttr(s){ return String(s == null ? '' : s)
-  .replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
-  .replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(s){ return escHtml(s); }
 function escHtml(s){ return String(s == null ? '' : s)
   .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
   .replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
@@ -2057,21 +2054,4 @@ function addMoneyBP(amountBP){
   if(!state.sheet.money) state.sheet.money = {gc:0, ss:0, bp:0};
   const have = moneyToBP(state.sheet.money);
   state.sheet.money = bpToMoney(have + Math.floor(amountBP||0));
-}
-// Быстрая оплата / получение из UI кошелька. sign = +1 (зачислить) или -1 (списать).
-function quickPay(sign){
-  const amt = parseInt(document.getElementById('pay-amount').value, 10) || 0;
-  const cur = document.getElementById('pay-currency').value || 'bp';
-  if(amt <= 0){ notify('Введи сумму.'); return; }
-  let bp = amt;
-  if(cur==='ss') bp = amt*12;
-  else if(cur==='gc') bp = amt*240;
-  if(sign < 0){
-    if(!payMoneyBP(bp)){ notify('Не хватает денег! Нужно ' + bp + ' бп.'); return; }
-    notify(`Списано ${amt} ${cur==='gc'?'КР':cur==='ss'?'шил.':'бп'}.`);
-  } else {
-    addMoneyBP(bp);
-    notify(`Получено ${amt} ${cur==='gc'?'КР':cur==='ss'?'шил.':'бп'}.`);
-  }
-  renderSheet();
 }

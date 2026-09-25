@@ -17,9 +17,9 @@
     "aab": "npm run sync && node scripts/gradle.mjs bundleRelease"
   },
   "devDependencies": {
-    "@capacitor/android": "^8.4.2",
-    "@capacitor/cli": "^8.4.2",
-    "@capacitor/core": "^8.4.2",
+    "@capacitor/android": "~8.4.3",
+    "@capacitor/cli": "~8.4.3",
+    "@capacitor/core": "~8.4.3",
     "playwright": "^1.56.1"
   },
   "dependencies": {

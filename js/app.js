@@ -663,23 +663,6 @@ function removeExtraTalent(name){
 
 let appMode = 'landing'; // 'landing', 'creation', 'character'
 
-// Шаги для каждого режима
-const CREATION_STEPS = [
-  {n:1, name:'Народ'},
-  {n:2, name:'Карьера'},
-  {n:3, name:'Статы'},
-  {n:4, name:'Судьба'},
-  {n:5, name:'Навыки'},
-  {n:6, name:'Имущество'},
-  {n:7, name:'Штрихи'},
-  // Шаг 8 (Бланк) — это уже готовый персонаж, не часть полосы создания
-];
-
-const CHARACTER_STEPS = [
-  {n:8, name:'Бланк'},
-  {n:9, name:'Магазин XP'},
-];
-
 function renderSteps(){
   // ленту из девяти шагов заменили индикатор «Шаг N из 7» и заголовок экрана
   if(typeof renderStepsCompact === 'function') renderStepsCompact();
@@ -815,7 +798,8 @@ function handleCreate(){
   goStep(1);
 }
 
-function openCharacter(id){
+// Открыть досье из архива на нужном шаге: 8 — бланк, 9 — магазин опыта.
+function openCharacter(id, step){
   const roster = loadRoster();
   const p = roster.find(x => x.id === id);
   if(!p){ notify('Персонаж не найден.'); return; }
@@ -829,24 +813,10 @@ function openCharacter(id){
     appMode = 'character';
   }
   renderSteps();
-  goStep(8);
+  goStep(step || 8);
 }
 
-function openCharacterShop(id){
-  const roster = loadRoster();
-  const p = roster.find(x => x.id === id);
-  if(!p){ notify('Персонаж не найден.'); return; }
-  Object.assign(state, freshState());
-  Object.assign(state, JSON.parse(JSON.stringify(p)));
-  migrateState();
-  if(appMode === 'landing'){
-    showApp('character');
-  } else {
-    appMode = 'character';
-  }
-  renderSteps();
-  goStep(9);
-}
+function openCharacterShop(id){ openCharacter(id, 9); }
 
 // startNewCharacter вызывается из галереи (шаг 0)
 function startNewCharacter(){

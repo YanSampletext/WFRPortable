@@ -10,6 +10,13 @@ const html     = readFileSync('index.html', 'utf8');
 const jsSrc    = Object.fromEntries(jsFiles.map(f => [f, readFileSync(f, 'utf8')]));
 const cssSrc   = Object.fromEntries(cssFiles.map(f => [f, readFileSync(f, 'utf8')]));
 const allJs    = Object.values(jsSrc).join('\n');
+// Код без комментариев: упоминание в комментарии — не использование. Так
+// «// Хелпер для quickPay» прятал мёртвую копию quickPayUI. Снимаем только
+// блочные комментарии и строки, целиком из комментария: хвост «// …» после
+// кода не трогаем — внутри строк бывают адреса с «//».
+const stripComments = src => src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/^\s*\/\/.*$/gm, '');
+const jsCode   = Object.fromEntries(Object.entries(jsSrc).map(([f, s]) => [f, stripComments(s)]));
+const allCode  = Object.values(jsCode).join('\n');
 const allCss   = Object.values(cssSrc).join('\n');
 const problems = [];
 
@@ -49,12 +56,41 @@ for (const [name, where] of inlineCalls) {
 }
 
 // ── 3. объявлено, но нигде не используется ──────────────────────────────────
+// Верхнеуровневые константы и переменные тоже: мёртвая таблица, оставшаяся
+// от прежнего экрана, иначе так и висит. Считаем по коду без комментариев.
+const topLevel = new Map();              // имя → [где объявлено]
+for (const [f, src] of Object.entries(jsCode)) {
+  src.split('\n').forEach((line, i) => {
+    const m = line.match(/^(?:async\s+)?function\s+([A-Za-z_$][\w$]*)|^(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=/);
+    if (!m) return;
+    const n = m[1] || m[2];
+    if (!topLevel.has(n)) topLevel.set(n, []);
+    topLevel.get(n).push(f + ':' + (i + 1));
+  });
+}
+for (const n of topLevel.keys()) declared.add(n);
 const dead = [];
 for (const name of declared) {
   if (name.length < 4) continue;
-  const uses = (allJs.match(new RegExp('\\b' + name.replace(/\$/g, '\\$') + '\\b', 'g')) || []).length
-             + (html.match(new RegExp('\\b' + name.replace(/\$/g, '\\$') + '\\b', 'g')) || []).length;
+  const re = new RegExp('\\b' + name.replace(/\$/g, '\\$') + '\\b', 'g');
+  const uses = (allCode.match(re) || []).length + (html.match(re) || []).length;
   if (uses <= 1) dead.push(name);          // единственное вхождение — само объявление
+}
+// Точки входа снаружи: их зовут не из скриптов. ordoShortcut — из
+// MainActivity.java (ярлыки на иконке), adSlotDemo — руками из консоли.
+const external = { ordoShortcut: 'android/app/src/main/java/ru/yansampletext/ordo/MainActivity.java',
+                   adSlotDemo: 'js/ad-slot.js' };
+for (const [name, file] of Object.entries(external)) {
+  if (!readFileSync(file, 'utf8').includes(name)) problems.push(`ТОЧКА ВХОДА  ${name}  больше не упоминается в ${file}`);
+  const i = dead.indexOf(name); if (i >= 0) dead.splice(i, 1);
+}
+for (const name of dead) problems.push(`НЕ ИСПОЛЬЗУЕТСЯ  ${name}  — объявлено, но нигде не зовётся`);
+
+// ── 3б. одно имя объявлено дважды ───────────────────────────────────────────
+// Скрипты подключаются подряд в общую область, и второе объявление функции
+// молча заменяет первое: правка в одном месте просто не срабатывает.
+for (const [name, where] of topLevel) {
+  if (where.length > 1) problems.push(`ДВАЖДЫ ОБЪЯВЛЕНО  ${name}  — ${where.join(', ')}`);
 }
 
 // ── 4. классы CSS, которых нет ни в разметке, ни в скриптах ─────────────────

@@ -1763,15 +1763,30 @@ await check('размен монет ничего не теряет', () => ev((
   return true;
 }));
 
-await check('отдых считает деньги так же, как бланк', () => ev(() => {
-  // Две независимые пары функций — расхождение между ними означало бы, что
-  // трата в отдыхе и трата на бланке дают разный кошелёк
-  for (const t of [1, 12, 240, 999, 4321]) {
-    const a = JSON.stringify(bpToMoney(t)), b = JSON.stringify(dtBpToMoney(t));
-    if (a !== b) return 'расходятся на ' + t + ' бп: ' + a + ' против ' + b;
-    if (dtMoneyToBp(bpToMoney(t)) !== t) return 'обратный счёт разошёлся на ' + t;
-  }
+await check('отдых считает деньги тем же кошельком, что и бланк', () => ev(() => {
+  // Раньше у отдыха была своя пара функций пересчёта монет. Теперь пара одна,
+  // и второй появиться не должно — иначе трата в отдыхе и на бланке могут разойтись
+  if (typeof dtMoneyToBp !== 'undefined' || typeof dtBpToMoney !== 'undefined')
+    return 'у отдыха снова свой пересчёт денег';
   return true;
+}));
+
+await check('между приключениями: доход, трата и отмена меняют кошелёк бланка', () => ev(() => {
+  const keep = JSON.stringify(state.sheet);
+  try {
+    state.sheet.money = { gc: 1, ss: 0, bp: 0 };                  // 240 бп
+    state.sheet.downtimeLog = [];
+    dtPush('Доход', 'т', { type: 'money', money: { gc: 0, ss: 5, bp: 6 } });   // +66
+    dtApply(state.sheet.downtimeLog[0].id);
+    if (moneyToBP(state.sheet.money) !== 306) return 'доход: ' + JSON.stringify(state.sheet.money);
+    dtPush('Тренировка', 'т', { type: 'spend', money: { gc: 0, ss: 0, bp: 7 } });
+    dtApply(state.sheet.downtimeLog[0].id);
+    if (moneyToBP(state.sheet.money) !== 299) return 'трата: ' + JSON.stringify(state.sheet.money);
+    dtUndo(state.sheet.downtimeLog[1].id);                        // отменяем доход
+    if (JSON.stringify(state.sheet.money) !== JSON.stringify({ gc: 0, ss: 19, bp: 5 }))
+      return 'отмена: ' + JSON.stringify(state.sheet.money);
+    return true;
+  } finally { state.sheet = JSON.parse(keep); renderSheet(); }
 }));
 
 // ── навыки: базовые против профессиональных ────────────────────────────────

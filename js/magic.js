@@ -453,9 +453,7 @@ function renderTabArcane(){
    попадает в журнал, и одной кнопкой заносится в лист персонажа.
    ========================================================================== */
 
-// --- деньги: нормализация мп <-> монеты (1 ЗК = 20 СШ = 240 МП) ---
-function dtMoneyToBp(m){ m=m||{}; return (m.gc||0)*240 + (m.ss||0)*12 + (m.bp||0); }
-function dtBpToMoney(bp){ bp=Math.max(0,Math.floor(bp||0)); const gc=Math.floor(bp/240); bp-=gc*240; const ss=Math.floor(bp/12); bp-=ss*12; return {gc, ss, bp}; }
+// деньги считает общий кошелёк бланка: moneyToBP / bpToMoney (sheet-render.js)
 function dtFmtMoney(m){
   const parts=[]; if(m.gc) parts.push(`${m.gc} ЗК`); if(m.ss) parts.push(`${m.ss} СШ`); if(m.bp) parts.push(`${m.bp} МП`);
   return parts.length?parts.join(' '):'0';
@@ -494,7 +492,7 @@ function dtTrainingCost(){
   const die = roll(1,10);
   const baseBp = xp + die;
   const totalBp = adv ? baseBp*2 : baseBp;
-  const m = dtBpToMoney(totalBp);
+  const m = bpToMoney(totalBp);
   dtPush('Тренировка', `Плата учителю за улучшение ${xp} XP${adv?' (продвинутое, ×2)':''}: ${xp} + 1d10(${die})${adv?' ×2':''} = ${totalBp} МП.`, {type:'spend', money:m, note:'оплата учителю'});
 }
 
@@ -536,20 +534,20 @@ function dtApply(id){
   if(!state.sheet.money) state.sheet.money={gc:0,ss:0,bp:0};
   if(r.type==='money' && r.money){
     // прибавить деньги
-    const cur = dtMoneyToBp(state.sheet.money) + dtMoneyToBp(r.money);
-    state.sheet.money = dtBpToMoney(cur);
+    const cur = moneyToBP(state.sheet.money) + moneyToBP(r.money);
+    state.sheet.money = bpToMoney(cur);
     notify(`+${dtFmtMoney(r.money)} в кошелёк.`);
   } else if(r.type==='spend' && r.money){
     // списать деньги (плата учителю)
-    const cur = dtMoneyToBp(state.sheet.money) - dtMoneyToBp(r.money);
+    const cur = moneyToBP(state.sheet.money) - moneyToBP(r.money);
     if(cur<0){ notify('Недостаточно денег в кошельке для этой траты.'); return; }
-    state.sheet.money = dtBpToMoney(cur);
+    state.sheet.money = bpToMoney(cur);
     notify(`−${dtFmtMoney(r.money)} из кошелька (${r.note||'трата'}).`);
   } else if(r.type==='buy'){
     // списать цену и добавить предмет
-    const cur = dtMoneyToBp(state.sheet.money) - dtMoneyToBp(r.money||{});
+    const cur = moneyToBP(state.sheet.money) - moneyToBP(r.money||{});
     if(cur<0){ notify('Недостаточно денег для покупки.'); return; }
-    state.sheet.money = dtBpToMoney(cur);
+    state.sheet.money = bpToMoney(cur);
     state.sheet.trappings = state.sheet.trappings||[];
     state.sheet.trappings.push({ name: r.item||'предмет', enc:0, desc:`заказано между приключениями за ${dtFmtMoney(r.money||{})}` });
     notify(`Добавлено в имущество: ${r.item}. Списано ${dtFmtMoney(r.money||{})}.`);
@@ -569,10 +567,10 @@ function dtUndo(id){
   // откат денежных эффектов
   const r = e.reward||{};
   if(e.applied && state.sheet.money){
-    let cur = dtMoneyToBp(state.sheet.money);
-    if(r.type==='money' && r.money) cur -= dtMoneyToBp(r.money);
-    else if((r.type==='spend'||r.type==='buy') && r.money) cur += dtMoneyToBp(r.money);
-    state.sheet.money = dtBpToMoney(Math.max(0,cur));
+    let cur = moneyToBP(state.sheet.money);
+    if(r.type==='money' && r.money) cur -= moneyToBP(r.money);
+    else if((r.type==='spend'||r.type==='buy') && r.money) cur += moneyToBP(r.money);
+    state.sheet.money = bpToMoney(Math.max(0,cur));
     if(r.type==='buy'){
       // удалить последний добавленный предмет с таким именем
       const idx = (state.sheet.trappings||[]).map(t=>t.name).lastIndexOf(r.item);
