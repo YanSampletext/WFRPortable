@@ -193,7 +193,7 @@
              '<div class="muted">' + escHtml(w.effect) + '</div></div>';
     }
     if (opp && opp.ok && opp.double) {
-      out += '<div class="atk-line"><b>Крит защищающегося!</b> Ты получаешь критическую рану — брось на вкладке «Криты».</div>';
+      out += '<div class="atk-line"><b>Крит защищающегося!</b> Ты получаешь критическую рану — брось на вкладке «Бой».</div>';
     }
     if (!me.ok && me.double) {
       out += '<div class="atk-line"><b>Заминка</b> — бросок по таблице «Ой!».</div>';

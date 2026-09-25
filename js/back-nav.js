@@ -49,19 +49,22 @@
   window.navGoingBack = function () { return goingBack; };
 
   window.addEventListener('popstate', function () {
-    // 1. Открытый диалог закрывается первым, экран остаётся на месте
+    // 1. Открытое окно закрывается первым, экран остаётся на месте. Окна
+    // броска, крита, справочника и выбора заклинаний — тоже: раньше «назад»
+    // уводило экран, а карточка броска оставалась висеть поверх другого.
     var dlg = document.getElementById('ordo-dlg');
-    if (dlg && dlg.classList.contains('show')) {
-      if (typeof ordoDialogClose === 'function') ordoDialogClose();
+    var card = document.querySelector('.sv4-roll-modal.show');
+    var gm = document.querySelector('.gm-modal-back.open');
+    if ((dlg && dlg.classList.contains('show')) || card || gm) {
+      if (dlg && dlg.classList.contains('show')) { if (typeof ordoDialogClose === 'function') ordoDialogClose(); }
+      else if (card) card.classList.remove('show');
+      else gm.classList.remove('open');
       try { history.pushState({ ordo: stack.length }, ''); } catch (e) {}
       return;
     }
-    // 2. Затем выдвижное меню оболочки или боковое меню бланка
-    var nav = document.getElementById('sv4-nav');
-    var drawerUp = (typeof drawerIsOpen === 'function') && drawerIsOpen();
-    if (drawerUp || (nav && nav.classList.contains('open'))) {
-      if (drawerUp) drawerClose();
-      else if (typeof sv4NavClose === 'function') sv4NavClose();
+    // 2. Затем выдвижное меню
+    if ((typeof drawerIsOpen === 'function') && drawerIsOpen()) {
+      drawerClose();
       try { history.pushState({ ordo: stack.length }, ''); } catch (e) {}
       return;
     }

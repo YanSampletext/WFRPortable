@@ -328,18 +328,52 @@ function rollWrath(silent){
 }
 
 // ===================== СКВЕРНА → МУТАЦИЯ =====================
-function rollMutation(kind){
+// Книга, с. 143–144. Порчи больше суммы бонусов силы воли и выносливости —
+// серьёзная (+0) проверка выносливости. Успех — держишься до следующего
+// получения порчи. Провал — мутация: минус [бонус силы воли] порчи, затем
+// d100 по народу решает, тело это или разум, и бросок по своей таблице.
+// Раньше проверки не было, игрок сам выбирал тело или разум, а снимался
+// весь порог.
+const MUT_BODY_UPTO = { human: 50, dwarf: 5, halfling: 10, helf: 0, welf: 0 };
+
+function corruptionTest(){
+  const calc = sheetCalc();
+  const corr = parseInt(state.sheet.corruption)||0;
+  if(corr <= calc.corruptionThreshold){ notify('Порча не больше порога — проверка не нужна.'); return; }
+  const target = sheetSkillValue('стойкость');
+  const d = rollD100();
+  const o = testOutcome(target, d);
+  if(typeof showRollResult === 'function')
+    showRollResult('Испытание порчи: выносливость', target, d, o.ok ? 'Держишься' : 'Мутация!',
+                   o.ok ? 'success' : 'crit-fail',
+                   o.ok ? 'порча удержана до следующего очка' : 'Хаос берёт своё');
+  if(!o.ok) mutate();
+  else { autosave(); if(typeof renderTabHealth==='function') renderTabHealth(); }
+}
+
+function mutate(){
+  const r = rollD100();
+  const body = r <= (MUT_BODY_UPTO[state.race] || 0);
+  rollMutation(body ? 'phys' : 'ment', r);
+}
+
+// kind — 'phys' или 'ment'; bodyRoll — бросок «тело или разум», если был
+function rollMutation(kind, bodyRoll){
   const table = kind==='ment' ? MUT_MENTAL : MUT_PHYSICAL;
   const r = rollD100();
   const label = kind==='ment' ? 'Ментальная' : 'Физическая';
   const res = `${label} мутация (d100 ${r}): ${arcTableLookup(table, r)}`;
   const prev = state.sheet.mutations || '';
   state.sheet.mutations = prev ? (prev + '\n• ' + res) : ('• ' + res);
-  // сбросить скверну на величину порога
-  const thr = sheetCalc().corruptionThreshold || 0;
-  state.sheet.corruption = Math.max(0, (parseInt(state.sheet.corruption)||0) - thr);
+  const calc = sheetCalc();
+  state.sheet.corruption = Math.max(0, (parseInt(state.sheet.corruption)||0) - calc.RSVb);
+  // Пределы порчи: мутаций тела больше бонуса выносливости или разума больше
+  // бонуса силы воли — персонаж уходит в Хаос
+  const count = w => (state.sheet.mutations.match(new RegExp('^• ' + w, 'gm')) || []).length;
+  const lost = count('Физическая') > calc.RVb || count('Ментальная') > calc.RSVb;
   autosave();
-  notify(res);
+  notify((bodyRoll ? 'd100 ' + bodyRoll + ' → ' : '') + res + ' Порча −' + calc.RSVb + '.' +
+         (lost ? ' Мутаций больше предела — персонаж пал в Хаос (с. 144).' : ''));
   if(typeof renderTabHealth==='function') renderTabHealth();
 }
 
@@ -426,7 +460,7 @@ function renderTabArcane(){
   const sin = s.sin||0;
   h += `<div class="panel">
     <div class="panel-title">✦ Вера (благословения и чудеса)</div>
-    <p class="muted" style="font-size:12px;">Проявление = проверка <b>молитвы</b>. Дубль (заминка) или «единицы ≤ очков греха» → <b>Гнев богов</b> (+10 за каждое очко греха, затем грех обнуляется).</p>
+    <p class="muted" style="font-size:12px;">Проявление = проверка <b>молитвы</b>. Заминка (провал на дубле) или «единицы ≤ очков греха» → <b>Гнев богов</b> (+10 за каждое очко греха, после броска грех −1).</p>
     <div class="sv4-row" style="gap:14px;flex-wrap:wrap;align-items:center;margin:8px 0;">
       <label style="font-size:12px;">молитва: <input type="number" class="sv4-mini gold" style="width:60px;" value="${s.praySkill||0}" onchange="state.sheet.praySkill=Math.max(0,parseInt(this.value)||0);autosave();"/></label>
       <label style="font-size:12px;">очки греха: <input type="number" class="sv4-mini ${sin>0?'danger':''}" style="width:56px;" value="${sin}" onchange="state.sheet.sin=Math.max(0,parseInt(this.value)||0);autosave();renderSheet();"/></label>

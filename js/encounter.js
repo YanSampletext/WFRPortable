@@ -88,8 +88,14 @@
     // Инициатива — итоговая, с купленными шагами и талантами, а не базовая.
     var tb = calc ? Math.floor((calc.totals['В'] || 0) / 10) : 0;
     var ap = (typeof encSelfAP === 'function') ? encSelfAP() : 0;
-    encAdd(state.name, calc ? (calc.totals['И'] || 0) : ((state.stats && state.stats['И']) || 0),
-           (state.sheet && state.sheet.currentHP) || (calc && calc.maxHP) || 0, false, tb, ap, defenceOf());
+    // 0 ран — это 0 ран, а не «пусто»: раньше раненый до нуля входил в
+    // схватку с полным здоровьем. Пустое значение на бланке и есть полное.
+    var max = (calc && calc.maxHP) || 0;
+    var hp = (state.sheet && typeof state.sheet.currentHP === 'number') ? state.sheet.currentHP : max;
+    var id = encAdd(state.name, calc ? (calc.totals['И'] || 0) : ((state.stats && state.stats['И']) || 0),
+                    hp, false, tb, ap, defenceOf());
+    var row = byId(id);
+    if (row && max) { row.maxHp = max; save(); refresh(); }
   };
 
   // Средний класс брони по зонам: точная зона известна только при крите,
@@ -258,6 +264,7 @@
   window.encHp = function (id, delta) {
     var p = byId(id); if (!p) return;
     p.hp = Math.max(0, p.hp + delta);
+    if (p.maxHp > 0) p.hp = Math.min(p.maxHp, p.hp);
     save(); refresh();
   };
 
@@ -334,7 +341,7 @@
         '<input class="ordo-dlg-input" id="enc-h" type="number" inputmode="numeric" placeholder="раны">' +
       '</div>' +
       '<div class="enc-form-row">' +
-        '<input class="ordo-dlg-input" id="enc-t" type="number" inputmode="numeric" placeholder="бонус СВ">' +
+        '<input class="ordo-dlg-input" id="enc-t" type="number" inputmode="numeric" placeholder="бонус В">' +
         '<input class="ordo-dlg-input" id="enc-a" type="number" inputmode="numeric" placeholder="броня">' +
         '<input class="ordo-dlg-input" id="enc-d" type="number" inputmode="numeric" placeholder="защита">' +
       '</div>' +

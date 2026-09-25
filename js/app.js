@@ -208,6 +208,19 @@ function syncOrdoBars(){
 window.addEventListener('resize', syncOrdoBars);
 window.addEventListener('orientationchange', () => setTimeout(syncOrdoBars, 150));
 
+// Отдать файл на скачивание. Ссылку отзываем не сразу: WebView начинает
+// загрузку уже после click(), и отозванная сразу ссылка давала пустой файл
+// или ничего. Одна функция на выгрузку досье, архива и бланка — раньше их было
+// три, и отзывала с задержкой только одна.
+function downloadFile(text, name){
+  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 function roll(n, sides){
   let s = 0; for(let i=0;i<n;i++) s += Math.floor(Math.random()*sides)+1; return s;
 }
@@ -608,6 +621,9 @@ function updateSkillAdv(input){
   ((state.sheet&&state.sheet.extraSkills)||[]).forEach(es => {
     if(es.name && es.name.toLowerCase()===lower) fixed += (es.adv||0);
   });
+  // Купленное в магазине поле тоже показывает: не вычтешь — первая же правка
+  // запишет его ещё раз как «ручное», и шаги удвоятся.
+  fixed += (state.sheet.skillAdvBought && state.sheet.skillAdvBought[lower]) || 0;
   if(!state.sheet.skillAdv) state.sheet.skillAdv = {};
   // Ручные шаги = введённый итог МИНУС фиксированные (присваиваем, а не прибавляем)
   const manual = v - fixed;

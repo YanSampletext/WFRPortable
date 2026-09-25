@@ -106,7 +106,10 @@ function freshState(){
     careerSkills: {}, careerTalentLvl: null, careerStatAdv: {},
     xpGained: 0,
     pendingRandom: null,
-    name: '', age: '', height: '', hair: '', eyes: '',
+    // weight и schemeOverride заполняются на бланке и шаге «Статы»; без них в
+    // схеме импорт и восстановление архива молча их теряли
+    name: '', age: '', height: '', weight: '', hair: '', eyes: '',
+    schemeOverride: {},
     motivation: '', ambitionShort: '', ambitionLong: '',
     sheet: freshSheet(),
   };
@@ -245,6 +248,17 @@ function normalizeLists(sheet){
   for(const key of IMPORT_NUMBER_MAPS) sheet[key] = numberMap(sheet[key]);
 }
 
+// Болезни когда-то вписывались строкой, а блок «Болезни и инфекции» хранит
+// запись с фазой и днями. В одном массиве жили оба вида: строка показывалась
+// пустой болезнью, а объект в старом поле — как «[object Object]». Строку
+// переводим в запись: название — то, что вписали, остальное неизвестно.
+function diseaseFromText(v){
+  if(typeof v !== 'string') return v;
+  const known = (typeof DISEASES !== 'undefined') && DISEASES[v];
+  return { name: v, inc: known ? known.inc : '—', dur: known ? known.dur : '—',
+           sym: known ? known.sym : '—', day: 0, phase: 'болезнь' };
+}
+
 function sanitizeCharacter(raw){
   if(!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('это не досье');
   const clean = freshState();
@@ -285,6 +299,16 @@ function sanitizeCharacter(raw){
     (e && typeof e === 'object' && !Array.isArray(e))
       ? Object.assign({}, e, { talent: String(e.talent || ''), roll: importNumber(e.roll) })
       : null);
+  clean.sheet.diseases = clean.sheet.diseases.map(diseaseFromText);
+  // Правка схемы карьеры уходит в разметку как есть — берём только три
+  // настоящие характеристики у настоящей карьеры
+  const so = {};
+  for(const k in clean.schemeOverride){
+    const p = clean.schemeOverride[k] && clean.schemeOverride[k].plus;
+    if(known(DATA.careers, k) && Array.isArray(p) && p.length === 3 && p.every(x => STAT_NAMES.includes(x)))
+      so[k] = { plus: p.slice() };
+  }
+  clean.schemeOverride = so;
   normalizeLists(clean.sheet);
   return clean;
 }
@@ -343,18 +367,7 @@ function autosave(){
   }
 }
 function exportSheet(){
-  const data = JSON.stringify(state, null, 2);
-  const blob = new Blob([data], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = (state.name || 'wfrp4_character').replace(/\s+/g,'_') + '.json';
-  a.click();
-  URL.revokeObjectURL(url);
-}
-function importSheet(input){
-  // Импорт = добавить в галерею
-  importToRoster(input);
+  downloadFile(JSON.stringify(state, null, 2), (state.name || 'wfrp4_character').replace(/\s+/g,'_') + '.json');
 }
 
 function migrateState(){
@@ -378,6 +391,7 @@ function migrateState(){
       }
     }
   }
+  if(Array.isArray(state.sheet.diseases)) state.sheet.diseases = state.sheet.diseases.map(diseaseFromText);
   // Верхне-уровневые флаги (могут отсутствовать в старых сохранениях)
   if(state.raceAccepted   === undefined) state.raceAccepted = false;
   if(state.careerAccepted === undefined) state.careerAccepted = false;

@@ -291,7 +291,7 @@ function rollLogRows(){
     if(r.dif && typeof difficultyNote === 'function') mods.push(difficultyNote(r.dif));
     if(r.adv) mods.push('преим. +' + r.adv);
     return `<div class="sv4-rolllog-row">
-      <div class="sv4-rolllog-main"><b>${escHtml(r.name||'')}</b> <span class="muted">≤${r.target}${mods.length?' · '+escHtml(mods.join(' · ')):''}</span></div>
+      <div class="sv4-rolllog-main"><b>${escHtml(r.name||'')}</b> <span class="muted">${r.target > 0 ? '≤' + r.target : ''}${mods.length?' · '+escHtml(mods.join(' · ')):''}</span></div>
       <div class="sv4-rolllog-die" style="color:${col}">${r.d}</div>
       <div class="sv4-rolllog-out" style="color:${col}">${escHtml(r.outcome||'')} <span class="muted">${escHtml(r.sl||'')}</span></div>
       <div class="sv4-rolllog-tm muted">${hh}</div>
@@ -306,6 +306,8 @@ function rollLogCopy(){
   const txt = log.map(r => {
     const mods = (r.dif && typeof difficultyNote === 'function' ? ', ' + difficultyNote(r.dif) : '')
                + (r.adv ? ', преим. +' + r.adv : '');
+    // у броска кубов цели нет: там «d100» и «≤» были бы неправдой
+    if(!(r.target > 0)) return `${r.name}: ${r.d}${r.outcome ? ' (' + r.outcome + ')' : ''}`;
     return `${r.name}: d100=${r.d} (≤${r.target}${mods}) → ${r.outcome} ${r.sl||''}`;
   }).join('\n');
   if(navigator.clipboard) navigator.clipboard.writeText(txt).then(()=>notify('Журнал скопирован'),()=>notify('Не удалось скопировать'));
@@ -490,22 +492,6 @@ function sv2RemInjury(i){
   autosave();
   renderTabHealth();
 }
-function sv2AddDisease(){
-  const inp = document.getElementById('dis-input');
-  const v = (inp.value||'').trim();
-  if(!v) return;
-  if(!state.sheet.diseases) state.sheet.diseases = [];
-  state.sheet.diseases.push(v);
-  inp.value = '';
-  autosave();
-  renderTabHealth();
-}
-function sv2RemDisease(i){
-  state.sheet.diseases.splice(i,1);
-  autosave();
-  renderTabHealth();
-}
-
 // Бейдж бонусов таланта
 function talentBadgeFor(talentName, level){
   const eff = TALENT_EFFECTS && TALENT_EFFECTS[(talentName||'').toLowerCase()];
@@ -514,8 +500,9 @@ function talentBadgeFor(talentName, level){
   if(eff.stat && eff.amount) parts.push(`+${eff.amount} ${eff.stat}`);
   if(eff.move) parts.push(`+${eff.move} скор.`);
   if(eff.hpPerRV){
-    const rv = Math.floor(((state.stats['В']||0)+((state.sheet.statAdvBought&&state.sheet.statAdvBought['В'])||0))/10);
-    parts.push(`+${level*rv} HP`);
+    // тот же бонус и тот же предел уровня, что и в расчёте ран
+    const rv = sheetCalc().RVb;
+    parts.push(`+${talentHpBonus(rv)} HP`);
   }
   if(eff.encumbrance) parts.push(`+${level*eff.encumbrance} вес`);
   if(eff.resolveMax) parts.push(`+${level} реш.`);
@@ -557,6 +544,11 @@ function renderSheet(){
   const maxHP = calc.maxHP || 0;
   if(state.sheet.currentHP === null || state.sheet.currentHP === undefined) state.sheet.currentHP = maxHP;
   if(state.sheet.currentHP > maxHP) state.sheet.currentHP = maxHP;
+  // Удача в начале равна Судьбе, Решимость — Упорству (книга, с. 34). Пустое
+  // значение в досье это и значит, но бланк показывал его нулём, и новый
+  // персонаж начинал с «Удача 0/2», пока не нажмёшь «Восполнить».
+  if(state.sheet.currentLuck == null) state.sheet.currentLuck = calc.fortuneMax;
+  if(state.sheet.resolveCurrent == null) state.sheet.resolveCurrent = calc.upor;
 
   const xpAvail = (state.xpGained||0) - (state.sheet.spentXP||0);
   const inRoster = !!(state.id && loadRoster().find(p => p.id === state.id));
@@ -686,7 +678,7 @@ function renderTabMore(){
       ${tile("sv4DoAction('gallery')",ICONS.home,'В архив','на главную')}
       ${tile("openSupport()",ICONS.coins,'Поддержать','автору на кости')}
     </div>
-    <input type="file" id="import-file" accept=".json" style="display:none" onchange="importSheet(this)" />
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="importToRoster(this)" />
     <button class="btn btn-sm" style="margin-top:14px;border-color:var(--blood2);color:var(--blood2);" onclick="sv4DoAction('delete')">✕ Удалить персонажа из архива</button>
   </div>`;
   return h;
@@ -944,7 +936,7 @@ function renderTabPersona(){
       <div class="sv4-v-ico">${ICONS.star}</div>
       <div class="sv4-v-v">${state.sheet.resolveCurrent||0}<span class="max">/${calc.upor}</span></div>
     </div>
-    <div class="sv4-vit ${corr>=corrThr?'danger':''}" onclick="sv4NavGo('health')">
+    <div class="sv4-vit ${corr>corrThr?'danger':''}" onclick="sv4NavGo('health')">
       <div class="sv4-v-l">Скверна</div>
       <div class="sv4-v-ico">${ICONS.skull}</div>
       <div class="sv4-v-v">${corr}<span class="max">/${corrThr}</span></div>
@@ -1305,31 +1297,17 @@ function renderTabHealthInner(){
     <button class="sv4-btn-mini" onclick="sv2AddInjury()">+</button>
   </div></div>`;
   h += `<div class="sv4-block">
-    <div class="sv4-block-title">Болезни</div>`;
-  state.sheet.diseases.forEach((d,i) => {
-    h += `<div class="sv4-row">
-      <input class="sv4-text" value="${escAttr(d)}" onchange="state.sheet.diseases[${i}]=this.value;autosave();" />
-      <button class="sv4-cond-btn" onclick="sv2RemDisease(${i})">×</button>
-    </div>`;
-  });
-  h += `<div class="sv4-row">
-    <input id="dis-input" class="sv4-text" placeholder="болезнь / симптомы / длительность (Enter)" onkeydown="if(event.key==='Enter'){sv2AddDisease();}" />
-    <button class="sv4-btn-mini" onclick="sv2AddDisease()">+</button>
-  </div></div>`;
-  h += `<div class="sv4-block">
     <div class="sv4-block-title">Скверна и мутации</div>
     <div class="sv4-row" style="align-items:center;">
       <span>Пункты скверны:</span>
-      <input type="number" min="0" value="${corr}" class="sv4-mini ${corr>=corrThr?'danger':'gold'}" style="width:60px;" onchange="state.sheet.corruption=Math.max(0,parseInt(this.value)||0);autosave();renderTabHealth();" />
+      <input type="number" min="0" value="${corr}" class="sv4-mini ${corr>corrThr?'danger':'gold'}" style="width:60px;" onchange="state.sheet.corruption=Math.max(0,parseInt(this.value)||0);autosave();renderTabHealth();" />
       <span class="muted">/ порог</span>
       <b style="color:var(--gold2);">${corrThr}</b>
     </div>
-    ${corr>=corrThr && corrThr>0 ? `<div class="sv4-row" style="margin-top:6px;align-items:center;flex-wrap:wrap;gap:6px;">
-      <span class="danger" style="font-size:12px;"><span class="ic">${ICONS.warn}</span> Скверна достигла порога — испытание скверны (мутация):</span>
-      <button class="btn btn-sm btn-gold" onclick="rollMutation('phys')"><span class="ic">${ICONS.dice}</span> Физическая</button>
-      <button class="btn btn-sm btn-gold" onclick="rollMutation('ment')"><span class="ic">${ICONS.dice}</span> Ментальная</button>
-      <span class="muted" style="font-size:11px;">бросок вычитает порог (${corrThr}) из скверны</span>
-    </div>` : `<p class="muted" style="font-size:11px;margin-top:4px;">При скверне ≥ порога делается испытание скверны: проверка стойкости, провал = мутация и сброс скверны.</p>`}
+    ${corr>corrThr ? `<div class="sv4-row" style="margin-top:6px;align-items:center;flex-wrap:wrap;gap:6px;">
+      <span class="danger" style="font-size:12px;"><span class="ic">${ICONS.warn}</span> Порча выше порога — испытание: серьёзная (+0) проверка выносливости.</span>
+      <button class="btn btn-sm btn-gold" onclick="corruptionTest()"><span class="ic">${ICONS.dice}</span> Испытание порчи</button>
+    </div>` : `<p class="muted" style="font-size:11px;margin-top:4px;">Когда порчи станет больше порога, нужна проверка выносливости (+0); провал — мутация и минус бонус силы воли порчи (с. 143).</p>`}
     <textarea class="sv4-text" rows="3" placeholder="Мутации, проявления Хаоса..." onchange="state.sheet.mutations=this.value;autosave();">${escHtml(state.sheet.mutations||'')}</textarea>
   </div>`;
   return h;
@@ -1420,7 +1398,8 @@ function renderTabTalents(){
     const q = search.toLowerCase();
     filtered = filtered.filter(t => t.name.toLowerCase().includes(q) || (t.hint||'').toLowerCase().includes(q));
   }
-  if(filter !== 'all') filtered = filtered.filter(t => t.src === filter);
+  if(filter !== 'all') filtered = filtered.filter(t => String(t.src).startsWith(filter));
+  const talInfo = n => (DATA.all_talents||[]).find(x => x.name.toLowerCase() === String(n).toLowerCase()) || {};
 
   let h = `<div class="sv4-search-bar">
     <div class="sv4-search">
@@ -1431,7 +1410,6 @@ function renderTabTalents(){
       <option value="all" ${filter==='all'?'selected':''}>Все источники</option>
       <option value="народ" ${filter==='народ'?'selected':''}>Народ</option>
       <option value="карьера" ${filter==='карьера'?'selected':''}>Карьера</option>
-      <option value="родной" ${filter==='родной'?'selected':''}>Родной</option>
       <option value="ручн." ${filter==='ручн.'?'selected':''}>Ручные</option>
     </select>
   </div>`;
@@ -1454,8 +1432,8 @@ function renderTabTalents(){
         }
       } else {
         bodyHtml = `${t.hint ? `<p>${escHtml(t.hint)}</p>` : '<p class="muted">— описание не подгружено.</p>'}
-          ${t.checks ? `<p><b>Проверки:</b> ${escHtml(t.checks)}</p>` : ''}
-          ${t.max ? `<p><b>Макс. уровень:</b> ${escHtml(String(t.max))}</p>` : ''}`;
+          ${talInfo(t.name).checks ? `<p><b>Проверки:</b> ${escHtml(talInfo(t.name).checks)}</p>` : ''}
+          ${talInfo(t.name).max ? `<p><b>Макс. уровень:</b> ${escHtml(String(talInfo(t.name).max))}</p>` : ''}`;
       }
       h += `<div class="sv4-tal-full">
         <div class="sv4-tal-head">
