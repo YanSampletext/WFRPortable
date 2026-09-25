@@ -330,6 +330,23 @@ function renderTabRollLog(){
     <div id="rolllog-body" class="sv4-rolllog">${rollLogRows()}</div>
   </div>`;
 }
+// Подложка для карточки (бросок, крит, заминка). Закрывается только по
+// клику по себе: раньше она гасла от любого клика внутри, карточку защищали
+// event.stopPropagation(), а с ним обрубалось делегирование — кнопки с
+// data-call ловит обработчик на документе, и «Ещё раз» не делала ничего.
+// Создавалась она в шести местах одинаковым кодом.
+function cardModal(id){
+  let modal = document.getElementById(id);
+  if(!modal){
+    modal = document.createElement('div');
+    modal.id = id;
+    modal.className = 'sv4-roll-modal';
+    modal.addEventListener('click', e => { if(e.target === modal) modal.classList.remove('show'); });
+    document.body.appendChild(modal);
+  }
+  return modal;
+}
+
 // meta — откуда взялась цель: { base, adv, dif }. Приходит от rollCheck;
 // проверки сна, болезней и психологии зовут без неё, и тогда карточка ведёт
 // себя как прежде, без строки сложности.
@@ -352,19 +369,7 @@ function showRollResult(name, target, d, outcome, cls, slText, meta){
       if(lb) lb.innerHTML = rollLogRows();
     }
   }catch(e){}
-  let modal = document.getElementById('roll-modal');
-  if(!modal){
-    modal = document.createElement('div');
-    modal.id = 'roll-modal';
-    modal.className = 'sv4-roll-modal';
-    // Закрываем только по клику по самой подложке. Раньше она гасла от любого
-    // клика внутри, и карточка защищалась event.stopPropagation() — а вместе
-    // со всплытием обрубалось делегирование: кнопки с data-call ловит
-    // обработчик на документе, и «Ещё раз» не делала ничего вовсе. Ту же
-    // ловушку уже находили в справочнике, здесь она осталась незамеченной.
-    modal.onclick = (e) => { if(e.target === modal) modal.classList.remove('show'); };
-    document.body.appendChild(modal);
-  }
+  const modal = cardModal('roll-modal');
   // Строка про цель — она же кнопка смены сложности: менять её хочется ровно
   // тогда, когда на неё смотришь, и отдельная кнопка рядом была бы третьей в
   // ряду из двух.
@@ -629,7 +634,7 @@ function renderSheet(){
   autosave();
 }
 
-// === Боковая навигация: открыть/закрыть/перейти ===
+// === Переход по вкладкам бланка ===
 // Безопасный доступ к DOM-элементу (защита от null-падений)
 function byId(id){ return document.getElementById(id); }
 
@@ -684,21 +689,14 @@ function renderTabMore(){
   return h;
 }
 
-function sv4NavClose(){
-  const n = byId('sv4-nav'), b = byId('sv4-nav-bd');
-  if(n) n.classList.remove('open');
-  if(b) b.classList.remove('open');
-}
 function sv4NavGo(tabId){
   _sheetTab = tabId;
-  sv4NavClose();
   renderSheet();
   if(typeof navEnter === 'function') navEnter('tab', tabId);
   if(typeof navGoingBack === 'function' && navGoingBack()) return;
   setTimeout(() => window.scrollTo({ top: 0, behavior: 'instant' }), 10);
 }
 function sv4DoAction(action){
-  sv4NavClose();
   switch(action){
     case 'shop': goStep(9); break;
     case 'save':
@@ -794,22 +792,9 @@ function renderTabPersona(){
   const apByZone = { 'голова':0, 'тело':0, 'праваярука':0, 'леваярука':0, 'праваянога':0, 'леваянога':0 };
   (state.sheet.armor||[]).forEach(a => {
     const ap = parseInt(a.ap)||0;
-    const z = (a.zones||'').toLowerCase();
-    if(z.includes('голов')) apByZone['голова'] += ap;
-    if(z.includes('тел') || z.includes('торс') || z.includes('груд')) apByZone['тело'] += ap;
-    // руки
-    const hasLeftArm = z.includes('лев') && z.includes('рук');
-    const hasRightArm = z.includes('прав') && z.includes('рук');
-    if(hasLeftArm) apByZone['леваярука'] += ap;
-    if(hasRightArm) apByZone['праваярука'] += ap;
-    if(z.includes('рук') && !hasLeftArm && !hasRightArm){ apByZone['леваярука'] += ap; apByZone['праваярука'] += ap; }
-    // ноги
-    const hasLeftLeg = z.includes('лев') && z.includes('ног');
-    const hasRightLeg = z.includes('прав') && z.includes('ног');
-    if(hasLeftLeg) apByZone['леваянога'] += ap;
-    if(hasRightLeg) apByZone['праваянога'] += ap;
-    if(z.includes('ног') && !hasLeftLeg && !hasRightLeg){ apByZone['леваянога'] += ap; apByZone['праваянога'] += ap; }
+    armorZoneSet(a.zones).forEach(k => { apByZone[k] += ap; });
   });
+
 
   let h = '';
   // Hero card
@@ -1566,16 +1551,8 @@ function renderTabGear(){
     h += `<p class="muted" style="font-size:12px;">— брони нет · да хранит тебя Сигмар —</p>`;
   } else {
     state.sheet.armor.forEach((a,i) => {
-      const z = (a.zones||'').toLowerCase();
-      const has = (key) => {
-        if(key==='голова') return z.includes('голов');
-        if(key==='тело') return z.includes('тел')||z.includes('торс')||z.includes('груд');
-        if(key==='праваярука') return (z.includes('прав')&&z.includes('рук')) || (z.includes('рук')&&!z.includes('лев')&&!z.includes('прав'));
-        if(key==='леваярука') return (z.includes('лев')&&z.includes('рук')) || (z.includes('рук')&&!z.includes('лев')&&!z.includes('прав'));
-        if(key==='праваянога') return (z.includes('прав')&&z.includes('ног')) || (z.includes('ног')&&!z.includes('лев')&&!z.includes('прав'));
-        if(key==='леваянога') return (z.includes('лев')&&z.includes('ног')) || (z.includes('ног')&&!z.includes('лев')&&!z.includes('прав'));
-        return false;
-      };
+      const zs = armorZoneSet(a.zones);
+      const has = (key) => zs.has(key);
       const zoneChk = (key, label) =>
         `<label class="sv4-zone-chk ${has(key)?'on':''}"><input type="checkbox" ${has(key)?'checked':''} onchange="sv2ArmorZoneToggle(${i},'${key}',this.checked)" />${label}</label>`;
       h += `<div class="sv4-armor-item">
@@ -1794,6 +1771,18 @@ function quickPayUI(sign){
   document.getElementById('pay-amount').value = '';
 }
 
+// Запись каталога → строка бланка. Одна на добавление вручную и на стартовое
+// имущество: раньше перевод был переписан в трёх местах.
+function joinQualities(q){ return typeof q === 'string' ? q : (q || []).join(', '); }
+function weaponFromCatalog(w){
+  return { name: w.name, group: w.group || '', range: w.reach || '', damage: w.damage || '',
+           qualities: joinQualities(w.qualities), enc: (w.weight_num != null ? w.weight_num : 1) };
+}
+function armorFromCatalog(a){
+  return { name: a.name, zones: joinQualities(a.zones), ap: a.ap || 0,
+           qualities: joinQualities(a.qualities), enc: (a.weight_num != null ? a.weight_num : 1) };
+}
+
 // Добавление оружия/брони/предметов через каталог
 function sv2AddWeapon(){
   const name = (document.getElementById('new-weapon-name').value||'').trim();
@@ -1801,16 +1790,7 @@ function sv2AddWeapon(){
   let w = { name, group:'', range:'', damage:'', qualities:'', enc:1 };
   if(typeof WEAPONS_CATALOG !== 'undefined'){
     const found = findInCatalog(WEAPONS_CATALOG, name);
-    if(found){
-      w = {
-        name: found.name,
-        group: found.group||'',
-        range: found.reach||'',
-        damage: found.damage||'',
-        qualities: typeof found.qualities==='string' ? found.qualities : (found.qualities||[]).join(', '),
-        enc: (found.weight_num!=null ? found.weight_num : 1)
-      };
-    }
+    if(found) w = weaponFromCatalog(found);
   }
   state.sheet.weapons.push(w);
   document.getElementById('new-weapon-name').value = '';
@@ -1839,15 +1819,7 @@ function sv2AddArmor(){
   let a = { name, zones:'', ap:0, qualities:'', enc:1 };
   if(typeof ARMOR_CATALOG !== 'undefined'){
     const found = findInCatalog(ARMOR_CATALOG, name);
-    if(found){
-      a = {
-        name: found.name,
-        zones: typeof found.zones==='string' ? found.zones : (found.zones||[]).join(', '),
-        ap: found.ap||0,
-        qualities: typeof found.qualities==='string' ? found.qualities : (found.qualities||[]).join(', '),
-        enc: (found.weight_num!=null ? found.weight_num : 1)
-      };
-    }
+    if(found) a = armorFromCatalog(found);
   }
   state.sheet.armor.push(a);
   document.getElementById('new-armor-name').value = '';
@@ -1863,21 +1835,29 @@ function sv2AddTrapping(){
   renderSheet();
 }
 
+// Какие зоны закрывает броня: строка «руки, торс» → ключи зон. Одна
+// функция на сводку брони, галочки в имуществе и их переключение — раньше
+// разбор был написан трижды.
+function armorZoneSet(zones){
+  const z = String(zones || '').toLowerCase();
+  const set = new Set();
+  if(z.includes('голов')) set.add('голова');
+  if(z.includes('тел')||z.includes('торс')||z.includes('груд')) set.add('тело');
+  const side = (part) => {
+    const l = z.includes('лев') && z.includes(part), r = z.includes('прав') && z.includes(part);
+    return { l: l || (z.includes(part) && !l && !r), r: r || (z.includes(part) && !l && !r) };
+  };
+  const arm = side('рук'), leg = side('ног');
+  if(arm.l) set.add('леваярука'); if(arm.r) set.add('праваярука');
+  if(leg.l) set.add('леваянога'); if(leg.r) set.add('праваянога');
+  return set;
+}
+
 // Переключение зоны защиты брони через чекбоксы
 function sv2ArmorZoneToggle(i, key, on){
   const a = state.sheet.armor[i];
   if(!a) return;
-  // Текущий набор зон → нормализуем в множество ключей
-  let set = new Set();
-  const z = (a.zones||'').toLowerCase();
-  if(z.includes('голов')) set.add('голова');
-  if(z.includes('тел')||z.includes('торс')||z.includes('груд')) set.add('тело');
-  if(z.includes('прав')&&z.includes('рук')) set.add('праваярука');
-  if(z.includes('лев')&&z.includes('рук')) set.add('леваярука');
-  if(z.includes('рук')&&!z.includes('лев')&&!z.includes('прав')){ set.add('праваярука'); set.add('леваярука'); }
-  if(z.includes('прав')&&z.includes('ног')) set.add('праваянога');
-  if(z.includes('лев')&&z.includes('ног')) set.add('леваянога');
-  if(z.includes('ног')&&!z.includes('лев')&&!z.includes('прав')){ set.add('праваянога'); set.add('леваянога'); }
+  const set = armorZoneSet(a.zones);
   // Меняем
   if(on) set.add(key); else set.delete(key);
   // Собираем строку обратно
@@ -1915,37 +1895,17 @@ function sv2AddStarterGear(){
   str += (tier.trappings || '');
   if(!str.trim()){ notify('У ступени нет снаряжения.'); return; }
 
-  const parts = str.split(/,(?![^()]*\))/).map(s => s.trim()).filter(Boolean);
+  const parts = splitList(str);
   let nw=0, na=0, ni=0;
   parts.forEach(part => {
     // Оружие
     const w = (typeof findInCatalog==='function') ? findInCatalog(WEAPONS_CATALOG, part) : null;
-    if(w){
-      state.sheet.weapons.push({
-        name: w.name, group: w.group||'', range: w.reach||'',
-        damage: w.damage||'',
-        qualities: typeof w.qualities==='string'?w.qualities:(w.qualities||[]).join(', '),
-        enc: (w.weight_num!=null?w.weight_num:1)
-      });
-      nw++; return;
-    }
+    if(w){ state.sheet.weapons.push(weaponFromCatalog(w)); nw++; return; }
     // Броня
     const a = (typeof findInCatalog==='function') ? findInCatalog(ARMOR_CATALOG, part) : null;
-    if(a){
-      state.sheet.armor.push({
-        name: a.name,
-        zones: typeof a.zones==='string'?a.zones:(a.zones||[]).join(', '),
-        ap: a.ap||0,
-        qualities: typeof a.qualities==='string'?a.qualities:(a.qualities||[]).join(', '),
-        enc: (a.weight_num!=null?a.weight_num:1)
-      });
-      na++; return;
-    }
+    if(a){ state.sheet.armor.push(armorFromCatalog(a)); na++; return; }
     // Прочее (с разбором количества)
-    let qty=1, name=part;
-    const m = part.match(/^(\d+(?:d\d+)?)\s+(.+)$/);
-    if(m){ name = m[2]; if(/^\d+$/.test(m[1])) qty = parseInt(m[1],10)||1; else name = part; }
-    state.sheet.trappings.push({ name: name, enc: 0, desc: '' });
+    state.sheet.trappings.push({ name: part, enc: 0, desc: '' });
     ni++;
   });
   notify(`Добавлено: ${nw} оружия, ${na} брони, ${ni} предметов.`);

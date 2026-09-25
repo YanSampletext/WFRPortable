@@ -45,7 +45,7 @@ function careerSkillsUpTo(career, tier){
   const c = DATA.careers[career]; if(!c) return [];
   const seen = new Set();
   return c.tiers.slice(0, tier)
-    .flatMap(t => (t.skills||'').split(/,(?![^()]*\))/).map(s=>s.trim()).filter(Boolean))
+    .flatMap(t => splitList(t.skills))
     .filter(s => !seen.has(s.toLowerCase()) && seen.add(s.toLowerCase()));
 }
 // Входит ли навык в карьеру. «Знание (любое)» в карьере покрывает любое знание.
@@ -181,7 +181,7 @@ function renderShop(){
   // а таланты — только текущего уровня.
   const tierSkills = careerSkillsUpTo(state.career, state.sheet.tier || 1);
   const shopTotals = sheetCalc().totals;
-  const tierTalents = (tier.talents || '').split(/,(?![^()]*\))/).map(s=>s.trim()).filter(Boolean);
+  const tierTalents = splitList(tier.talents);
 
   // ===== Покупка характеристик =====
   html += `<div class="panel"><div class="panel-title">Характеристики (покупка шагов развития)</div>`;
@@ -347,7 +347,7 @@ function careerTierCompletion(career, tierIdx){
   res.skillsOk = res.skillsDone >= res.skillsNeed;
 
   // 2) Хотя бы 1 талант этой ступени (купленные + взятый при создании)
-  const tierTalents = (tier.talents||'').split(/,(?![^()]*\))/).map(s=>s.trim().toLowerCase()).filter(Boolean);
+  const tierTalents = splitList(tier.talents).map(s => s.toLowerCase());
   const ownedTalents = new Set();
   (state.sheet.talentBought||[]).forEach(t => ownedTalents.add((t.name||'').toLowerCase()));
   (state.sheet.extraTalents||[]).forEach(t => ownedTalents.add((t.name||'').toLowerCase()));

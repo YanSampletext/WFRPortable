@@ -121,24 +121,8 @@
   function open(){ buildModal(); syncModal(); modal.classList.add('open'); }
   window.gmOpen=open;
 
-  // вход в боковом меню бланка (отдельное меню)
-  function injectNavItem(){
-    try{
-      var nav=document.getElementById('sv4-nav'); if(!nav) return;
-      if(nav.querySelector('.gm-nav-item')) return;
-      var btn=document.createElement('button');
-      btn.className='sv4-nav-item gm-nav-item';
-      btn.innerHTML='<span class="sv4-nav-emoji">✠</span><span>Печати и отметки</span>';
-      btn.addEventListener('click',function(){
-        try{ var n=document.getElementById('sv4-nav'); if(n) n.classList.remove('open'); var bd=document.querySelector('.sv4-nav-backdrop'); if(bd) bd.classList.remove('open'); }catch(e){}
-        open();
-      });
-      var div=nav.querySelector('.sv4-nav-divider');
-      if(div&&div.parentNode===nav) nav.insertBefore(btn,div); else nav.appendChild(btn);
-    }catch(e){}
-  }
-
-  function run(){ injectNavItem(); renderScatter(); }
+  // Вход в печати — плитка «Печати ГМ» на вкладке «Ещё» (gmOpen)
+  function run(){ renderScatter(); }
   try{
     var area=document.getElementById('sheet-area')||document.body;
     var _runT;

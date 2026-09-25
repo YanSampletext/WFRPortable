@@ -54,21 +54,7 @@
   };
 
   function showDiceResult(spec, parts, sum) {
-    var modal = document.getElementById('roll-modal');
-    if (!modal) {
-      modal = document.createElement('div');
-      modal.id = 'roll-modal';
-      modal.className = 'sv4-roll-modal';
-      // Закрываем только по клику по самой подложке. Раньше подложка гасла от
-      // любого клика внутри, и карточка защищалась event.stopPropagation() —
-      // а вместе со всплытием обрубалось делегирование: кнопки с data-call
-      // ловит обработчик на документе, до него событие не доходило, и «Ещё
-      // раз» не делала ничего. То же самое уже находили в справочнике.
-      modal.addEventListener('click', function (e) {
-        if (e.target === modal) modal.classList.remove('show');
-      });
-      document.body.appendChild(modal);
-    }
+    var modal = cardModal('roll-modal');
     var detail = parts.length > 1 ? parts.join(' + ') : String(parts[0]);
     if (spec.mod) detail += (spec.mod > 0 ? ' + ' : ' − ') + Math.abs(spec.mod);
     modal.innerHTML =

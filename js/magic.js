@@ -489,7 +489,7 @@ function renderTabArcane(){
 
 // деньги считает общий кошелёк бланка: moneyToBP / bpToMoney (sheet-render.js)
 function dtFmtMoney(m){
-  const parts=[]; if(m.gc) parts.push(`${m.gc} ЗК`); if(m.ss) parts.push(`${m.ss} СШ`); if(m.bp) parts.push(`${m.bp} МП`);
+  const parts=[]; if(m.gc) parts.push(`${m.gc} КР`); if(m.ss) parts.push(`${m.ss} шил.`); if(m.bp) parts.push(`${m.bp} бп`);
   return parts.length?parts.join(' '):'0';
 }
 
@@ -506,19 +506,19 @@ function dtCurrentStatus(){
 }
 
 // бросок дохода по статусу (та же модель, что стартовое богатство):
-// медь pos×2d10 МП, серебро pos×1d10 СШ, золото pos×1 ЗК
+// медь pos×2d10 бп, серебро pos×1d10 шил., золото pos×1 КР — подписи те же, что у кошелька бланка
 function dtRollIncome(){
   const st = dtCurrentStatus();
   let reward = {gc:0,ss:0,bp:0}, detail='';
   if(st.num<=0){ detail='Медь 0 — стандартного дохода нет (нищий).'; }
-  else if(st.tier==='медь'){ let s=0; for(let i=0;i<st.num;i++) s+=roll(2,10); reward.bp=s; detail=`${st.num}×2d10 = ${s} МП`; }
-  else if(st.tier==='серебро'){ let s=0; for(let i=0;i<st.num;i++) s+=roll(1,10); reward.ss=s; detail=`${st.num}×1d10 = ${s} СШ`; }
-  else { reward.gc=st.num; detail=`${st.num}×1 = ${st.num} ЗК`; }
+  else if(st.tier==='медь'){ let s=0; for(let i=0;i<st.num;i++) s+=roll(2,10); reward.bp=s; detail=`${st.num}×2d10 = ${s} бп`; }
+  else if(st.tier==='серебро'){ let s=0; for(let i=0;i<st.num;i++) s+=roll(1,10); reward.ss=s; detail=`${st.num}×1d10 = ${s} шил.`; }
+  else { reward.gc=st.num; detail=`${st.num}×1 = ${st.num} КР`; }
   dtPush('Доход', `Доходное предприятие (статус ${st.raw}). ${detail}`, {type:'money', money:reward});
 }
 
 // стоимость обучения: XP уже тратится в магазине; здесь считаем плату учителю.
-// базовое умение/характеристика: XP + 1d10 МП; продвинутое: ×2.
+// базовое умение/характеристика: XP + 1d10 бп; продвинутое: ×2.
 function dtTrainingCost(){
   const xp = parseInt(byId('dt-train-xp') && byId('dt-train-xp').value) || 0;
   const adv = byId('dt-train-adv') && byId('dt-train-adv').checked;
@@ -527,7 +527,7 @@ function dtTrainingCost(){
   const baseBp = xp + die;
   const totalBp = adv ? baseBp*2 : baseBp;
   const m = bpToMoney(totalBp);
-  dtPush('Тренировка', `Плата учителю за улучшение ${xp} XP${adv?' (продвинутое, ×2)':''}: ${xp} + 1d10(${die})${adv?' ×2':''} = ${totalBp} МП.`, {type:'spend', money:m, note:'оплата учителю'});
+  dtPush('Тренировка', `Плата учителю за улучшение ${xp} XP${adv?' (продвинутое, ×2)':''}: ${xp} + 1d10(${die})${adv?' ×2':''} = ${totalBp} бп.`, {type:'spend', money:m, note:'оплата учителю'});
 }
 
 // заказ вещи: фиксируем название/цену, заносим как трату + предмет
@@ -657,7 +657,7 @@ function renderTabDowntime(){
 
   h += `<div class="panel" style="margin-bottom:14px;">
     <div class="panel-title">Тренировка / обучение</div>
-    <p class="muted" style="font-size:12px;">Опыт за улучшение тратится в «Магазине XP»; здесь считается <b>плата учителю</b>: XP + 1d10 МП (продвинутое умение — ×2).</p>
+    <p class="muted" style="font-size:12px;">Опыт за улучшение тратится в «Магазине XP»; здесь считается <b>плата учителю</b>: XP + 1d10 бп (продвинутое умение — ×2).</p>
     <div class="sv4-row" style="gap:10px;flex-wrap:wrap;align-items:center;">
       <label style="font-size:12px;">XP улучшения: <input id="dt-train-xp" type="number" class="sv4-mini" style="width:64px;" value="0"/></label>
       <label style="font-size:12px;"><input id="dt-train-adv" type="checkbox"/> продвинутое (×2)</label>
@@ -670,9 +670,9 @@ function renderTabDowntime(){
     <p class="muted" style="font-size:12px;">Заказ редкой вещи у мастера. Укажи цену — при заносе в лист она спишется с кошелька, а предмет добавится в имущество.</p>
     <div class="sv4-row" style="gap:8px;flex-wrap:wrap;align-items:center;">
       <input id="dt-order-name" class="sv4-text" style="min-width:160px;" placeholder="что заказываешь"/>
-      <label style="font-size:12px;">ЗК <input id="dt-order-gc" type="number" class="sv4-mini" style="width:50px;" value="0"/></label>
-      <label style="font-size:12px;">СШ <input id="dt-order-ss" type="number" class="sv4-mini" style="width:50px;" value="0"/></label>
-      <label style="font-size:12px;">МП <input id="dt-order-bp" type="number" class="sv4-mini" style="width:50px;" value="0"/></label>
+      <label style="font-size:12px;">КР <input id="dt-order-gc" type="number" class="sv4-mini" style="width:50px;" value="0"/></label>
+      <label style="font-size:12px;">шил. <input id="dt-order-ss" type="number" class="sv4-mini" style="width:50px;" value="0"/></label>
+      <label style="font-size:12px;">бп <input id="dt-order-bp" type="number" class="sv4-mini" style="width:50px;" value="0"/></label>
       <button class="btn btn-sm btn-gold" onclick="dtOrderItem()">+ Заказать</button>
     </div>
   </div>`;

@@ -929,81 +929,7 @@ textarea { background: var(--panel); border: 1px solid var(--border2); color: va
 /* Боевые: ББ ДБ — красноватые; Физо: С В Лов — золото; Ментал: Инт СВ Сила Воли Общ — синеватые */
 
 /* === ВЫЕЗЖАЮЩЕЕ БОКОВОЕ МЕНЮ === */
-.sv4-nav-backdrop {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.65);
-  z-index: 199;
-  opacity: 0; pointer-events: none;
-  transition: opacity 0.25s ease;
-}
-.sv4-nav-backdrop.open { opacity: 1; pointer-events: auto; }
-.sv4-nav {
-  position: fixed;
-  top: 0; left: -300px;
-  width: 280px; height: 100vh;
-  background: linear-gradient(180deg, #1a130a, #0a0703);
-  border-right: 1px solid var(--gold);
-  box-shadow: 8px 0 28px rgba(0,0,0,0.7);
-  z-index: 200;
-  transition: left 0.3s ease;
-  overflow-y: auto;
-  padding: 14px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.sv4-nav.open { left: 0; }
-.sv4-nav::-webkit-scrollbar { width: 4px; }
-.sv4-nav::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 
-
-.sv4-nav-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  background: transparent;
-  border: 1px solid transparent;
-  border-left: 3px solid transparent;
-  color: var(--text);
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 14px;
-  text-align: left;
-  transition: all 0.15s ease;
-  border-radius: 4px;
-}
-.sv4-nav-item:hover {
-  background: rgba(218,165,32,0.06);
-  border-left-color: var(--gold-dim);
-}
-.sv4-nav-item.active {
-  background: linear-gradient(90deg, rgba(218,165,32,0.18), rgba(218,165,32,0.04));
-  border-color: rgba(218,165,32,0.3);
-  border-left-color: var(--gold2);
-  color: var(--gold2);
-  box-shadow: inset 0 0 12px rgba(218,165,32,0.1);
-}
-.sv4-nav-item svg {
-  width: 22px; height: 22px;
-  stroke: currentColor; fill: none; stroke-width: 1.4;
-  flex-shrink: 0;
-}
-.sv4-nav-item span { flex: 1; font-weight: 500; }
-.sv4-nav-item small {
-  font-size: 10px;
-  color: var(--text3);
-  font-style: italic;
-  font-weight: 400;
-}
-.sv4-nav-item.active small { color: var(--gold-dim); }
-.sv4-nav-item.danger { color: var(--blood2); }
-.sv4-nav-item.danger:hover { background: rgba(139,26,26,0.12); border-left-color: var(--blood2); }
-.sv4-nav-divider {
-  height: 1px;
-  background: var(--border);
-  margin: 10px 4px;
-}
 
 
 
@@ -1699,10 +1625,8 @@ textarea { background: var(--panel); border: 1px solid var(--border2); color: va
 .sv4-tier-ico { font-size: 26px; line-height: 1; }
 .sv4-section-title { } /* эмодзи в начале — нормальный размер */
 .sv4-bottom-item { }
-.sv4-nav-item { }
 /* Эмодзи в кнопках нижней навигации и бургер-меню */
 .sv4-bottom-item { font-size: 9px; }
-.sv4-nav-emoji { font-size: 20px; width: 24px; text-align: center; flex-shrink: 0; }
 /* === Защита от переполнения текста === */
 .sv4-hero-name, .card-name {
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -1770,7 +1694,6 @@ table input.sv4-mini { width: 100%; min-width: 38px; }
   .sv4-cond-help { width: 30px; height: 30px; font-size: 15px; margin-left: 5px; }
   .sv4-roll-close, .sv4-roll-again { min-height: 44px; }
   .btn, .btn-sm, .sv4-btn-mini { min-height: 38px; }
-  .sv4-nav-item { min-height: 46px; }
 }
 
 /* 3) Hover-эффекты залипают на тач (срабатывают по тапу и не сбрасываются).
@@ -1786,7 +1709,7 @@ table input.sv4-mini { width: 100%; min-width: 38px; }
 
 /* === Печать === */
 @media print {
-  .sv4-nav, .sv4-nav-backdrop, .sv4-print-controls,
+  .sv4-print-controls,
   .app-bar, .nav-bottom, .sv4-bottom-nav, .sv4-fab-hp,
   /* экранная мелочь, которой на бумаге делать нечего */
   #toast-stack, #ark-undo, #saved-tick, #app-drawer, #ad-slot,
@@ -1856,19 +1779,19 @@ table input.sv4-mini { width: 100%; min-width: 38px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--gold); }
 .ic { display:inline-flex; align-items:center; justify-content:center; vertical-align:-0.15em; }
 .ic svg { width:1.05em; height:1.05em; stroke:currentColor; fill:none; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
-.sv4-nav-emoji .ic svg, .sv4-bottom-item .ic svg { width:1.3em; height:1.3em; }
+.sv4-bottom-item .ic svg { width:1.3em; height:1.3em; }
 /* ===== GRIMDARK UI РЕФАКТОРИНГ (типографика, A11y, производительность) ===== */
 body { font-family: 'Barlow Condensed', 'EB Garamond', Georgia, sans-serif; }
-button, .btn, .btn-sm, .sv4-btn-mini, label, input, textarea, select, .tag, .sv4-chip, .card-sub, .muted, .sv4-tal-src, .sv4-tal-meta, .step, .num, .sv4-nav-item, .sv4-bottom-item, .sv4-cond, .sv4-qt-name, th, .sec-title {
+button, .btn, .btn-sm, .sv4-btn-mini, label, input, textarea, select, .tag, .sv4-chip, .card-sub, .muted, .sv4-tal-src, .sv4-tal-meta, .step, .num, .sv4-bottom-item, .sv4-cond, .sv4-qt-name, th, .sec-title {
   font-family: 'Barlow Condensed', 'EB Garamond', system-ui, sans-serif;
 }
 h1, h2, h3, .title-main, .sv4-hp-input, .sv4-block-title, .num-gold, .sv4-tal-name, .quick-gen-title { font-family: 'Cinzel', serif; }
 .muted, .sv4-tal-src, .card-sub, .sv4-cond-help, .sv4-qt-lvl, small, .footer-quote, .landing-epigraph { letter-spacing: 0.05em; }
 input:focus, textarea:focus, select:focus { outline: none; border-color: var(--blood2); box-shadow: 0 0 8px var(--blood-dim); }
-a:focus-visible, button:focus-visible, .btn:focus-visible, .btn-sm:focus-visible, .sv4-btn-mini:focus-visible, .card:focus-visible, .sv4-nav-item:focus-visible, .sv4-bottom-item:focus-visible, .sv4-cond-btn:focus-visible, .sv4-cond-help:focus-visible, .step:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
+a:focus-visible, button:focus-visible, .btn:focus-visible, .btn-sm:focus-visible, .sv4-btn-mini:focus-visible, .card:focus-visible, .sv4-bottom-item:focus-visible, .sv4-cond-btn:focus-visible, .sv4-cond-help:focus-visible, .step:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible {
   outline: 2px solid var(--gold2); outline-offset: 2px; box-shadow: 0 0 10px var(--blood-dim);
 }
-button, .btn, .btn-sm, .sv4-btn-mini, .sv4-cond-btn, .sv4-cond-help, [role="button"], .step, .sv4-nav-item, .sv4-bottom-item {
+button, .btn, .btn-sm, .sv4-btn-mini, .sv4-cond-btn, .sv4-cond-help, [role="button"], .step, .sv4-bottom-item {
   min-height: 44px; display: inline-flex; align-items: center; justify-content: center;
 }
 .btn, .btn-sm, .sv4-btn-mini { padding: 10px var(--space); }

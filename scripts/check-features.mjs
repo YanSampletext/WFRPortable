@@ -2608,7 +2608,7 @@ const arkCards = async () => {
 await check('карточка архива показывает тот же максимум ран, что и бланк', async () => {
   const want = await ev(() => {
     localStorage.removeItem('wfrp4_roster_v1');
-    handleCreate(); _rollFullRandomCharacterDo(); state.name = 'Раненый';
+    startNewCharacter(); _rollFullRandomCharacterDo(); state.name = 'Раненый';
     state.sheet.currentHP = 4;
     saveCharacterToRoster();
     return sheetCalc().maxHP;
@@ -2625,7 +2625,7 @@ await check('карточка архива показывает тот же ма
 await check('карточка архива считает судьбу как бланк', async () => {
   const want = await ev(() => {
     localStorage.removeItem('wfrp4_roster_v1');
-    handleCreate(); _rollFullRandomCharacterDo(); state.name = 'Везунчик';
+    startNewCharacter(); _rollFullRandomCharacterDo(); state.name = 'Везунчик';
     state.extraFate = 2; state.sheet.fateSpent = 1;   // купил две, одну потратил
     saveCharacterToRoster();
     return sheetCalc().fate;
@@ -2642,7 +2642,7 @@ await check('нетронутое досье в архиве показано п
   // currentHP = null на бланке значит «полное»; карточка обязана понимать так же
   const want = await ev(() => {
     localStorage.removeItem('wfrp4_roster_v1');
-    handleCreate(); _rollFullRandomCharacterDo(); state.name = 'Свежий';
+    startNewCharacter(); _rollFullRandomCharacterDo(); state.name = 'Свежий';
     state.sheet.currentHP = null;
     saveCharacterToRoster();
     return sheetCalc().maxHP;
@@ -2656,7 +2656,7 @@ await check('нетронутое досье в архиве показано п
 await check('нулевое здоровье в архиве не прячется', async () => {
   await ev(() => {
     localStorage.removeItem('wfrp4_roster_v1');
-    handleCreate(); _rollFullRandomCharacterDo(); state.name = 'Павший';
+    startNewCharacter(); _rollFullRandomCharacterDo(); state.name = 'Павший';
     state.sheet.currentHP = 0;
     saveCharacterToRoster();
   });
@@ -2669,9 +2669,9 @@ await check('нулевое здоровье в архиве не прячетс
 await check('расчёт одной карточки не задевает другую и открытое досье', async () => {
   const want = await ev(() => {
     localStorage.removeItem('wfrp4_roster_v1');
-    handleCreate(); _rollFullRandomCharacterDo(); state.name = 'Первый';
+    startNewCharacter(); _rollFullRandomCharacterDo(); state.name = 'Первый';
     state.extraFate = 3; saveCharacterToRoster();
-    handleCreate(); _rollFullRandomCharacterDo(); state.name = 'Второй';
+    startNewCharacter(); _rollFullRandomCharacterDo(); state.name = 'Второй';
     state.extraFate = 0; saveCharacterToRoster();
     return { первый: sheetCalc(loadRoster().find(x => x.name === 'Первый')).fate,
              второй: sheetCalc(loadRoster().find(x => x.name === 'Второй')).fate,
@@ -2691,7 +2691,7 @@ await check('расчёт одной карточки не задевает др
 await check('удар идёт по специализации под группу оружия', () => ev(() => {
   // Бралась самая развитая специализация: удар кинжалом уходил по навыку
   // алебарды, и игрок промахивался вдвое реже, чем должен.
-  handleCreate(); _rollFullRandomCharacterDo(); state.name = 'Боец';
+  startNewCharacter(); _rollFullRandomCharacterDo(); state.name = 'Боец';
   state.sheet.extraSkills = [
     { name: 'Рукопашный бой (основное)', stat: 'ББ', adv: 0 },
     { name: 'Рукопашный бой (двуручное)', stat: 'ББ', adv: 40 },
@@ -2745,12 +2745,12 @@ await check('новое досье не наследует чужие раны �
   // том же сеансе, рождалось с состояниями, увечьями и бронёй первого.
   // Без случайной генерации: она выдаёт снаряжение по карьере, и броня у
   // второго досье появилась бы законно — проверка падала бы через раз не по делу.
-  handleCreate();
+  startNewCharacter();
   state.sheet.conditions['Кровоточащий'] = 2;
   state.sheet.injuries.push('сломанное ребро');
   state.sheet.armor.push({ name: 'Кольчуга' });
   state.sheet.extended.push({ id: 'a', name: 'дело', skill: 'Атлетика', value: 40, goal: 8, acc: 5, tries: [] });
-  handleCreate();
+  startNewCharacter();
   const got = [];
   if (Object.keys(state.sheet.conditions).length) got.push('состояния');
   if (state.sheet.injuries.length) got.push('увечья');
@@ -2763,7 +2763,7 @@ await check('старое досье не тащит чужое при доза�
   // Дозаполнение по схеме — путь не нового досье, а старого сохранения, где
   // поля ещё не было. Раздача по ссылке била именно здесь: открыл одно старое
   // досье, потом другое — и второму достались состояния первого.
-  handleCreate();
+  startNewCharacter();
   state.sheet = { tier: 1 };                 // как у очень старого сохранения
   migrateState();
   const first = state.sheet;
@@ -2780,7 +2780,7 @@ await check('старое досье не тащит чужое при доза�
 }));
 
 await check('эталон схемы никто не портит', () => ev(() => {
-  handleCreate();
+  startNewCharacter();
   state.sheet.conditions['Оглушённый'] = 1;
   state.sheet.rollLog.push({ name: 'проба' });
   const shared = Object.keys(SHEET_DEFAULTS).filter(k =>
@@ -2811,7 +2811,7 @@ await check('всё, что живёт на бланке, переживает �
   // Поле, забытое в схеме, импорт молча выбрасывает — так уже случилось с
   // растянутыми проверками. Складываем в каждое поле что-нибудь заметное и
   // смотрим, что вернётся.
-  handleCreate();
+  startNewCharacter();
   // sanitizeCharacter отвергает досье без народа и характеристик — это её
   // работа, а нам нужно проверить сохранность полей бланка.
   state.race = 'human'; state.stats = { 'ББ': 35 };
@@ -3379,6 +3379,25 @@ await check('вкладка талантов показывает «Провер
   const withChecks = compileTalents().find(t => (DATA.all_talents.find(x => x.name.toLowerCase() === t.name.toLowerCase()) || {}).checks);
   if (!withChecks) { state.sheet.extraTalents.push({ name: 'Смекалка', level: 1 }); }
   return /Проверки:/.test(renderTabTalents()) || 'проверки не видны';
+}));
+
+await check('внешность по таблицам народа: возраст, рост, волосы, глаза', () => ev(() => {
+  const bad = [];
+  for (const r of Object.keys(DATA.races)) {
+    const a = ageRoll(r), h = heightRoll(r);
+    if (!/^\d+$/.test(a || '')) bad.push(r + ' возраст ' + a);
+    if (!/^\d+'\d+''$/.test(h || '') || +h.split("'")[1] > 11) bad.push(r + ' рост ' + h);
+    if (!DATA.appearance[r].hair.includes(lookRoll(r, 'hair'))) bad.push(r + ' волосы');
+  }
+  return bad.length ? bad.join(', ') : true;
+}));
+
+await check('зоны брони: одна разборка на сводку и галочки', () => ev(() => {
+  const z = s => [...armorZoneSet(s)].sort().join(',');
+  const cases = { 'руки, торс': 'леваярука,праваярука,тело', 'голова': 'голова',
+                  'левая нога': 'леваянога', 'ноги': 'леваянога,праваянога', '': '' };
+  const bad = Object.keys(cases).filter(k => z(k) !== cases[k]).map(k => k + ' → ' + z(k));
+  return bad.length ? bad.join('; ') : true;
 }));
 
 console.log(results.join('\n'));

@@ -11,15 +11,7 @@ const FUMBLE_TABLE = [
 function fumbleRoll(){
   const d = Math.floor(Math.random()*100)+1;
   const row = FUMBLE_TABLE.find(r => d>=r[0] && d<=r[1]);
-  let modal = document.getElementById('crit-modal');
-  // Подложка закрывается только по клику по себе. Раньше она гасла от любого
-  // клика внутри, и карточку приходилось защищать event.stopPropagation() —
-  // а это глушит и делегирование: кнопку с data-call ловит обработчик на
-  // документе, и она молча перестаёт работать. На карточке броска так и
-  // случилось с «Ещё раз».
-  if(!modal){ modal=document.createElement('div'); modal.id='crit-modal'; modal.className='sv4-roll-modal';
-    modal.onclick=(e)=>{ if(e.target===modal) modal.classList.remove('show'); };
-    document.body.appendChild(modal); }
+  const modal = cardModal('crit-modal');
   const eff = row[4];
   let applyBtn = '';
   if(eff && eff.hp) applyBtn = `<button class="btn btn-sm btn-gold" onclick="state.sheet.currentHP=Math.max(0,(parseInt(state.sheet.currentHP)||0)-1);autosave();notify('−1 рана (без БВ и брони)');this.closest('.sv4-roll-modal').classList.remove('show');if(_sheetTab==='health'||_sheetTab==='crit')renderSheet();">✓ −1 рана</button>`;

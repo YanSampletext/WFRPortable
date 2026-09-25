@@ -346,8 +346,8 @@ function importToRoster(input){
   input.value = '';
 }
 
-// ===== SAVE / LOAD (старая логика — теперь работает с текущим state, не с roster) =====
-const STORAGE_KEY = 'wfrp4_sheet_v1';
+// ===== SAVE / LOAD =====
+// Старый ключ одиночного досье (wfrp4_sheet_v1) переносит в архив init.js.
 
 // Галочка «сохранено» ставится после удачной записи, а не до попытки:
 // иначе при переполненной памяти она загоралась бы над несохранённым досье.
@@ -444,30 +444,3 @@ function migrateState(){
     });
   }
 }
-
-// При запуске:
-//  1) Если в localStorage остался "старый" одиночный state — мигрируем его в roster.
-//  2) Открываем галерею персонажей.
-(function(){
-  try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if(raw){
-      const saved = JSON.parse(raw);
-      // Мигрируем в roster только если есть имя или хотя бы выбраны раса+карьера
-      if(saved && (saved.name || (saved.race && saved.career))){
-        const roster = loadRoster();
-        if(!saved.id) saved.id = genCharId();
-        if(!roster.find(p => p.id === saved.id)){
-          saved._updated = Date.now();
-          roster.push(saved);
-          saveRoster(roster);
-        }
-      }
-      // Старый ключ больше не нужен — чистим, чтобы не сбивал при следующем открытии
-      localStorage.removeItem(STORAGE_KEY);
-    }
-  } catch(e){}
-  // state остаётся "пустым" — пользователь сам выбирает: открыть персонажа или создать нового
-  Object.assign(state, freshState());
-  migrateState();
-})();

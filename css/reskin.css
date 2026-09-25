@@ -69,7 +69,7 @@ body.theme-light::before{ opacity:.22 !important; }
 /* ─── 4. ТИПОГРАФИКА: три семейства — лапидарный Cinzel для заголовков и
         печатей, EB Garamond для текста, узкий Barlow Condensed
         для канцелярских меток, интерфейса и цифр ──────────────────── */
-.arch-serial, .sv4-tier-l, .sv4-c-l, .sv4-v-l, .sv4-stat-l, .sv4-i-l, .sv4-az-l, .sv4-m-l, .sv4-hp-l, .stat-full, .card-sub, .sv4-nav-item small, .sv4-tal-src, th, .sv4-tbl th, .step {
+.arch-serial, .sv4-tier-l, .sv4-c-l, .sv4-v-l, .sv4-stat-l, .sv4-i-l, .sv4-az-l, .sv4-m-l, .sv4-hp-l, .stat-full, .card-sub, .sv4-tal-src, th, .sv4-tbl th, .step {
   font-family:'Barlow Condensed', 'Courier New', monospace !important;
   letter-spacing:.08em;
 }
@@ -265,14 +265,7 @@ label{ color:var(--text3); font-family:'Barlow Condensed', monospace !important;
 
 
 /* Боковое меню — корешок архива */
-.sv4-nav{ background:linear-gradient(180deg,#1a130a,#080503); border-right:1px solid var(--gold); }
 
-
-.sv4-nav-item{ color:var(--text); }
-.sv4-nav-item:hover{ background:rgba(226,164,66,.06); border-left-color:var(--gold-dim); }
-.sv4-nav-item.active{ background:linear-gradient(90deg, rgba(226,164,66,.18), rgba(226,164,66,.04)); border-color:rgba(226,164,66,.32); border-left-color:var(--gold2); color:var(--gold2); }
-.sv4-nav-item.danger{ color:var(--blood2); }
-.sv4-nav-divider{ background:var(--gold-dk); }
 
 /* HERO — плита кровавого дерева в латуни, с надписью «не для чужих глаз» */
 .sv4-hero{
@@ -666,7 +659,6 @@ body.theme-light .sv4-hero::before { opacity:.7; }
   text-shadow:0 1px 0 rgba(0,0,0,.45);
 }
 body.theme-light .gm-pin.scrawl .gm-scrawl{ color:#8c1a10 !important; text-shadow:none; }
-.gm-nav-item .sv4-nav-emoji{ color:var(--gold2); font-size:16px; }
 
 /* ── МОДАЛКА отметок («отдельное меню») ── */
 .gm-modal-back{ position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,.78);
