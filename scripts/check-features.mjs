@@ -2821,9 +2821,13 @@ await check('всё, что живёт на бланке, переживает �
     if (Array.isArray(v)) { state.sheet[k] = [{ проба: k }]; mark[k] = 'array'; }
     else if (v && typeof v === 'object') { state.sheet[k] = { проба: 1 }; mark[k] = 'object'; }
   }
+  // Страх импорт собирает по своей схеме — пробный ключ он отбросит, а
+  // настоящее поле обязан сохранить
+  state.sheet.psych = { fearRank: 3, проба: 1 }; mark.psych = 'psych';
   const back = sanitizeCharacter(JSON.parse(JSON.stringify(state))).sheet;
   const lost = Object.keys(mark).filter(k => {
     const v = back[k];
+    if (mark[k] === 'psych') return !(v && v.fearRank === 3);
     return mark[k] === 'array' ? !(Array.isArray(v) && v.length) : !(v && v.проба === 1);
   });
   return lost.length ? 'потеряно при импорте: ' + lost.join(', ') : true;
@@ -3376,9 +3380,14 @@ await check('в журнале у броска кубов нет «≤null»', (
 }));
 
 await check('вкладка талантов показывает «Проверки» из справочника', () => ev(() => {
-  const withChecks = compileTalents().find(t => (DATA.all_talents.find(x => x.name.toLowerCase() === t.name.toLowerCase()) || {}).checks);
-  if (!withChecks) { state.sheet.extraTalents.push({ name: 'Смекалка', level: 1 }); }
-  return /Проверки:/.test(renderTabTalents()) || 'проверки не видны';
+  // талант, у которого в справочнике точно есть «проверки», и без фильтров
+  const t = DATA.all_talents.find(x => x.checks);
+  const keep = JSON.stringify(state.sheet.extraTalents);
+  state.sheet._talSearch = ''; state.sheet._talFilter = 'all';
+  state.sheet.extraTalents.push({ name: t.name, level: 1 });
+  const h = renderTabTalents();
+  state.sheet.extraTalents = JSON.parse(keep);
+  return h.includes('<b>Проверки:</b> ' + escHtml(t.checks)) || 'проверки «' + t.name + '» не видны';
 }));
 
 await check('внешность по таблицам народа: возраст, рост, волосы, глаза', () => ev(() => {
@@ -3398,6 +3407,62 @@ await check('зоны брони: одна разборка на сводку и
                   'левая нога': 'леваянога', 'ноги': 'леваянога,праваянога', '': '' };
   const bad = Object.keys(cases).filter(k => z(k) !== cases[k]).map(k => k + ' → ' + z(k));
   return bad.length ? bad.join('; ') : true;
+}));
+
+// ── последний проход по коду ────────────────────────────────────────────────
+await check('восстановление архива: более свежая копия из файла обновляет досье', () => ev(() => {
+  const r = loadRoster(); const me = r.find(x => x.name === 'Проверяемый') || r[0];
+  const file = JSON.parse(JSON.stringify(me));
+  file.name = 'Проверяемый (из файла)'; file._updated = Date.now() + 100000;
+  const c = sanitizeCharacter(file);
+  return c._updated === file._updated || 'метка свежести потеряна при разборе';
+}));
+
+await check('ступень вне лестницы из файла не роняет бланк', () => ev(() => {
+  const raw = JSON.parse(JSON.stringify(state)); raw.sheet.tier = 9;
+  const a = sanitizeCharacter(raw).sheet.tier;
+  raw.sheet.tier = -3;
+  const b = sanitizeCharacter(raw).sheet.tier;
+  return a === 4 && b === 1 ? true : 'ступень ' + a + ' / ' + b;
+}));
+
+await check('Твёрдость духа и Духовная чистота — не выше бонуса СВ', () => ev(() => {
+  const keep = JSON.stringify(state.sheet.extraTalents);
+  try {
+    const base = sheetCalc();
+    state.sheet.extraTalents.push({ name: 'Твёрдость духа', level: 30 }, { name: 'Духовная чистота', level: 30 });
+    const c = sheetCalc(), cap = c.RSVb;
+    const res = c.upor - base.upor, cor = c.corruptionThreshold - base.corruptionThreshold;
+    return res <= cap && cor <= cap ? true : 'решимость +' + res + ', порог +' + cor + ' при пределе ' + cap;
+  } finally { state.sheet.extraTalents = JSON.parse(keep); }
+}));
+
+await check('магазин показывает характеристику так же, как бланк (с талантами)', () => ev(() => {
+  const keep = JSON.stringify(state.sheet.extraTalents);
+  try {
+    state.sheet.extraTalents.push({ name: 'Силач', level: 1 });
+    state.xpGained = (state.sheet.spentXP || 0) + 500;
+    goStep(9);
+    const card = [...document.querySelectorAll('#shop-area .shop-card')].find(c => c.querySelector('.sc-head b').textContent === 'С');
+    const shown = parseInt(card.querySelector('.sc-val').textContent, 10);
+    const sheet = sheetCalc().totals['С'];
+    goStep(8);
+    return shown === sheet ? true : 'магазин ' + shown + ', бланк ' + sheet;
+  } finally { state.sheet.extraTalents = JSON.parse(keep); }
+}));
+
+await check('разбивка характеристик складывается в итог', () => ev(() => {
+  sv4NavGo('stats');
+  const rows = [...document.querySelectorAll('#sheet-area .sv4-tbl tbody tr')];
+  const val = td => { const i = td.querySelector('input'); return parseInt(i ? i.value : td.textContent.replace('+', ''), 10) || 0; };
+  const bad = [];
+  STAT_NAMES.forEach((s, j) => {
+    const cells = rows.map(r => r.cells[j + 1]);
+    const parts = cells.slice(0, -1).reduce((a, td) => a + val(td), 0);
+    if (parts !== val(cells[cells.length - 1])) bad.push(s + ': ' + parts + ' ≠ ' + val(cells[cells.length - 1]));
+  });
+  sv4NavGo('persona');
+  return bad.length ? bad.join(', ') : true;
 }));
 
 console.log(results.join('\n'));

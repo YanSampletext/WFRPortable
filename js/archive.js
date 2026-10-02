@@ -237,14 +237,22 @@
     if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
   });
 
-  // долгое нажатие по карточке — то же меню, что и по «⋯»
-  var pressTimer = null;
+  // долгое нажатие по карточке — то же меню, что и по «⋯».
+  // Отпущенный после удержания палец браузер превращает в обычный клик, и
+  // тот открывал досье поверх только что показанного меню. Поэтому после
+  // сработавшего удержания отпускание гасится и клик не рождается.
+  var pressTimer = null, pressFired = false;
   document.addEventListener('touchstart', function (e) {
     var card = e.target.closest('#roster-area .ark-card, #landing-char-list .ark-card');
+    pressFired = false;
     if (!card) return;
-    pressTimer = setTimeout(function () { openMenu(card.dataset.id); }, 500);
+    pressTimer = setTimeout(function () { pressFired = true; openMenu(card.dataset.id); }, 500);
   }, { passive: true });
-  ['touchend', 'touchmove', 'touchcancel'].forEach(function (ev) {
+  ['touchmove', 'touchcancel'].forEach(function (ev) {
     document.addEventListener(ev, function () { clearTimeout(pressTimer); }, { passive: true });
   });
+  document.addEventListener('touchend', function (e) {
+    clearTimeout(pressTimer);
+    if (pressFired) { pressFired = false; if (e.cancelable) e.preventDefault(); }
+  }, { passive: false });
 })();

@@ -82,14 +82,15 @@ function talentEncumbranceBonus(talents, totals){
   return lvl > 0 ? 2 * lvl : 0;
 }
 
-// Бонус к макс. решимости (Твёрдость духа: +1 за уровень)
-function talentResolveBonus(talents){
-  return talentLevel('твёрдость духа', talents);
+// Бонус к макс. решимости (Твёрдость духа: +1 за уровень) и к порогу
+// скверны (Духовная чистота: +1 за уровень). Оба не выше бонуса силы воли —
+// так в книге, и так уже считались «Здоровяк» и «Бугай»; эти два предел
+// не знали, и вписанный руками пятый уровень давал +5.
+function talentResolveBonus(talents, totals){
+  return talentEffLevel('твёрдость духа', talents, totals);
 }
-
-// Бонус к порогу скверны (Духовная чистота: +1 за уровень)
-function talentCorruptionThresholdBonus(talents){
-  return talentLevel('духовная чистота', talents);
+function talentCorruptionThresholdBonus(talents, totals){
+  return talentEffLevel('духовная чистота', talents, totals);
 }
 
 // Открытое досье. Полную схему держит freshState (roster.js), а заполняет
@@ -259,7 +260,7 @@ function sheetCalc(ch){
     maxHP += talentHpBonus(RV, tals); // Здоровяк
   }
   const fate   = r ? Math.max(0, r.fate + (ch.extraFate||0) - ((ch.sheet&&ch.sheet.fateSpent)||0)) : 0;
-  const upor   = r ? r.resilience + (ch.extraRes||0) + talentResolveBonus(tals) : 0;
+  const upor   = r ? r.resilience + (ch.extraRes||0) + talentResolveBonus(tals, totals) : 0;
   const move   = (r ? r.move : 0) + talentMoveBonus(tals);
   // Лимит переносимого веса = РС + РВ (в пунктах веса); +2 за уровень «Бугая».
   const RS_b = Math.floor((totals['С']||0)/10);
@@ -267,7 +268,7 @@ function sheetCalc(ch){
   const encMax = RS_b + RV_b + talentEncumbranceBonus(tals, totals);
   // Порог скверны: рейтинг СВ + рейтинг В + Духовная чистота
   const RSV_b = Math.floor((totals['СВ']||0)/10);
-  const corruptionThreshold = RV_b + RSV_b + talentCorruptionThresholdBonus(tals);
+  const corruptionThreshold = RV_b + RSV_b + talentCorruptionThresholdBonus(tals, totals);
   // Максимум очков удачи = текущие очки судьбы + уровень таланта «Фортуна»
   // (Luck, Максимум: бонус харизмы)
   const fortuneMax = fate + talentEffLevel('фортуна', tals, totals);

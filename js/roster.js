@@ -199,7 +199,7 @@ function fitsShape(value, sample, key){
 // вставляет в разметку как есть. Строка на их месте — это готовый HTML
 // из чужого файла. Поэтому числовые поля записей перечислены здесь.
 const IMPORT_NUMBERS = {
-  weapons: ['enc'], armor: ['enc', 'ap'], trappings: ['enc'],
+  weapons: ['enc', 'ammo'], armor: ['enc', 'ap'], trappings: ['enc'],
   extraSkills: ['adv'], extraTalents: ['level'], talentBought: ['level'],
   careerLog: ['cost'], diseases: ['day'], spells: ['cn'],
   rollLog: ['target', 'd'], critLog: ['wounds'],
@@ -219,6 +219,7 @@ function importNumber(v){
 }
 function numberMap(obj){
   const out = {};
+  if(!obj || typeof obj !== 'object' || Array.isArray(obj)) return out;
   for(const k in obj) out[k] = importNumber(obj[k]) || 0;
   return out;
 }
@@ -246,6 +247,18 @@ function normalizeLists(sheet){
     }
   }
   for(const key of IMPORT_NUMBER_MAPS) sheet[key] = numberMap(sheet[key]);
+  // Вложенное глубже одного уровня форма записи не видит, а бланк выводит его
+  // числа как есть: суммы в журнале простоя, состояния крита, счётчики страха.
+  const REWARD = ['money', 'spend', 'buy', 'note'];
+  for(const e of sheet.downtimeLog){
+    const r = (e.reward && typeof e.reward === 'object') ? e.reward : {};
+    e.reward = { type: REWARD.includes(r.type) ? r.type : 'note', money: numberMap(r.money),
+                 item: String(r.item == null ? '' : r.item), note: String(r.note == null ? '' : r.note) };
+  }
+  for(const e of sheet.critLog) e.conds = numberMap(e.conds);
+  const ps = sheet.psych;
+  sheet.psych = { fearRank: importNumber(ps.fearRank) || 0, fearSL: importNumber(ps.fearSL) || 0,
+                  fearActive: ps.fearActive === true, frenzy: ps.frenzy === true };
 }
 
 // Болезни когда-то вписывались строкой, а блок «Болезни и инфекции» хранит
@@ -300,6 +313,14 @@ function sanitizeCharacter(raw){
       ? Object.assign({}, e, { talent: String(e.talent || ''), roll: importNumber(e.roll) })
       : null);
   clean.sheet.diseases = clean.sheet.diseases.map(diseaseFromText);
+  // Ступень — номер в лестнице карьеры: девятой ступени нет, и бланк с ней
+  // не открывался (tier.name у пустоты)
+  const tiers = ((DATA.careers[clean.career] || {}).tiers || []).length || 4;
+  clean.sheet.tier = Math.min(tiers, Math.max(1, Math.trunc(clean.sheet.tier) || 1));
+  // Когда досье менялось — по этой метке восстановление архива решает, чья
+  // копия свежее. Её не было в схеме, и импорт её выбрасывал: копия из файла
+  // никогда не обновляла досье на устройстве.
+  if(typeof raw._updated === 'number' && Number.isFinite(raw._updated)) clean._updated = raw._updated;
   // Правка схемы карьеры уходит в разметку как есть — берём только три
   // настоящие характеристики у настоящей карьеры
   const so = {};

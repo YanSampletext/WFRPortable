@@ -192,7 +192,7 @@ function renderShop(){
   STAT_NAMES.forEach(s => {
     const base = state.stats[s] || 0;
     const done = statAdvancesTotal(s);
-    const cur  = base + done;
+    const cur  = shopTotals[s] || 0;   // как на бланке: с бонусами талантов
     const inCart = cartCountStat(s);
     const inCareer = !availStats || availStats.includes(s);
     // вне карьеры — двойная цена (правило «Улучшения», гл. II)

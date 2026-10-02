@@ -45,18 +45,26 @@ const paths = await p.evaluate(() => {
     completed: true, d: 42, outcome: 'o', sl: 2, t: 1, zone: 'Голова', wounds: 1,
     effect: 'e', lethal: false, dZone: 5, dWound: 7, skill: 'Атлетика', value: 30,
     goal: 5, acc: 1, tries: [{ d: 12, target: 30, sl: 1, dif: 'Серьёзная', t: 1 }],
-    conds: { 'Кровоточащий': 1 }, reward: { type: 'note' },
+    conds: { 'Кровоточащий': 1 }, ammo: 3,
+    reward: { type: 'buy', item: 'и', note: 'н', money: { gc: 1, ss: 2, bp: 3 } },
   });
   const s = state.sheet;
   for (const k in s) if (Array.isArray(s[k]) && !s[k].length) s[k].push(entry());
   s.rollLog[0].target = 30;          // у заклинаний цель — текст, у броска — число
   s.injuries = ['рана'];
+  // Поля, которые бланк показывает только в особом состоянии: страх
+  // активен, оружие стрелковое. Без этого проверка смотрела мимо них.
+  s.psych = { fearRank: 2, fearSL: 1, fearActive: true, frenzy: false };
+  s.weapons[0].group = 'Луки'; s.weapons[0].ammo = 3;
   s.conditions = { 'Кровоточащий': 1 };
   window.__legit = JSON.parse(JSON.stringify(state));
 
   // «Народ» и «карьера» — ключи справочника: с кодом в них импорт откажет
   // целиком и дальше смотреть будет нечего. Их проверка — ниже, отдельно.
   const keep = new Set(['race', 'cls', 'career', 'id', 'portrait']);
+  // Поля-перечисления: от них зависит, что вообще покажется (стрелковое ли
+  // оружие, денежная ли запись). Отравить их — значит спрятать соседей.
+  const enumKeys = new Set(['group', 'type']);
   const map = [];
   const pay = n => `'"><img src=x onerror=__x(${n})>`;
   const src = JSON.parse(JSON.stringify(state));
@@ -64,6 +72,7 @@ const paths = await p.evaluate(() => {
     for (const k of Object.keys(o)) {
       const v = o[k], here = path + '.' + k;
       if (path === '' && keep.has(k)) continue;
+      if (enumKeys.has(k) && typeof v === 'string') continue;
       if (typeof v === 'string' || typeof v === 'number') { map.push(here); o[k] = pay(map.length - 1); }
       else if (v && typeof v === 'object') walk(v, here);
     }
