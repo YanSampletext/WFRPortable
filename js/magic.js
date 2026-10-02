@@ -152,17 +152,59 @@ function arcDifNote(mod){
   mod = parseInt(mod)||0;
   return mod && typeof difficultyNote === 'function' ? ' (' + difficultyNote(mod) + ')' : '';
 }
+// Навык для броска — с бланка: «Язык (магический)», «Концентрация (…)»,
+// «Молитвословие». Раньше вкладка их не видела и требовала вписать значение
+// руками в отдельное поле, где стоял 0, — и до тех пор отвечала «укажи
+// навык». Ручное поле осталось для того, у кого навыка на бланке нет.
+const MAGIC_SKILL = {
+  cast:    { field: 'langMagick',   label: 'язык (магический)', test: n => n.startsWith('язык') && n.includes('маги') },
+  channel: { field: 'channelSkill', label: 'концентрация',      test: n => n.startsWith('концентрац') },
+  pray:    { field: 'praySkill',    label: 'молитвословие',     test: n => n.startsWith('молитв') }
+};
+function magicSkill(kind){
+  const k = MAGIC_SKILL[kind];
+  const rows = (typeof compileSkills === 'function' ? compileSkills() : [])
+    // продвинутый навык без шагов не изучен — бросать по нему нельзя (с. 117)
+    .filter(r => k.test(String(r.name).toLowerCase()) && r.adv > 0);
+  const best = rows.sort((a, b) => (b.value||0) - (a.value||0))[0];
+  if(best) return { value: best.value || 0, name: best.name, fromSheet: true };
+  return { value: parseInt(state.sheet[k.field]) || 0, name: k.label, fromSheet: false };
+}
+
 function castDifficulty(i){
-  difficultyPick('Сотворение · язык (магик)', parseInt(state.sheet.langMagick)||0,
-                 function(m){ rollCastingTest(i, m); });
+  const sk = magicSkill('cast');
+  difficultyPick('Сотворение · ' + sk.name, sk.value, function(m){ rollCastingTest(i, m); });
 }
 function channelDifficulty(){
-  difficultyPick('Каналирование · концентрация', parseInt(state.sheet.channelSkill)||0,
-                 function(m){ rollChannelling(m); });
+  const sk = magicSkill('channel');
+  difficultyPick('Каналирование · ' + sk.name, sk.value, function(m){ rollChannelling(m); });
 }
 function prayDifficulty(i, kind){
-  difficultyPick('Молитва', parseInt(state.sheet.praySkill)||0,
-                 function(m){ rollPrayTest(i, kind, m); });
+  const sk = magicSkill('pray');
+  difficultyPick('Молитва · ' + sk.name, sk.value, function(m){ rollPrayTest(i, kind, m); });
+}
+
+// Карточка результата. Раньше итог броска и таблицы ошибок уходил только в
+// свёрнутый журнал, а на экране появлялась одна всплывашка «Бросок: малая
+// ошибка» — без самой ошибки. Выглядело так, будто ничего не произошло.
+function arcCard(title, d, outcome, cls, lines){
+  const modal = cardModal('roll-modal');
+  modal.innerHTML = `<div class="sv4-roll-card ${cls||''}">
+    <div class="sv4-roll-skill">${escHtml(title)}</div>
+    ${d != null ? `<div class="sv4-roll-die">${d}</div>` : ''}
+    <div class="sv4-roll-outcome">${escHtml(outcome)}</div>
+    <div class="arc-lines" style="font-size:12px;text-align:left;line-height:1.45;margin:8px 4px;">${lines.map(l => `<p style="margin:4px 0;">${l}</p>`).join('')}</div>
+    <div class="sv4-roll-btns">
+      <button class="sv4-roll-close" onclick="document.getElementById('roll-modal').classList.remove('show')">Закрыть</button>
+    </div>
+  </div>`;
+  modal.classList.add('show');
+}
+// Бросок навыка — и в общий журнал бросков, как любая проверка на бланке
+function arcLogRoll(name, target, d, o){
+  if(!Array.isArray(state.sheet.rollLog)) state.sheet.rollLog = [];
+  state.sheet.rollLog.unshift({ name, target, d, outcome: o.ok ? 'Успех' : 'Провал', sl: slSigned(o) + ' ст.усп.', t: Date.now() });
+  if(state.sheet.rollLog.length > 30) state.sheet.rollLog.length = 30;
 }
 
 // ===================== ПРОВЕРКА СОТВОРЕНИЯ =====================
@@ -180,8 +222,9 @@ function hasTalent(){
 function rollCastingTest(idx, mod){
   const sp = (state.sheet.spells||[])[idx];
   if(!sp){ notify('Не выбрано заклинание.'); return; }
-  const base = parseInt(state.sheet.langMagick)||0;
-  if(base<=0){ notify('Укажи навык «язык (магик)» вверху вкладки.'); return; }
+  const sk = magicSkill('cast');
+  const base = sk.value;
+  if(base<=0){ notify('Нет навыка «Язык (магический)»: купи его в магазине или впиши значение вверху вкладки.'); return; }
   const dif = parseInt(mod)||0;
   const target = base + dif;
   const cn = parseInt(sp.cn)||0;
@@ -191,7 +234,7 @@ function rollCastingTest(idx, mod){
   const ready = ch > 0 && ch >= cn;             // накоплено на это заклинание
   const cast = o.ok && o.sl >= (ready ? 0 : cn);
   let lines = [];
-  lines.push(`<span class="ic">${ICONS.dice}</span> d100 = <b>${r}</b> против ${target}${arcDifNote(dif)} → ${o.ok?'успех':'провал'}, SL ${slSigned(o)}`);
+  lines.push(`<span class="ic">${ICONS.dice}</span> ${escHtml(sp.name||'Заклинание')}: d100 = <b>${r}</b> против ${target} (${escHtml(sk.name)})${arcDifNote(dif)} → ${o.ok?'успех':'провал'}, SL ${slSigned(o)}`);
   if(ch > 0) lines.push(ready
     ? `Каналировано (${channelText(ch)}) — ЗС считается равным 0.`
     : `Каналировано ${ch} SL из ${cn} — мало, ЗС обычное.`);
@@ -220,15 +263,18 @@ function rollCastingTest(idx, mod){
   state.sheet.miscastLog = state.sheet.miscastLog || [];
   state.sheet.miscastLog.unshift({type:'cast', roll:r, text: lines.join(' · ')});
   if(state.sheet.miscastLog.length>12) state.sheet.miscastLog.pop();
+  arcLogRoll('Сотворение: ' + (sp.name||'заклинание'), target, r, o);
+  if(auto==='minor') lines.push('<b>' + miscastRoll('minor') + '</b>');
   autosave();
-  notify(cast ? `Сотворено: ${sp.name}` : `Провал сотворения: ${sp.name}`);
-  if(auto==='minor'){ rollMinorMiscast(true); }
-  else renderSheet();
+  renderSheet();
+  arcCard('Сотворение · ' + (sp.name||'заклинание'), r, cast ? 'Сотворено' : 'Не сотворено',
+          cast ? (o.double ? 'crit-success' : 'success') : (o.double ? 'crit-fail' : 'fail'), lines);
 }
 
 function rollChannelling(mod){
-  const base = parseInt(state.sheet.channelSkill)||0;
-  if(base<=0){ notify('Укажи навык «концентрация» вверху вкладки.'); return; }
+  const sk = magicSkill('channel');
+  const base = sk.value;
+  if(base<=0){ notify('Нет навыка «Концентрация»: купи его в магазине или впиши значение вверху вкладки.'); return; }
   const dif = parseInt(mod)||0;
   const target = base + dif;
   const r = rollD100();
@@ -250,50 +296,56 @@ function rollChannelling(mod){
     if(fumble){ note = ' Заминка — крупная ошибка.'; auto = 'major'; }
   }
   state.sheet.channelled = ch;
-  const txt = `<span class="ic">${ICONS.dice}</span> Концентрация d100 = ${r} против ${target}${arcDifNote(dif)} → ${o.ok?'успех':'провал'}, SL ${slSigned(o)}. Накоплено: <b>${channelText(ch)}</b>.` + note;
+  const txt = `<span class="ic">${ICONS.dice}</span> ${escHtml(sk.name)} d100 = ${r} против ${target}${arcDifNote(dif)} → ${o.ok?'успех':'провал'}, SL ${slSigned(o)}. Накоплено: <b>${channelText(ch)}</b>.` + note;
   state.sheet.miscastLog = state.sheet.miscastLog || [];
   state.sheet.miscastLog.unshift({type:'channel', roll:r, text:txt});
   if(state.sheet.miscastLog.length>12) state.sheet.miscastLog.pop();
+  arcLogRoll('Каналирование', target, r, o);
+  const lines = [txt];
+  if(auto) lines.push('<b>' + miscastRoll(auto) + '</b>');
   autosave();
-  if(auto==='minor') rollMinorMiscast(true);
-  else if(auto==='major') rollMajorMiscast(true);
-  else renderSheet();
+  renderSheet();
+  arcCard('Каналирование · ' + sk.name, r, 'Накоплено: ' + channelText(ch),
+          o.ok ? (o.double ? 'crit-success' : 'success') : (auto ? 'crit-fail' : 'fail'), lines);
 }
 
-function rollMinorMiscast(silent){
+// Бросок по таблице ошибок: в журнал, текст — вызывающему, чтобы показать
+// его на карточке того броска, который ошибку и вызвал.
+function miscastRoll(kind){
   const r = rollD100();
-  const txt = `МАЛАЯ ОШИБКА (${r}): ${arcTableLookup(ARC_MINOR_MISCAST, r)}`;
+  const major = kind === 'major';
+  const txt = `${major ? 'КРУПНАЯ' : 'МАЛАЯ'} ОШИБКА (${r}): ${arcTableLookup(major ? ARC_MAJOR_MISCAST : ARC_MINOR_MISCAST, r)}`;
   state.sheet.miscastLog = state.sheet.miscastLog || [];
-  state.sheet.miscastLog.unshift({type:'minor', roll:r, text:txt});
+  state.sheet.miscastLog.unshift({type: major ? 'major' : 'minor', roll:r, text:txt});
   if(state.sheet.miscastLog.length>12) state.sheet.miscastLog.pop();
-  autosave();
-  if(!silent) notify('Бросок: малая ошибка');
-  renderSheet();
+  return txt;
 }
-function rollMajorMiscast(silent){
-  const r = rollD100();
-  const txt = `КРУПНАЯ ОШИБКА (${r}): ${arcTableLookup(ARC_MAJOR_MISCAST, r)}`;
-  state.sheet.miscastLog = state.sheet.miscastLog || [];
-  state.sheet.miscastLog.unshift({type:'major', roll:r, text:txt});
-  if(state.sheet.miscastLog.length>12) state.sheet.miscastLog.pop();
+function showMiscast(kind){
+  const txt = miscastRoll(kind);
   autosave();
-  if(!silent) notify('Бросок: крупная ошибка');
   renderSheet();
+  const i = txt.indexOf(': ');
+  arcCard(kind === 'major' ? 'Крупная ошибка' : 'Малая ошибка', parseInt(txt.match(/\((\d+)\)/)[1], 10),
+          txt.slice(i + 2).split(':')[0], 'crit-fail', [escHtml(txt.slice(i + 2))]);
 }
+function rollMinorMiscast(){ showMiscast('minor'); }
+function rollMajorMiscast(){ showMiscast('major'); }
 
 // ===================== ВЕРА: МОЛИТВА / ГНЕВ =====================
 function rollPrayTest(idx, kind, mod){
   const list = kind==='miracle' ? (state.sheet.miracles||[]) : (state.sheet.blessings||[]);
   const it = list[idx];
-  const base = parseInt(state.sheet.praySkill)||0;
-  if(base<=0){ notify('Укажи навык «молитва» вверху раздела «Вера».'); return; }
+  const sk = magicSkill('pray');
+  const base = sk.value;
+  if(base<=0){ notify('Нет навыка «Молитвословие»: купи его в магазине или впиши значение в разделе «Вера».'); return; }
   const dif = parseInt(mod)||0;
   const target = base + dif;
   const r = rollD100();
   const o = testOutcome(target, r);
   const success = o.ok;
   const sin = parseInt(state.sheet.sin)||0;
-  let lines = [`<span class="ic">${ICONS.dice}</span> Молитва d100 = <b>${r}</b> против ${target}${arcDifNote(dif)} → ${success?'успех':'провал'}, SL ${slSigned(o)}` + (it?` — ${it.name}`:'')];
+  // Название молитвы — текст: из чужого досье оно приходит каким угодно
+  let lines = [`<span class="ic">${ICONS.dice}</span> Молитва d100 = <b>${r}</b> против ${target} (${escHtml(sk.name)})${arcDifNote(dif)} → ${success?'успех':'провал'}, SL ${slSigned(o)}` + (it?` — ${escHtml(it.name)}`:'')];
   // Гнев (с. 177): заминка — провал на дубле — или единицы не больше греха,
   // «даже если проверка прошла успешно». Успех на дубле гнева не зовёт.
   const triggerWrath = (!success && o.double) || (sin>0 && arcUnitsDigit(r) <= sin);
@@ -304,16 +356,15 @@ function rollPrayTest(idx, kind, mod){
   state.sheet.wrathLog = state.sheet.wrathLog || [];
   state.sheet.wrathLog.unshift({type:'pray', roll:r, text: lines.join(' · ')});
   if(state.sheet.wrathLog.length>12) state.sheet.wrathLog.pop();
+  arcLogRoll('Молитва' + (it && it.name ? ': ' + it.name : ''), target, r, o);
+  if(triggerWrath) lines.push('<b>' + escHtml(wrathRoll()) + '</b>');
   autosave();
-  if(triggerWrath){
-    notify('Гнев богов!');
-    rollWrath(true);
-  } else {
-    notify(success ? `Проявлено: ${it?it.name:''}` : 'Молитва не удалась');
-    renderSheet();
-  }
+  renderSheet();
+  arcCard('Молитва' + (it && it.name ? ' · ' + it.name : ''), r,
+          triggerWrath ? 'Гнев богов!' : (success ? 'Проявлено' : 'Не проявлено'),
+          triggerWrath ? 'crit-fail' : (success ? 'success' : 'fail'), lines);
 }
-function rollWrath(silent){
+function wrathRoll(){
   const sin = parseInt(state.sheet.sin)||0;
   const base = rollD100();
   const total = Math.min(150, base + 10*sin); // книга: +10 за очко греха, таблица до 150
@@ -322,9 +373,13 @@ function rollWrath(silent){
   state.sheet.wrathLog.unshift({type:'wrath', roll:total, text:txt});
   if(state.sheet.wrathLog.length>12) state.sheet.wrathLog.pop();
   state.sheet.sin = Math.max(0, sin - 1); // книга: после броска грех уменьшается на 1 (мин 0)
+  return txt;
+}
+function rollWrath(){
+  const txt = wrathRoll();
   autosave();
-  if(!silent) notify('Бросок: Гнев богов');
   renderSheet();
+  arcCard('Гнев богов', null, txt.split('→ ')[1].split(':')[0], 'crit-fail', [escHtml(txt)]);
 }
 
 // ===================== СКВЕРНА → МУТАЦИЯ =====================
@@ -420,8 +475,15 @@ function arcPrayerRows(kind){
   h += `</table>`;
   return h;
 }
-function arcLog(list){
-  if(!list || !list.length) return '<p class="muted" style="font-size:11px;">Боги пока молчат.</p>';
+// Значение навыка: с бланка — просто число, без навыка — поле для своего
+function arcSkillField(kind){
+  const sk = magicSkill(kind), k = MAGIC_SKILL[kind];
+  if(sk.fromSheet) return `<span style="font-size:12px;">${escHtml(sk.name)}: <b style="color:var(--gold2);">${sk.value}</b> <span class="muted">с бланка</span></span>`;
+  return `<label style="font-size:12px;" title="Навыка нет на бланке — впиши своё значение">${escHtml(k.label)}: <input type="number" class="sv4-mini gold" style="width:60px;" value="${sk.value||0}" onchange="state.sheet.${k.field}=Math.max(0,parseInt(this.value)||0);autosave();renderSheet();"/> <span class="muted">нет на бланке</span></label>`;
+}
+
+function arcLog(list, empty){
+  if(!list || !list.length) return '<p class="muted" style="font-size:11px;">' + (empty || 'Пока пусто.') + '</p>';
   return list.map(e=>`<div class="muted" style="font-size:11px;border-bottom:1px solid var(--border);padding:3px 0;">${e.text}</div>`).join('');
 }
 
@@ -433,10 +495,10 @@ function renderTabArcane(){
   // ---- МАГИЯ ----
   h += `<div class="panel" style="margin-bottom:14px;">
     <div class="panel-title">✦ Магия (тайные знания)</div>
-    <p class="muted" style="font-size:12px;">Сотворение = проверка <b>языка (магик)</b>; нужно набрать <b>SL ≥ ЗС</b> заклинания. Дубль на броске → критическое сотворение (малая ошибка + бонус). Каналирование копит SL «концентрацией».</p>
+    <p class="muted" style="font-size:12px;">Сотворение = проверка <b>языка (магического)</b>; нужно набрать <b>SL ≥ ЗС</b> заклинания. Дубль на броске → критическое сотворение (малая ошибка + бонус). Каналирование копит SL «концентрацией».</p>
     <div class="sv4-row" style="gap:14px;flex-wrap:wrap;align-items:center;margin:8px 0;">
-      <label style="font-size:12px;">язык (магик): <input type="number" class="sv4-mini gold" style="width:60px;" value="${s.langMagick||0}" onchange="state.sheet.langMagick=Math.max(0,parseInt(this.value)||0);autosave();"/></label>
-      <label style="font-size:12px;">концентрация: <input type="number" class="sv4-mini" style="width:60px;" value="${s.channelSkill||0}" onchange="state.sheet.channelSkill=Math.max(0,parseInt(this.value)||0);autosave();"/></label>
+      ${arcSkillField('cast')}
+      ${arcSkillField('channel')}
       <label style="font-size:12px;" title="любая 8 на кубе единиц рядом с искажением → малая ошибка"><input type="checkbox" ${s.nearCorruption?'checked':''} onchange="state.sheet.nearCorruption=this.checked;autosave();"/> рядом с искажением</label>
     </div>
     <div class="sv4-row" style="gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px;">
@@ -462,7 +524,7 @@ function renderTabArcane(){
     <div class="panel-title">✦ Вера (благословения и чудеса)</div>
     <p class="muted" style="font-size:12px;">Проявление = проверка <b>молитвы</b>. Заминка (провал на дубле) или «единицы ≤ очков греха» → <b>Гнев богов</b> (+10 за каждое очко греха, после броска грех −1).</p>
     <div class="sv4-row" style="gap:14px;flex-wrap:wrap;align-items:center;margin:8px 0;">
-      <label style="font-size:12px;">молитва: <input type="number" class="sv4-mini gold" style="width:60px;" value="${s.praySkill||0}" onchange="state.sheet.praySkill=Math.max(0,parseInt(this.value)||0);autosave();"/></label>
+      ${arcSkillField('pray')}
       <label style="font-size:12px;">очки греха: <input type="number" class="sv4-mini ${sin>0?'danger':''}" style="width:56px;" value="${sin}" onchange="state.sheet.sin=Math.max(0,parseInt(this.value)||0);autosave();renderSheet();"/></label>
       <button class="btn btn-sm" onclick="rollWrath()"><span class="ic">${ICONS.dice}</span> Гнев богов</button>
     </div>
@@ -472,7 +534,7 @@ function renderTabArcane(){
     <div class="sv4-block-title">Чудеса</div>
     ${arcPrayerRows('miracle')}
     <div class="sv4-row" style="margin-top:4px;"><button class="btn btn-sm btn-gold" onclick="state.sheet.miracles=state.sheet.miracles||[];state.sheet.miracles.push({name:'',range:'',target:'',duration:''});autosave();renderSheet();">+ Чудо</button></div>
-    <details style="margin-top:8px;"><summary class="muted" style="font-size:12px;cursor:pointer;">Журнал молитв / гнева</summary>${arcLog(s.wrathLog)}</details>
+    <details style="margin-top:8px;"><summary class="muted" style="font-size:12px;cursor:pointer;">Журнал молитв / гнева</summary>${arcLog(s.wrathLog, 'Боги пока молчат.')}</details>
   </div>`;
 
   return h;

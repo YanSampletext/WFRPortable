@@ -3465,6 +3465,90 @@ await check('разбивка характеристик складываетс�
   return bad.length ? bad.join(', ') : true;
 }));
 
+// ── магия и вера целиком: как это видит игрок ───────────────────────────────
+const arcCardText = () => ev(() => {
+  const m = document.getElementById('roll-modal');
+  const t = m && m.classList.contains('show') ? m.textContent.replace(/\s+/g, ' ') : null;
+  if (m) m.classList.remove('show');
+  return t;
+});
+const arcSetup = () => ev(() => {
+  const s = state.sheet;
+  s.skillAdvBought = { 'язык (магический)': 10, 'концентрация (азир)': 10, 'молитвословие': 10 };
+  s.langMagick = 0; s.channelSkill = 0; s.praySkill = 0; s.channelled = 0; s.sin = 0;
+  s.spells = [{ name: 'Друг животных', cn: 0 }, { name: 'Тяжёлое', cn: 30 }];
+  s.blessings = [{ name: '<img src=x onerror=window.__arcX=1>' }];
+  s.miscastLog = []; s.wrathLog = [];
+  window.__arcX = 0;
+  goStep(8); sv4NavGo('magic');
+});
+
+await check('магия: малая и крупная ошибка показывают результат на экране', async () => {
+  await arcSetup();
+  await ev(() => rollMinorMiscast());
+  const a = await arcCardText();
+  await ev(() => rollMajorMiscast());
+  const b = await arcCardText();
+  if (!a || !/Малая ошибка/.test(a) || a.length < 40) return 'малая: ' + a;
+  if (!b || !/Крупная ошибка/.test(b) || b.length < 40) return 'крупная: ' + b;
+  return true;
+});
+
+await check('магия: навыки берутся с бланка, ручные поля не нужны', async () => {
+  await arcSetup();
+  const r = await ev(() => ({ cast: magicSkill('cast'), ch: magicSkill('channel'), pr: magicSkill('pray'),
+                              tab: document.getElementById('sheet-area').textContent }));
+  if (!r.cast.fromSheet || !r.ch.fromSheet || !r.pr.fromSheet) return JSON.stringify(r).slice(0, 200);
+  return /с бланка/.test(r.tab) || 'на вкладке не видно, откуда навык';
+});
+
+await check('магия: сотворение показывает итог; провал на дубле — с малой ошибкой', () => withRolls(() => {
+  const read = () => { const m = document.getElementById('roll-modal'); const t = m.classList.contains('show') ? m.textContent : ''; m.classList.remove('show'); return t; };
+  seq(5);  rollCastingTest(0); const ok = read();
+  seq(99, 50); rollCastingTest(1); const bad = read();
+  if (!/Сотворено/.test(ok)) return 'успех ЗС 0: ' + ok.slice(0, 120);
+  if (!/Не сотворено/.test(bad) || !/МАЛАЯ ОШИБКА/.test(bad)) return 'заминка: ' + bad.slice(0, 160);
+  return state.sheet.rollLog[0].name.startsWith('Сотворение') || 'нет в журнале бросков';
+}));
+
+await check('магия: каналирование копит SL, заминка — крупная ошибка на карточке', () => withRolls(() => {
+  const read = () => { const m = document.getElementById('roll-modal'); const t = m.classList.contains('show') ? m.textContent : ''; m.classList.remove('show'); return t; };
+  state.sheet.channelled = 0;
+  seq(10); rollChannelling(); const a = read();
+  const acc = state.sheet.channelled;
+  seq(100, 50); rollChannelling(); const b = read();
+  if (!(acc > 0) || !/Накоплено/.test(a)) return 'накопление: ' + acc + ' ' + a.slice(0, 100);
+  return /КРУПНАЯ ОШИБКА/.test(b) || 'заминка: ' + b.slice(0, 160);
+}));
+
+await check('вера: молитва с грехом зовёт гнев на карточке; имя молитвы — текст', () => withRolls(() => {
+  const read = () => { const m = document.getElementById('roll-modal'); const t = m.classList.contains('show') ? m.innerHTML : ''; m.classList.remove('show'); return t; };
+  state.sheet.sin = 3;
+  seq(12, 40); rollPrayTest(0, 'blessing');   // единицы 2 ≤ греха 3 — гнев
+  const h = read();
+  if (!/Гнев богов/.test(h) || !/ГНЕВ БОГОВ/.test(h)) return 'гнев: ' + h.replace(/<[^>]+>/g, ' ').slice(0, 160);
+  if (state.sheet.sin !== 2) return 'грех после гнева ' + state.sheet.sin;
+  sv4NavGo('magic');
+  return !window.__arcX && !/<img src=x/.test(h) || 'имя молитвы исполнилось как разметка';
+}));
+
+await check('магия без навыка на бланке: ручное значение работает, ноль — подсказка', async () => {
+  const r = await ev(() => {
+    state.sheet.skillAdvBought = {};
+    state.sheet.langMagick = 0;
+    let told = ''; const n = window.notify; window.notify = t => { told += t; };
+    rollCastingTest(0); window.notify = n;
+    const shown = document.getElementById('roll-modal').classList.contains('show');
+    state.sheet.langMagick = 45;
+    rollCastingTest(0);
+    const m = document.getElementById('roll-modal'); const t = m.classList.contains('show') ? m.textContent : ''; m.classList.remove('show');
+    return { told, shown, t, field: magicSkill('cast') };
+  });
+  if (r.shown || !/Язык \(магический\)/.test(r.told)) return 'без навыка: ' + r.told;
+  if (r.field.fromSheet || r.field.value !== 45 || !/против 45/.test(r.t)) return 'ручное: ' + r.t.slice(0, 120);
+  return true;
+});
+
 console.log(results.join('\n'));
 console.log('\nпрошло ' + pass + ', не прошло ' + fail);
 console.log('ошибок JS за прогон: ' + errs.length);
