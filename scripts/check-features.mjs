@@ -3437,6 +3437,34 @@ await check('Твёрдость духа и Духовная чистота — 
   } finally { state.sheet.extraTalents = JSON.parse(keep); }
 }));
 
+await check('магазин показывает характеристику так же, как бланк (с талантами)', () => ev(() => {
+  const keep = JSON.stringify(state.sheet.extraTalents);
+  try {
+    state.sheet.extraTalents.push({ name: 'Силач', level: 1 });
+    state.xpGained = (state.sheet.spentXP || 0) + 500;
+    goStep(9);
+    const card = [...document.querySelectorAll('#shop-area .shop-card')].find(c => c.querySelector('.sc-head b').textContent === 'С');
+    const shown = parseInt(card.querySelector('.sc-val').textContent, 10);
+    const sheet = sheetCalc().totals['С'];
+    goStep(8);
+    return shown === sheet ? true : 'магазин ' + shown + ', бланк ' + sheet;
+  } finally { state.sheet.extraTalents = JSON.parse(keep); }
+}));
+
+await check('разбивка характеристик складывается в итог', () => ev(() => {
+  sv4NavGo('stats');
+  const rows = [...document.querySelectorAll('#sheet-area .sv4-tbl tbody tr')];
+  const val = td => { const i = td.querySelector('input'); return parseInt(i ? i.value : td.textContent.replace('+', ''), 10) || 0; };
+  const bad = [];
+  STAT_NAMES.forEach((s, j) => {
+    const cells = rows.map(r => r.cells[j + 1]);
+    const parts = cells.slice(0, -1).reduce((a, td) => a + val(td), 0);
+    if (parts !== val(cells[cells.length - 1])) bad.push(s + ': ' + parts + ' ≠ ' + val(cells[cells.length - 1]));
+  });
+  sv4NavGo('persona');
+  return bad.length ? bad.join(', ') : true;
+}));
+
 console.log(results.join('\n'));
 console.log('\nпрошло ' + pass + ', не прошло ' + fail);
 console.log('ошибок JS за прогон: ' + errs.length);

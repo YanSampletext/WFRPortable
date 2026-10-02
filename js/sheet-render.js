@@ -1076,6 +1076,7 @@ function renderTabStats(){
       <tbody>
         <tr><td>Базовое</td>${STAT_NAMES.map(s=>`<td><input type="number" min="0" max="99" value="${state.stats[s]||''}" class="sv4-mini gold" onchange="state.stats['${s}']=Math.max(0,parseInt(this.value)||0);renderSheet();" /></td>`).join('')}</tr>
         <tr><td>Развитие (за опыт)</td>${STAT_NAMES.map(s=>`<td><input type="number" min="0" max="99" value="${(state.sheet.statAdvBought&&state.sheet.statAdvBought[s])||0}" class="sv4-mini gold" onchange="if(!state.sheet.statAdvBought)state.sheet.statAdvBought={};state.sheet.statAdvBought['${s}']=Math.max(0,parseInt(this.value)||0);renderSheet();" /></td>`).join('')}</tr>
+        <tr><td>Старт карьеры</td>${STAT_NAMES.map(s=>`<td class="num-gold">+${(state.careerStatAdv&&state.careerStatAdv[s])||0}</td>`).join('')}</tr>
         <tr><td>Таланты</td>${STAT_NAMES.map(s=>`<td class="num-gold">+${talentStatBonus(s)||0}</td>`).join('')}</tr>
         <tr><td><b>Итог</b></td>${STAT_NAMES.map(s=>`<td class="num-gold"><b>${totals[s]||0}</b></td>`).join('')}</tr>
       </tbody>
