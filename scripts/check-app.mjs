@@ -372,7 +372,42 @@ console.log('\n── функции, которые зовёт разметка
   if (missing.size) errs.push('невидимые из разметки функции: ' + [...missing].join(', '));
 }
 
+// ── касания в архиве ────────────────────────────────────────────────────────
+// Тап по карточке открывает досье, долгое нажатие — меню. Раньше палец,
+// отпущенный после удержания, браузер превращал в клик, и вместо меню
+// открывалось досье. Нужен настоящий сенсорный ввод, поэтому своя страница.
+{
+  const tp = await b.newPage({ viewport: { width: 393, height: 850 }, hasTouch: true, isMobile: true });
+  tp.on('pageerror', e => errs.push(e.message));
+  await tp.goto('http://127.0.0.1:8098/index.html');
+  await tp.waitForTimeout(600);
+  await tp.evaluate(() => { _rollFullRandomCharacterDo(); state.name = 'Касание'; saveCharacterToRoster(); goHome(); });
+  await tp.waitForTimeout(300);
+  const cdp = await tp.context().newCDPSession(tp);
+  const press = async ms => {
+    const box = await tp.locator('#landing-char-list .ark-card').first().boundingBox();
+    const pt = { x: box.x + 40, y: box.y + 20 };
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [pt] });
+    await tp.waitForTimeout(ms);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await tp.waitForTimeout(500);
+    return tp.evaluate(() => ({ mode: appMode, menu: !!document.querySelector('#ordo-dlg.show') }));
+  };
+  const long = await press(800);
+  const longOk = long.mode === 'landing' && long.menu;
+  console.log('\n── касания в архиве ──\n  ' + (longOk ? '✓' : '✗') + ' долгое нажатие показывает меню и не открывает досье');
+  if (!longOk) errs.push('долгое нажатие: ' + JSON.stringify(long));
+  await tp.evaluate(() => { ordoDialogClose(); });
+  const tap = await press(60);
+  const tapOk = tap.mode === 'character' && !tap.menu;
+  console.log('  ' + (tapOk ? '✓' : '✗') + ' короткий тап открывает досье');
+  if (!tapOk) errs.push('тап: ' + JSON.stringify(tap));
+  await tp.close();
+}
+
 console.log('\nвсего ошибок JS за прогон:', errs.length);
 if (errs.length) console.log(errs.slice(0, 8).map(e => '  · ' + e).join('\n'));
 await b.close();
 srv.close();
+// Без кода выхода найденное здесь печаталось и не останавливало сборку
+process.exit(errs.length ? 1 : 0);
